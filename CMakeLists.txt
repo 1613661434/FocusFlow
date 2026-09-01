@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.13 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.14 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -101,6 +101,34 @@ if(BUILD_TESTING)
     target_include_directories(FocusTimerTests PRIVATE src)
     target_link_libraries(FocusTimerTests PRIVATE Qt6::Core Qt6::Test)
     add_test(NAME FocusTimerTests COMMAND FocusTimerTests)
+
+    qt_add_executable(FocusPageTests
+        tests/tst_FocusPage.cpp
+        src/views/FocusPage.cpp
+        src/views/FocusPage.h
+        src/data/DatabaseManager.cpp
+        src/data/DatabaseManager.h
+        src/repositories/FocusRepository.cpp
+        src/repositories/FocusRepository.h
+        src/repositories/SettingsRepository.cpp
+        src/repositories/SettingsRepository.h
+        src/repositories/TaskRepository.cpp
+        src/repositories/TaskRepository.h
+        src/services/FocusTimer.cpp
+        src/services/FocusTimer.h
+        src/services/NotificationSoundPlayer.cpp
+        src/services/NotificationSoundPlayer.h
+        src/models/Task.h
+        src/models/TimerSettings.h
+    )
+    target_include_directories(FocusPageTests PRIVATE src)
+    target_link_libraries(FocusPageTests PRIVATE
+        Qt6::Widgets
+        Qt6::Sql
+        Qt6::Multimedia
+        Qt6::Test
+    )
+    add_test(NAME FocusPageTests COMMAND FocusPageTests)
 
     qt_add_executable(PriorityServiceTests
         tests/tst_PriorityService.cpp

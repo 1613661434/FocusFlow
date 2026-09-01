@@ -4,6 +4,7 @@
 
 class QLabel;
 class QChartView;
+class QTableWidget;
 
 class StatisticsPage final : public QWidget
 {
@@ -19,6 +20,8 @@ private:
     void buildInterface();
     void updateDailyChart();
     void updateCategoryChart();
+    void updateProjectChart();
+    void updateRecentSessions();
     static QString formatDuration(int seconds);
 
     QLabel *weekFocusValue_ = nullptr;
@@ -26,4 +29,6 @@ private:
     QLabel *completedValue_ = nullptr;
     QChartView *dailyChartView_ = nullptr;
     QChartView *categoryChartView_ = nullptr;
+    QChartView *projectChartView_ = nullptr;
+    QTableWidget *recentSessions_ = nullptr;
 };

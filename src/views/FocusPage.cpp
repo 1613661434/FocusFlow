@@ -68,16 +68,22 @@ void FocusPage::buildInterface()
     statusLabel_->setWordWrap(true);
 
     auto *controls = new QHBoxLayout;
-    startButton_ = new QPushButton(QStringLiteral("开始"), timerCard);
-    startButton_->setObjectName(QStringLiteral("primaryButton"));
-    pauseButton_ = new QPushButton(QStringLiteral("暂停"), timerCard);
-    stopButton_ = new QPushButton(QStringLiteral("提前结束"), timerCard);
+    controls->setSpacing(12);
+    primaryActionButton_ = new QPushButton(QStringLiteral("开始"), timerCard);
+    primaryActionButton_->setObjectName(QStringLiteral("primaryButton"));
+    primaryActionButton_->setProperty("timerControl", QStringLiteral("primary"));
+    primaryActionButton_->setAccessibleName(QStringLiteral("计时主操作"));
+    primaryActionButton_->setToolTip(QStringLiteral("开始当前计时"));
+    primaryActionButton_->setMinimumSize(104, 44);
+    stopButton_ = new QPushButton(QStringLiteral("终止"), timerCard);
     stopButton_->setObjectName(QStringLiteral("dangerButton"));
-    pauseButton_->setEnabled(false);
+    stopButton_->setProperty("timerControl", QStringLiteral("stop"));
+    stopButton_->setAccessibleName(QStringLiteral("终止当前计时"));
+    stopButton_->setToolTip(QStringLiteral("终止当前计时并处理本次记录"));
+    stopButton_->setMinimumSize(104, 44);
     stopButton_->setEnabled(false);
     controls->addStretch();
-    controls->addWidget(startButton_);
-    controls->addWidget(pauseButton_);
+    controls->addWidget(primaryActionButton_);
     controls->addWidget(stopButton_);
     controls->addStretch();
 
@@ -130,10 +136,8 @@ void FocusPage::buildInterface()
     root->addWidget(timerCard, 1);
     root->addWidget(optionsCard);
 
-    connect(startButton_, &QPushButton::clicked,
-            this, &FocusPage::startCurrentPhase);
-    connect(pauseButton_, &QPushButton::clicked,
-            this, &FocusPage::togglePause);
+    connect(primaryActionButton_, &QPushButton::clicked,
+            this, &FocusPage::handlePrimaryAction);
     connect(stopButton_, &QPushButton::clicked,
             this, &FocusPage::stopEarly);
     connect(phaseCombo_, &QComboBox::currentIndexChanged,
@@ -190,9 +194,11 @@ void FocusPage::startCurrentPhase()
     timer_.start(phase, durationSeconds(phase), currentTaskId_);
 }
 
-void FocusPage::togglePause()
+void FocusPage::handlePrimaryAction()
 {
-    if (timer_.state() == FocusTimer::State::Running) {
+    if (timer_.state() == FocusTimer::State::Idle) {
+        startCurrentPhase();
+    } else if (timer_.state() == FocusTimer::State::Running) {
         timer_.pause();
     } else if (timer_.state() == FocusTimer::State::Paused) {
         timer_.resume();
@@ -208,15 +214,15 @@ void FocusPage::stopEarly()
 
     if (hasLinkedTask) {
         QMessageBox dialog(QMessageBox::Question,
-                           QStringLiteral("提前结束"),
+                           QStringLiteral("终止专注"),
                            QStringLiteral("实际用时会保存并计入专注统计。\n"
                                           "是否同时将关联任务标记为完成？"),
                            QMessageBox::NoButton,
                            this);
         auto *finishOnlyButton = dialog.addButton(
-            QStringLiteral("仅结束计时"), QMessageBox::AcceptRole);
+            QStringLiteral("仅终止计时"), QMessageBox::AcceptRole);
         auto *completeTaskButton = dialog.addButton(
-            QStringLiteral("结束并完成任务"), QMessageBox::ActionRole);
+            QStringLiteral("终止并完成任务"), QMessageBox::ActionRole);
         auto *cancelButton = dialog.addButton(
             QStringLiteral("取消"), QMessageBox::RejectRole);
         dialog.setDefaultButton(cancelButton);
@@ -232,8 +238,8 @@ void FocusPage::stopEarly()
     } else if (phase == FocusTimer::Phase::Focus) {
         const auto choice = QMessageBox::question(
             this,
-            QStringLiteral("提前结束"),
-            QStringLiteral("要结束当前专注并保存实际用时吗？\n"
+            QStringLiteral("终止专注"),
+            QStringLiteral("要终止当前专注并保存实际用时吗？\n"
                            "已产生的专注时间会计入统计。"),
             QMessageBox::Yes | QMessageBox::No,
             QMessageBox::No);
@@ -243,8 +249,8 @@ void FocusPage::stopEarly()
     } else {
         const auto choice = QMessageBox::question(
             this,
-            QStringLiteral("提前结束休息"),
-            QStringLiteral("要提前结束当前%1吗？\n"
+            QStringLiteral("终止休息"),
+            QStringLiteral("要终止当前%1吗？\n"
                            "休息时间不会计入专注统计。")
                 .arg(phaseText(phase)),
             QMessageBox::Yes | QMessageBox::No,
@@ -267,21 +273,22 @@ void FocusPage::updateTime(int remainingSeconds, int plannedSeconds)
 void FocusPage::updateState(FocusTimer::State state)
 {
     const bool idle = state == FocusTimer::State::Idle;
-    startButton_->setEnabled(idle);
-    pauseButton_->setEnabled(!idle);
     stopButton_->setEnabled(!idle);
     phaseCombo_->setEnabled(idle);
     taskCombo_->setEnabled(idle);
 
     if (state == FocusTimer::State::Running) {
-        pauseButton_->setText(QStringLiteral("暂停"));
+        primaryActionButton_->setText(QStringLiteral("暂停"));
+        primaryActionButton_->setToolTip(QStringLiteral("暂停当前计时"));
         phaseLabel_->setText(phaseText(timer_.phase()));
         statusLabel_->setText(QStringLiteral("正在%1……").arg(phaseText(timer_.phase())));
     } else if (state == FocusTimer::State::Paused) {
-        pauseButton_->setText(QStringLiteral("继续"));
+        primaryActionButton_->setText(QStringLiteral("继续"));
+        primaryActionButton_->setToolTip(QStringLiteral("继续当前计时"));
         statusLabel_->setText(QStringLiteral("计时已暂停"));
     } else {
-        pauseButton_->setText(QStringLiteral("暂停"));
+        primaryActionButton_->setText(QStringLiteral("开始"));
+        primaryActionButton_->setToolTip(QStringLiteral("开始当前计时"));
     }
 }
 
@@ -302,7 +309,7 @@ void FocusPage::handleSessionEnded(FocusTimer::Phase phase,
         endedAt,
         plannedSeconds,
         actualSeconds,
-        completed ? QString() : QStringLiteral("用户提前结束"),
+        completed ? QString() : QStringLiteral("用户终止"),
         &error);
     if (!saved) {
         completeTaskWhenSessionEnds_ = false;
@@ -337,11 +344,11 @@ void FocusPage::handleSessionEnded(FocusTimer::Phase phase,
     if (!completed) {
         QString status;
         if (phase == FocusTimer::Phase::Focus) {
-            status = QStringLiteral("本次专注已提前结束，实际用时 %1，"
+            status = QStringLiteral("本次专注已终止，实际用时 %1，"
                                     "已计入专注统计。")
                          .arg(formatSeconds(actualSeconds));
         } else {
-            status = QStringLiteral("本次%1已提前结束，实际用时 %2；"
+            status = QStringLiteral("本次%1已终止，实际用时 %2；"
                                     "休息时间未计入专注统计。")
                          .arg(phaseText(phase), formatSeconds(actualSeconds));
         }
