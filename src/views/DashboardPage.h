@@ -25,5 +25,6 @@ private:
     QLabel *overdueValue_ = nullptr;
     QLabel *completedValue_ = nullptr;
     QLabel *focusValue_ = nullptr;
+    QLabel *emptyStateLabel_ = nullptr;
     QListWidget *recommendations_ = nullptr;
 };

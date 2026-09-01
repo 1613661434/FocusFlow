@@ -44,6 +44,11 @@ void DashboardPage::buildInterface()
         QStringLiteral("综合重要程度、截止时间、逾期情况和预计耗时排序。"),
         recommendationCard);
     description->setObjectName(QStringLiteral("mutedLabel"));
+    emptyStateLabel_ = new QLabel(
+        QStringLiteral("暂无待办任务，可以好好休息一下。"),
+        recommendationCard);
+    emptyStateLabel_->setObjectName(QStringLiteral("emptyStateLabel"));
+    emptyStateLabel_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     recommendations_ = new QListWidget(recommendationCard);
     recommendations_->setObjectName(QStringLiteral("recommendationList"));
     recommendations_->setAlternatingRowColors(true);
@@ -51,6 +56,7 @@ void DashboardPage::buildInterface()
     recommendations_->setSelectionMode(QAbstractItemView::SingleSelection);
     recommendationLayout->addWidget(title);
     recommendationLayout->addWidget(description);
+    recommendationLayout->addWidget(emptyStateLabel_);
     recommendationLayout->addWidget(recommendations_, 1);
 
     root->addLayout(metrics);
@@ -87,6 +93,9 @@ void DashboardPage::refresh()
     });
     recommendations_->clear();
     const int count = qMin(6, tasks.size());
+    const bool isEmpty = count == 0;
+    emptyStateLabel_->setVisible(isEmpty);
+    recommendations_->setVisible(!isEmpty);
     for (int index = 0; index < count; ++index) {
         const Task &task = tasks.at(index);
         QString detail = QStringLiteral("推荐分 %1").arg(PriorityService::score(task));
@@ -97,9 +106,6 @@ void DashboardPage::refresh()
         auto *item = new QListWidgetItem(
             QStringLiteral("%1\n%2").arg(task.title, detail), recommendations_);
         item->setSizeHint(QSize(0, 54));
-    }
-    if (count == 0) {
-        recommendations_->addItem(QStringLiteral("暂无待办任务，可以好好休息一下。"));
     }
 }
 
