@@ -1,5 +1,6 @@
 #include "data/DatabaseManager.h"
 #include "services/DataManagementService.h"
+#include "services/SoundStorageService.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -20,6 +21,7 @@ private slots:
     void backupAndCsvExports();
     void prepareValidatedRestore();
     void clearFocusStatisticsKeepsTasks();
+    void managedSoundStorageRemovesOnlyUnusedCopies();
     void cleanupTestCase();
 
 private:
@@ -115,6 +117,44 @@ void DataManagementServiceTests::clearFocusStatisticsKeepsTasks()
     QVERIFY(taskCount.exec(QStringLiteral("SELECT COUNT(*) FROM tasks")));
     QVERIFY(taskCount.next());
     QVERIFY(taskCount.value(0).toInt() > 0);
+}
+
+void DataManagementServiceTests::managedSoundStorageRemovesOnlyUnusedCopies()
+{
+    QTemporaryDir sources;
+    QVERIFY(sources.isValid());
+
+    const QString firstSource = sources.filePath(QStringLiteral("first.wav"));
+    const QString secondSource = sources.filePath(QStringLiteral("second.mp3"));
+    for (const QString &path : {firstSource, secondSource}) {
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("test-audio"), qint64(10));
+    }
+
+    SoundStorageService storage;
+    QString error;
+    const QString firstManaged =
+        storage.install(firstSource, QStringLiteral("focus"), &error);
+    QVERIFY2(!firstManaged.isEmpty(), qPrintable(error));
+    const QString secondManaged =
+        storage.install(secondSource, QStringLiteral("break"), &error);
+    QVERIFY2(!secondManaged.isEmpty(), qPrintable(error));
+    QVERIFY(storage.isManagedPath(firstManaged));
+    QVERIFY(storage.isManagedPath(secondManaged));
+    QVERIFY(QFileInfo::exists(firstManaged));
+    QVERIFY(QFileInfo::exists(secondManaged));
+
+    QCOMPARE(storage.install(secondManaged, QStringLiteral("focus"), &error),
+             secondManaged);
+    QVERIFY(storage.removeUnused({secondManaged, secondManaged}).isEmpty());
+    QVERIFY(!QFileInfo::exists(firstManaged));
+    QVERIFY(QFileInfo::exists(secondManaged));
+    QVERIFY(QFileInfo::exists(firstSource));
+    QVERIFY(QFileInfo::exists(secondSource));
+
+    QVERIFY(storage.removeUnused({}).isEmpty());
+    QVERIFY(!QFileInfo::exists(secondManaged));
 }
 
 void DataManagementServiceTests::cleanupTestCase()

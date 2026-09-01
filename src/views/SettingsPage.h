@@ -30,6 +30,8 @@ public slots:
 private slots:
     void browseFocusSound();
     void browseBreakSound();
+    void resetFocusSound();
+    void resetBreakSound();
     void previewFocusSound();
     void previewBreakSound();
     void backupDatabase();
@@ -41,8 +43,7 @@ private slots:
 private:
     void buildInterface();
     TimerSettings settingsFromForm() const;
-    void browseSound(QLineEdit *destination, const QString &prefix);
-    QString installSound(const QString &sourcePath, const QString &prefix) const;
+    void browseSound(QLineEdit *destination);
     void previewSound(const QString &path);
 
     NotificationSoundPlayer *soundPlayer_ = nullptr;
