@@ -1,0 +1,34 @@
+# CMake and Qt build output
+/build*/
+/out/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+*.autogen/
+
+# Qt Creator and IDE-local files
+CMakeLists.txt.user*
+*.pro.user*
+.idea/
+.vscode/
+
+# Compiled artifacts
+*.exe
+*.dll
+*.a
+*.o
+*.obj
+*.pdb
+
+# Runtime and personal data
+/data/*.db
+/data/*.db-*
+/data/backups/
+/data/sounds/
+*.log
+
+# OS metadata
+Thumbs.db
+Desktop.ini
+.DS_Store
