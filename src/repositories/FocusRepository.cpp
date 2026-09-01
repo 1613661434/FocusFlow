@@ -50,7 +50,10 @@ bool FocusRepository::recordSession(int taskId,
     query.bindValue(QStringLiteral(":end_time"), endedAt.toString(Qt::ISODate));
     query.bindValue(QStringLiteral(":planned_seconds"), plannedSeconds);
     query.bindValue(QStringLiteral(":actual_seconds"), actualSeconds);
-    query.bindValue(QStringLiteral(":interruption_reason"), interruptionReason);
+    query.bindValue(QStringLiteral(":interruption_reason"),
+                    interruptionReason.isNull()
+                        ? QStringLiteral("")
+                        : interruptionReason);
 
     if (!query.exec()) {
         if (errorMessage != nullptr) {

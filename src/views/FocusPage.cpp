@@ -65,6 +65,7 @@ void FocusPage::buildInterface()
     statusLabel_ = new QLabel(QStringLiteral("准备开始专注"), timerCard);
     statusLabel_->setAlignment(Qt::AlignCenter);
     statusLabel_->setObjectName(QStringLiteral("mutedLabel"));
+    statusLabel_->setWordWrap(true);
 
     auto *controls = new QHBoxLayout;
     startButton_ = new QPushButton(QStringLiteral("开始"), timerCard);
