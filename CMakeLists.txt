@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.11 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.12 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -136,6 +136,15 @@ if(BUILD_TESTING)
         Qt6::Test
     )
     add_test(NAME ChineseCalendarWidgetTests COMMAND ChineseCalendarWidgetTests)
+
+    qt_add_executable(QtLocalizationTests
+        tests/tst_QtLocalization.cpp
+    )
+    target_link_libraries(QtLocalizationTests PRIVATE
+        Qt6::Widgets
+        Qt6::Test
+    )
+    add_test(NAME QtLocalizationTests COMMAND QtLocalizationTests)
 
     qt_add_executable(FocusAwareSpinBoxTests
         tests/tst_FocusAwareSpinBox.cpp

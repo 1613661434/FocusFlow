@@ -97,7 +97,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.11"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.12"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -139,8 +139,14 @@ void MainWindow::buildInterface()
             statisticsPage, &StatisticsPage::refresh);
     connect(projectPage, &ProjectPage::lookupsChanged,
             taskPage, &TaskPage::refresh);
+    connect(projectPage, &ProjectPage::lookupsChanged,
+            dashboardPage, &DashboardPage::refresh);
     connect(settingsPage_, &SettingsPage::settingsSaved,
             focusPage, &FocusPage::reloadSettings);
+    connect(settingsPage_, &SettingsPage::statisticsCleared,
+            dashboardPage, &DashboardPage::refresh);
+    connect(settingsPage_, &SettingsPage::statisticsCleared,
+            statisticsPage, &StatisticsPage::refresh);
     connect(focusPage, &FocusPage::notificationRequested,
             this, &MainWindow::showNotification);
     connect(focusPage, &FocusPage::focusDataChanged,

@@ -7,13 +7,22 @@
 
 #include <QFrame>
 #include <QAbstractItemView>
+#include <QComboBox>
 #include <QGridLayout>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
+#include <QSignalBlocker>
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
 #include <algorithm>
+
+namespace {
+constexpr int kAllLookups = -2;
+constexpr int kProjectRole = Qt::UserRole + 1;
+constexpr int kCategoryRole = Qt::UserRole + 2;
+}
 
 DashboardPage::DashboardPage(QWidget *parent)
     : QWidget(parent)
@@ -46,6 +55,25 @@ void DashboardPage::buildInterface()
         QStringLiteral("综合重要程度、截止时间、逾期情况和预计耗时排序。"),
         recommendationCard);
     description->setObjectName(QStringLiteral("mutedLabel"));
+
+    auto *filterLayout = new QHBoxLayout;
+    filterLayout->setContentsMargins(0, 4, 0, 4);
+    filterLayout->setSpacing(8);
+    auto *projectLabel = new QLabel(QStringLiteral("项目筛选："), recommendationCard);
+    projectFilter_ = new QComboBox(recommendationCard);
+    projectFilter_->setObjectName(QStringLiteral("recommendationProjectFilter"));
+    projectFilter_->setMinimumWidth(160);
+    auto *categoryLabel = new QLabel(QStringLiteral("分类筛选："), recommendationCard);
+    categoryFilter_ = new QComboBox(recommendationCard);
+    categoryFilter_->setObjectName(QStringLiteral("recommendationCategoryFilter"));
+    categoryFilter_->setMinimumWidth(160);
+    filterLayout->addWidget(projectLabel);
+    filterLayout->addWidget(projectFilter_);
+    filterLayout->addSpacing(12);
+    filterLayout->addWidget(categoryLabel);
+    filterLayout->addWidget(categoryFilter_);
+    filterLayout->addStretch();
+
     recommendationContent_ = new QStackedWidget(recommendationCard);
     recommendationContent_->setObjectName(QStringLiteral("recommendationContent"));
 
@@ -73,6 +101,7 @@ void DashboardPage::buildInterface()
     recommendationContent_->addWidget(emptyStatePage);
     recommendationLayout->addWidget(title);
     recommendationLayout->addWidget(description);
+    recommendationLayout->addLayout(filterLayout);
     recommendationLayout->addWidget(recommendationContent_, 1);
 
     connect(recommendations_, &QListWidget::itemDoubleClicked,
@@ -82,6 +111,10 @@ void DashboardPage::buildInterface()
                     emit focusTaskRequested(taskId);
                 }
             });
+    connect(projectFilter_, &QComboBox::currentIndexChanged,
+            this, [this] { refreshRecommendations(); });
+    connect(categoryFilter_, &QComboBox::currentIndexChanged,
+            this, [this] { refreshRecommendations(); });
 
     root->addLayout(metrics);
     root->addWidget(recommendationCard, 1);
@@ -111,7 +144,58 @@ void DashboardPage::refresh()
     completedValue_->setText(QString::number(metrics.completedToday));
     focusValue_->setText(formatDuration(metrics.focusSecondsToday));
 
+    reloadRecommendationFilters();
+    refreshRecommendations();
+}
+
+void DashboardPage::reloadRecommendationFilters()
+{
+    const int selectedProject = projectFilter_->currentData().isValid()
+                                    ? projectFilter_->currentData().toInt()
+                                    : kAllLookups;
+    const int selectedCategory = categoryFilter_->currentData().isValid()
+                                     ? categoryFilter_->currentData().toInt()
+                                     : kAllLookups;
+    const QSignalBlocker projectBlocker(projectFilter_);
+    const QSignalBlocker categoryBlocker(categoryFilter_);
+
+    TaskRepository repository;
+    projectFilter_->clear();
+    projectFilter_->addItem(QStringLiteral("全部项目"), kAllLookups);
+    projectFilter_->addItem(QStringLiteral("无项目"), -1);
+    for (const LookupItem &project : repository.projects()) {
+        projectFilter_->addItem(project.name, project.id);
+    }
+
+    categoryFilter_->clear();
+    categoryFilter_->addItem(QStringLiteral("全部分类"), kAllLookups);
+    categoryFilter_->addItem(QStringLiteral("未分类"), -1);
+    for (const LookupItem &category : repository.categories()) {
+        categoryFilter_->addItem(category.name, category.id);
+    }
+
+    const int projectIndex = projectFilter_->findData(selectedProject);
+    const int categoryIndex = categoryFilter_->findData(selectedCategory);
+    projectFilter_->setCurrentIndex(projectIndex >= 0 ? projectIndex : 0);
+    categoryFilter_->setCurrentIndex(categoryIndex >= 0 ? categoryIndex : 0);
+}
+
+void DashboardPage::refreshRecommendations()
+{
+    if (projectFilter_ == nullptr || categoryFilter_ == nullptr) {
+        return;
+    }
+
     auto tasks = TaskRepository().findAll(TaskRepository::Filter::Recommended);
+    const int selectedProject = projectFilter_->currentData().toInt();
+    const int selectedCategory = categoryFilter_->currentData().toInt();
+    tasks.erase(std::remove_if(tasks.begin(), tasks.end(), [&](const Task &task) {
+        const bool projectMismatch =
+            selectedProject != kAllLookups && task.projectId != selectedProject;
+        const bool categoryMismatch =
+            selectedCategory != kAllLookups && task.categoryId != selectedCategory;
+        return projectMismatch || categoryMismatch;
+    }), tasks.end());
     std::stable_sort(tasks.begin(), tasks.end(), [](const Task &left, const Task &right) {
         return PriorityService::score(left) > PriorityService::score(right);
     });
@@ -119,9 +203,22 @@ void DashboardPage::refresh()
     const int count = qMin(6, tasks.size());
     const bool isEmpty = count == 0;
     recommendationContent_->setCurrentIndex(isEmpty ? 1 : 0);
+    emptyStateLabel_->setText(
+        selectedProject == kAllLookups && selectedCategory == kAllLookups
+            ? QStringLiteral("暂无待办任务，可以好好休息一下。")
+            : QStringLiteral("当前项目和分类下暂无待办任务。"));
     for (int index = 0; index < count; ++index) {
         const Task &task = tasks.at(index);
-        QString detail = QStringLiteral("推荐分 %1").arg(PriorityService::score(task));
+        const QString projectName = task.projectName.isEmpty()
+                                        ? QStringLiteral("无项目")
+                                        : task.projectName;
+        const QString categoryName = task.categoryName.isEmpty()
+                                         ? QStringLiteral("未分类")
+                                         : task.categoryName;
+        QString detail = QStringLiteral("项目：%1  ·  分类：%2  ·  推荐分 %3")
+                             .arg(projectName,
+                                  categoryName,
+                                  QString::number(PriorityService::score(task)));
         if (task.dueAt.isValid()) {
             detail += QStringLiteral("  ·  截止 %1")
                           .arg(task.dueAt.toString(QStringLiteral("MM-dd HH:mm")));
@@ -129,6 +226,8 @@ void DashboardPage::refresh()
         auto *item = new QListWidgetItem(
             QStringLiteral("%1\n%2").arg(task.title, detail), recommendations_);
         item->setData(Qt::UserRole, task.id);
+        item->setData(kProjectRole, task.projectId);
+        item->setData(kCategoryRole, task.categoryId);
         item->setSizeHint(QSize(0, 54));
     }
 }

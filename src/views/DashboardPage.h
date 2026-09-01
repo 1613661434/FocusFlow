@@ -5,6 +5,7 @@
 class QLabel;
 class QListWidget;
 class QStackedWidget;
+class QComboBox;
 
 class DashboardPage final : public QWidget
 {
@@ -21,6 +22,8 @@ public slots:
 
 private:
     void buildInterface();
+    void reloadRecommendationFilters();
+    void refreshRecommendations();
     QWidget *createMetricCard(const QString &title, QLabel **valueLabel);
     static QString formatDuration(int seconds);
 
@@ -30,6 +33,8 @@ private:
     QLabel *completedValue_ = nullptr;
     QLabel *focusValue_ = nullptr;
     QLabel *emptyStateLabel_ = nullptr;
+    QComboBox *projectFilter_ = nullptr;
+    QComboBox *categoryFilter_ = nullptr;
     QListWidget *recommendations_ = nullptr;
     QStackedWidget *recommendationContent_ = nullptr;
 };

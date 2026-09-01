@@ -12,7 +12,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $distributionRoot = Join-Path $projectRoot "dist"
-$packageDirectory = Join-Path $distributionRoot "FocusFlow-0.1.11-$timestamp"
+$packageDirectory = Join-Path $distributionRoot "FocusFlow-0.1.12-$timestamp"
 $executable = Join-Path $projectRoot "build\FocusFlow.exe"
 $deployTool = Join-Path $QtRoot "bin\windeployqt.exe"
 
@@ -33,6 +33,17 @@ Copy-Item $executable (Join-Path $packageDirectory "FocusFlow.exe")
     (Join-Path $packageDirectory "FocusFlow.exe")
 if ($LASTEXITCODE -ne 0) {
     throw "Qt 运行库部署失败。"
+}
+
+$translationSource = Join-Path $QtRoot "translations"
+$translationDestination = Join-Path $packageDirectory "translations"
+New-Item -ItemType Directory -Path $translationDestination -Force | Out-Null
+foreach ($catalog in @("qt_zh_CN.qm", "qtbase_zh_CN.qm")) {
+    $catalogPath = Join-Path $translationSource $catalog
+    if (-not (Test-Path $catalogPath)) {
+        throw "没有找到 Qt 中文翻译文件：$catalogPath"
+    }
+    Copy-Item $catalogPath $translationDestination
 }
 
 $archivePath = "$packageDirectory.zip"
