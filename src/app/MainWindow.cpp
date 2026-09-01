@@ -3,6 +3,8 @@
 #include "views/TaskPage.h"
 #include "views/FocusPage.h"
 #include "views/ProjectPage.h"
+#include "views/DashboardPage.h"
+#include "views/StatisticsPage.h"
 #include "views/SettingsPage.h"
 
 #include <QAction>
@@ -93,14 +95,16 @@ void MainWindow::buildInterface()
     contentLayout->addWidget(pageTitle_);
 
     pages_ = new QStackedWidget(content);
-    pages_->addWidget(createPlaceholderPage(kPageNames.at(0), kPageDescriptions.at(0)));
+    auto *dashboardPage = new DashboardPage(pages_);
+    pages_->addWidget(dashboardPage);
     auto *taskPage = new TaskPage(pages_);
     pages_->addWidget(taskPage);
     auto *projectPage = new ProjectPage(pages_);
     pages_->addWidget(projectPage);
     auto *focusPage = new FocusPage(pages_);
     pages_->addWidget(focusPage);
-    pages_->addWidget(createPlaceholderPage(kPageNames.at(4), kPageDescriptions.at(4)));
+    auto *statisticsPage = new StatisticsPage(pages_);
+    pages_->addWidget(statisticsPage);
     auto *settingsPage = new SettingsPage(pages_);
     pages_->addWidget(settingsPage);
     contentLayout->addWidget(pages_, 1);
@@ -113,12 +117,20 @@ void MainWindow::buildInterface()
             this, &MainWindow::showPage);
     connect(taskPage, &TaskPage::tasksChanged,
             focusPage, &FocusPage::refreshTasks);
+    connect(taskPage, &TaskPage::tasksChanged,
+            dashboardPage, &DashboardPage::refresh);
+    connect(taskPage, &TaskPage::tasksChanged,
+            statisticsPage, &StatisticsPage::refresh);
     connect(projectPage, &ProjectPage::lookupsChanged,
             taskPage, &TaskPage::refresh);
     connect(settingsPage, &SettingsPage::settingsSaved,
             focusPage, &FocusPage::reloadSettings);
     connect(focusPage, &FocusPage::notificationRequested,
             this, &MainWindow::showNotification);
+    connect(focusPage, &FocusPage::focusDataChanged,
+            dashboardPage, &DashboardPage::refresh);
+    connect(focusPage, &FocusPage::focusDataChanged,
+            statisticsPage, &StatisticsPage::refresh);
 }
 
 QWidget *MainWindow::createPlaceholderPage(const QString &title,
@@ -205,6 +217,20 @@ void MainWindow::applyTheme()
             color: #172033;
             font-size: 64px;
             font-weight: 700;
+        }
+        QLabel#metricValue {
+            color: #172033;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        QListWidget#recommendationList {
+            background: transparent;
+            border: none;
+            outline: none;
+        }
+        QListWidget#recommendationList::item {
+            border-bottom: 1px solid #edf0f5;
+            padding: 8px;
         }
         QGroupBox {
             background: #ffffff;
