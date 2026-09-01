@@ -1,5 +1,7 @@
 #include "views/TaskDialog.h"
 
+#include "widgets/ChineseCalendarWidget.h"
+
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDateTimeEdit>
@@ -7,6 +9,7 @@
 #include <QFormLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLocale>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
@@ -62,7 +65,9 @@ void TaskDialog::buildInterface(const QVector<LookupItem> &projects,
 
     dueEnabled_ = new QCheckBox(QStringLiteral("设置截止时间"), this);
     dueEdit_ = new QDateTimeEdit(QDateTime::currentDateTime().addDays(1), this);
+    dueEdit_->setLocale(QLocale(QLocale::Chinese, QLocale::China));
     dueEdit_->setCalendarPopup(true);
+    dueEdit_->setCalendarWidget(new ChineseCalendarWidget(dueEdit_));
     dueEdit_->setDisplayFormat(QStringLiteral("yyyy-MM-dd HH:mm"));
     dueEdit_->setEnabled(false);
     connect(dueEnabled_, &QCheckBox::toggled, dueEdit_, &QWidget::setEnabled);

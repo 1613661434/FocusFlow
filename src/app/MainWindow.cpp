@@ -93,7 +93,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.1"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.2"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -252,8 +252,13 @@ void MainWindow::applyTheme()
             outline: none;
         }
         QListWidget#recommendationList::item {
+            color: #344054;
             border-bottom: 1px solid #edf0f5;
             padding: 8px;
+        }
+        QListWidget#recommendationList::item:selected {
+            background: transparent;
+            color: #344054;
         }
         QGroupBox {
             background: #ffffff;
@@ -327,6 +332,29 @@ void MainWindow::applyTheme()
             border-bottom: 1px solid #e5e9f1;
             padding: 10px;
             font-weight: 600;
+        }
+        QCalendarWidget QWidget#qt_calendar_navigationbar {
+            background: #4f6ef7;
+        }
+        QCalendarWidget QToolButton {
+            min-width: 34px;
+            min-height: 32px;
+            color: #ffffff;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-weight: 600;
+        }
+        QCalendarWidget QToolButton:hover {
+            background: #405dde;
+        }
+        QCalendarWidget QAbstractItemView:enabled {
+            color: #182230;
+            background: #ffffff;
+            selection-background-color: #4f6ef7;
+            selection-color: #ffffff;
+            outline: none;
         }
         QFrame#sidebar QLabel#mutedLabel {
             color: #aeb9cc;

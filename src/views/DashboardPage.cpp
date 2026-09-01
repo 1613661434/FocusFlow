@@ -5,6 +5,7 @@
 #include "services/PriorityService.h"
 
 #include <QFrame>
+#include <QAbstractItemView>
 #include <QGridLayout>
 #include <QLabel>
 #include <QListWidget>
@@ -47,6 +48,7 @@ void DashboardPage::buildInterface()
     recommendations_->setObjectName(QStringLiteral("recommendationList"));
     recommendations_->setAlternatingRowColors(true);
     recommendations_->setFocusPolicy(Qt::NoFocus);
+    recommendations_->setSelectionMode(QAbstractItemView::NoSelection);
     recommendationLayout->addWidget(title);
     recommendationLayout->addWidget(description);
     recommendationLayout->addWidget(recommendations_, 1);

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.1 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -62,6 +62,8 @@ qt_add_executable(FocusFlow WIN32
     src/views/DashboardPage.h
     src/views/StatisticsPage.cpp
     src/views/StatisticsPage.h
+    src/widgets/ChineseCalendarWidget.cpp
+    src/widgets/ChineseCalendarWidget.h
 )
 
 target_include_directories(FocusFlow PRIVATE src)
@@ -117,4 +119,16 @@ if(BUILD_TESTING)
         Qt6::Test
     )
     add_test(NAME DataManagementServiceTests COMMAND DataManagementServiceTests)
+
+    qt_add_executable(ChineseCalendarWidgetTests
+        tests/tst_ChineseCalendarWidget.cpp
+        src/widgets/ChineseCalendarWidget.cpp
+        src/widgets/ChineseCalendarWidget.h
+    )
+    target_include_directories(ChineseCalendarWidgetTests PRIVATE src)
+    target_link_libraries(ChineseCalendarWidgetTests PRIVATE
+        Qt6::Widgets
+        Qt6::Test
+    )
+    add_test(NAME ChineseCalendarWidgetTests COMMAND ChineseCalendarWidgetTests)
 endif()
