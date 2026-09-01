@@ -93,7 +93,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.2"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.3"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -257,8 +257,15 @@ void MainWindow::applyTheme()
             padding: 8px;
         }
         QListWidget#recommendationList::item:selected {
-            background: transparent;
-            color: #344054;
+            background: #dfe6ff;
+            color: #101828;
+            border: 1px solid #b6c4ff;
+            border-radius: 8px;
+            font-weight: 700;
+        }
+        QListWidget#recommendationList::item:hover:!selected {
+            background: #f4f6ff;
+            color: #182230;
         }
         QGroupBox {
             background: #ffffff;

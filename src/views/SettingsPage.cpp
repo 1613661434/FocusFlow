@@ -4,6 +4,7 @@
 #include "repositories/SettingsRepository.h"
 #include "services/DataManagementService.h"
 #include "services/NotificationSoundPlayer.h"
+#include "widgets/FocusAwareSpinBox.h"
 
 #include <QCheckBox>
 #include <QDateTime>
@@ -50,16 +51,16 @@ void SettingsPage::buildInterface()
     timerForm->setHorizontalSpacing(20);
     timerForm->setVerticalSpacing(12);
 
-    focusMinutes_ = new QSpinBox(timerGroup);
+    focusMinutes_ = new FocusAwareSpinBox(timerGroup);
     focusMinutes_->setRange(1, 180);
     focusMinutes_->setSuffix(QStringLiteral(" 分钟"));
-    shortBreakMinutes_ = new QSpinBox(timerGroup);
+    shortBreakMinutes_ = new FocusAwareSpinBox(timerGroup);
     shortBreakMinutes_->setRange(1, 60);
     shortBreakMinutes_->setSuffix(QStringLiteral(" 分钟"));
-    longBreakMinutes_ = new QSpinBox(timerGroup);
+    longBreakMinutes_ = new FocusAwareSpinBox(timerGroup);
     longBreakMinutes_->setRange(1, 120);
     longBreakMinutes_->setSuffix(QStringLiteral(" 分钟"));
-    cyclesBeforeLongBreak_ = new QSpinBox(timerGroup);
+    cyclesBeforeLongBreak_ = new FocusAwareSpinBox(timerGroup);
     cyclesBeforeLongBreak_->setRange(2, 8);
     cyclesBeforeLongBreak_->setSuffix(QStringLiteral(" 次专注"));
     autoStartBreak_ = new QCheckBox(QStringLiteral("专注完成后自动开始休息"), timerGroup);
@@ -117,10 +118,10 @@ void SettingsPage::buildInterface()
         volumeLabel_->setText(QStringLiteral("%1%").arg(value));
     });
 
-    maxSoundSeconds_ = new QSpinBox(soundGroup);
+    maxSoundSeconds_ = new FocusAwareSpinBox(soundGroup);
     maxSoundSeconds_->setRange(1, 30);
     maxSoundSeconds_->setSuffix(QStringLiteral(" 秒"));
-    soundRepeatCount_ = new QSpinBox(soundGroup);
+    soundRepeatCount_ = new FocusAwareSpinBox(soundGroup);
     soundRepeatCount_->setRange(1, 3);
     soundRepeatCount_->setSuffix(QStringLiteral(" 次"));
 

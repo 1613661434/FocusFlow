@@ -47,8 +47,8 @@ void DashboardPage::buildInterface()
     recommendations_ = new QListWidget(recommendationCard);
     recommendations_->setObjectName(QStringLiteral("recommendationList"));
     recommendations_->setAlternatingRowColors(true);
-    recommendations_->setFocusPolicy(Qt::NoFocus);
-    recommendations_->setSelectionMode(QAbstractItemView::NoSelection);
+    recommendations_->setFocusPolicy(Qt::StrongFocus);
+    recommendations_->setSelectionMode(QAbstractItemView::SingleSelection);
     recommendationLayout->addWidget(title);
     recommendationLayout->addWidget(description);
     recommendationLayout->addWidget(recommendations_, 1);
