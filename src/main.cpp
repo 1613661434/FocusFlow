@@ -14,8 +14,9 @@ int main(int argc, char *argv[])
 {
     QApplication application(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("FocusFlow"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.12"));
-    QCoreApplication::setOrganizationName(QStringLiteral("FocusFlow"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.13"));
+    // AppDataLocation 只使用应用名，避免生成 FocusFlow/FocusFlow 双层目录。
+    QCoreApplication::setOrganizationName(QString());
     QLocale::setDefault(QLocale(QLocale::Chinese, QLocale::China));
 
     const QString packagedTranslations = QDir(

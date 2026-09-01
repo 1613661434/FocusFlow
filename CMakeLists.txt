@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.12 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.13 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -46,6 +46,8 @@ qt_add_executable(FocusFlow WIN32
     src/services/DataManagementService.h
     src/services/NotificationSoundPlayer.cpp
     src/services/NotificationSoundPlayer.h
+    src/services/SoundStorageService.cpp
+    src/services/SoundStorageService.h
     src/services/PriorityService.cpp
     src/services/PriorityService.h
     src/views/TaskDialog.cpp
@@ -116,6 +118,8 @@ if(BUILD_TESTING)
         src/data/DatabaseManager.h
         src/services/DataManagementService.cpp
         src/services/DataManagementService.h
+        src/services/SoundStorageService.cpp
+        src/services/SoundStorageService.h
     )
     target_include_directories(DataManagementServiceTests PRIVATE src)
     target_link_libraries(DataManagementServiceTests PRIVATE

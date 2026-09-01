@@ -4,6 +4,7 @@
 #include "repositories/SettingsRepository.h"
 #include "services/DataManagementService.h"
 #include "services/NotificationSoundPlayer.h"
+#include "services/SoundStorageService.h"
 #include "widgets/FocusAwareSpinBox.h"
 
 #include <QCheckBox>
@@ -14,6 +15,7 @@
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QHash>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -111,8 +113,10 @@ void SettingsPage::buildInterface()
     auto createSoundRow = [soundGroup](QLineEdit *path,
                                        const QString &browseText,
                                        const QString &previewText,
+                                       const QString &resetText,
                                        auto browseSlot,
                                        auto previewSlot,
+                                       auto resetSlot,
                                        SettingsPage *page) {
         auto *widget = new QWidget(soundGroup);
         auto *layout = new QHBoxLayout(widget);
@@ -120,11 +124,15 @@ void SettingsPage::buildInterface()
         layout->setSpacing(8);
         auto *browse = new QPushButton(browseText, widget);
         auto *preview = new QPushButton(previewText, widget);
+        auto *reset = new QPushButton(resetText, widget);
+        reset->setToolTip(QStringLiteral("清除自定义声音，恢复系统默认提示音"));
         layout->addWidget(path, 1);
         layout->addWidget(browse);
         layout->addWidget(preview);
+        layout->addWidget(reset);
         QObject::connect(browse, &QPushButton::clicked, page, browseSlot);
         QObject::connect(preview, &QPushButton::clicked, page, previewSlot);
+        QObject::connect(reset, &QPushButton::clicked, page, resetSlot);
         return widget;
     };
 
@@ -153,16 +161,20 @@ void SettingsPage::buildInterface()
         createSoundRow(focusSoundPath_,
                        QStringLiteral("选择"),
                        QStringLiteral("试听"),
+                       QStringLiteral("恢复默认"),
                        &SettingsPage::browseFocusSound,
                        &SettingsPage::previewFocusSound,
+                       &SettingsPage::resetFocusSound,
                        this));
     soundForm->addRow(
         QStringLiteral("休息结束声音："),
         createSoundRow(breakSoundPath_,
                        QStringLiteral("选择"),
                        QStringLiteral("试听"),
+                       QStringLiteral("恢复默认"),
                        &SettingsPage::browseBreakSound,
                        &SettingsPage::previewBreakSound,
+                       &SettingsPage::resetBreakSound,
                        this));
     soundForm->addRow(QStringLiteral("提醒音量："), volumeWidget);
     soundForm->addRow(QStringLiteral("最长播放："), maxSoundSeconds_);
@@ -306,32 +318,97 @@ TimerSettings SettingsPage::settingsFromForm() const
 
 bool SettingsPage::saveSettings(bool showConfirmation)
 {
-    const TimerSettings settings = settingsFromForm();
+    TimerSettings settings = settingsFromForm();
+    SoundStorageService storage;
+    QStringList newlyInstalled;
+    QHash<QString, QString> installedSources;
     QString error;
+
+    auto prepareSound = [&](QString &path, const QString &prefix) {
+        if (path.isEmpty() || storage.isManagedPath(path)) {
+            return true;
+        }
+
+        const QString sourceKey = QFileInfo(path).absoluteFilePath();
+        if (installedSources.contains(sourceKey)) {
+            path = installedSources.value(sourceKey);
+            return true;
+        }
+
+        const QString installed = storage.install(path, prefix, &error);
+        if (installed.isEmpty()) {
+            return false;
+        }
+        installedSources.insert(sourceKey, installed);
+        newlyInstalled.append(installed);
+        path = installed;
+        return true;
+    };
+
+    if (!prepareSound(settings.focusSoundPath, QStringLiteral("focus"))
+        || !prepareSound(settings.breakSoundPath, QStringLiteral("break"))) {
+        for (const QString &path : newlyInstalled) {
+            QFile::remove(path);
+        }
+        QMessageBox::critical(this,
+                              QStringLiteral("保存失败"),
+                              QStringLiteral("无法保存提醒声音：\n%1").arg(error));
+        return false;
+    }
+
     if (!SettingsRepository().saveTimerSettings(settings, &error)) {
+        for (const QString &path : newlyInstalled) {
+            QFile::remove(path);
+        }
         QMessageBox::critical(this,
                               QStringLiteral("保存失败"),
                               QStringLiteral("无法保存设置：\n%1").arg(error));
         return false;
     }
+
+    focusSoundPath_->setText(settings.focusSoundPath);
+    breakSoundPath_->setText(settings.breakSoundPath);
     savedSettings_ = settings;
+    soundPlayer_->stop();
+    const QStringList cleanupFailures = storage.removeUnused(
+        {settings.focusSoundPath, settings.breakSoundPath});
     emit settingsSaved();
     if (showConfirmation) {
-        QMessageBox::information(this,
-                                 QStringLiteral("设置已保存"),
-                                 QStringLiteral("专注、声音和窗口设置已立即生效。"));
+        if (cleanupFailures.isEmpty()) {
+            QMessageBox::information(
+                this,
+                QStringLiteral("设置已保存"),
+                QStringLiteral("专注、声音和窗口设置已立即生效。"));
+        } else {
+            QMessageBox::warning(
+                this,
+                QStringLiteral("设置已保存"),
+                QStringLiteral("设置已生效，但有 %1 个旧声音文件暂时无法清理，"
+                               "程序会在下次保存设置时重试。")
+                    .arg(cleanupFailures.size()));
+        }
     }
     return true;
 }
 
 void SettingsPage::browseFocusSound()
 {
-    browseSound(focusSoundPath_, QStringLiteral("focus"));
+    browseSound(focusSoundPath_);
 }
 
 void SettingsPage::browseBreakSound()
 {
-    browseSound(breakSoundPath_, QStringLiteral("break"));
+    browseSound(breakSoundPath_);
+}
+
+void SettingsPage::resetFocusSound()
+{
+    focusSoundPath_->clear();
+}
+
+void SettingsPage::resetBreakSound()
+{
+    breakSoundPath_->clear();
 }
 
 void SettingsPage::previewFocusSound()
@@ -493,7 +570,7 @@ void SettingsPage::clearStatistics()
                              QStringLiteral("全部专注和休息记录已删除，任务数据已保留。"));
 }
 
-void SettingsPage::browseSound(QLineEdit *destination, const QString &prefix)
+void SettingsPage::browseSound(QLineEdit *destination)
 {
     const QString sourcePath = QFileDialog::getOpenFileName(
         this,
@@ -503,24 +580,7 @@ void SettingsPage::browseSound(QLineEdit *destination, const QString &prefix)
     if (sourcePath.isEmpty()) {
         return;
     }
-    destination->setText(installSound(sourcePath, prefix));
-}
-
-QString SettingsPage::installSound(const QString &sourcePath, const QString &prefix) const
-{
-    const QFileInfo source(sourcePath);
-    const QString dataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir soundDirectory(QDir(dataPath).filePath(QStringLiteral("sounds")));
-    if (!soundDirectory.mkpath(QStringLiteral("."))) {
-        return sourcePath;
-    }
-
-    const QString fileName = QStringLiteral("%1-%2.%3")
-                                 .arg(prefix)
-                                 .arg(QDateTime::currentMSecsSinceEpoch())
-                                 .arg(source.suffix().toLower());
-    const QString destination = soundDirectory.filePath(fileName);
-    return QFile::copy(sourcePath, destination) ? destination : sourcePath;
+    destination->setText(sourcePath);
 }
 
 void SettingsPage::previewSound(const QString &path)
