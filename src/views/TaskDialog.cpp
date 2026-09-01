@@ -1,6 +1,7 @@
 #include "views/TaskDialog.h"
 
 #include "widgets/ChineseCalendarWidget.h"
+#include "widgets/FocusAwareSpinBox.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -79,7 +80,7 @@ void TaskDialog::buildInterface(const QVector<LookupItem> &projects,
     dueLayout->addWidget(dueEnabled_);
     dueLayout->addWidget(dueEdit_);
 
-    estimatedMinutes_ = new QSpinBox(this);
+    estimatedMinutes_ = new FocusAwareSpinBox(this);
     estimatedMinutes_->setRange(0, 1440);
     estimatedMinutes_->setValue(25);
     estimatedMinutes_->setSuffix(QStringLiteral(" 分钟"));
