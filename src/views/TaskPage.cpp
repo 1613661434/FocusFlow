@@ -1,6 +1,7 @@
 #include "views/TaskPage.h"
 
 #include "views/TaskDialog.h"
+#include "services/PriorityService.h"
 
 #include <QAbstractItemView>
 #include <QComboBox>
@@ -15,6 +16,8 @@
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
 
+#include <algorithm>
+
 namespace {
 enum Column {
     TitleColumn,
@@ -23,6 +26,7 @@ enum Column {
     DueColumn,
     ImportanceColumn,
     EstimateColumn,
+    ScoreColumn,
     StatusColumn,
     ColumnCount,
 };
@@ -52,6 +56,8 @@ void TaskPage::buildInterface()
     filterCombo_ = new QComboBox(this);
     filterCombo_->addItem(QStringLiteral("全部任务"),
                           static_cast<int>(TaskRepository::Filter::All));
+    filterCombo_->addItem(QStringLiteral("智能推荐"),
+                          static_cast<int>(TaskRepository::Filter::Recommended));
     filterCombo_->addItem(QStringLiteral("今日任务"),
                           static_cast<int>(TaskRepository::Filter::Today));
     filterCombo_->addItem(QStringLiteral("未来7天"),
@@ -85,6 +91,7 @@ void TaskPage::buildInterface()
         QStringLiteral("截止时间"),
         QStringLiteral("重要度"),
         QStringLiteral("预计"),
+        QStringLiteral("推荐分"),
         QStringLiteral("状态"),
     });
     table_->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -101,6 +108,7 @@ void TaskPage::buildInterface()
     table_->horizontalHeader()->setSectionResizeMode(DueColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(ImportanceColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(EstimateColumn, QHeaderView::ResizeToContents);
+    table_->horizontalHeader()->setSectionResizeMode(ScoreColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(StatusColumn, QHeaderView::ResizeToContents);
 
     summaryLabel_ = new QLabel(this);
@@ -139,6 +147,11 @@ void TaskPage::refresh()
     const auto filter = static_cast<TaskRepository::Filter>(
         filterCombo_->currentData().toInt());
     tasks_ = repository_.findAll(filter, searchEdit_->text());
+    if (filter == TaskRepository::Filter::Recommended) {
+        std::stable_sort(tasks_.begin(), tasks_.end(), [](const Task &left, const Task &right) {
+            return PriorityService::score(left) > PriorityService::score(right);
+        });
+    }
 
     table_->setRowCount(tasks_.size());
     for (qsizetype row = 0; row < tasks_.size(); ++row) {
@@ -176,6 +189,8 @@ void TaskPage::refresh()
         table_->setItem(row, EstimateColumn,
                         new QTableWidgetItem(QStringLiteral("%1 分钟")
                                                  .arg(task.estimatedMinutes)));
+        table_->setItem(row, ScoreColumn,
+                        new QTableWidgetItem(QString::number(PriorityService::score(task))));
         table_->setItem(row, StatusColumn,
                         new QTableWidgetItem(statusText(task.status)));
     }

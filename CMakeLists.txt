@@ -40,6 +40,8 @@ qt_add_executable(FocusFlow WIN32
     src/services/FocusTimer.h
     src/services/NotificationSoundPlayer.cpp
     src/services/NotificationSoundPlayer.h
+    src/services/PriorityService.cpp
+    src/services/PriorityService.h
     src/views/TaskDialog.cpp
     src/views/TaskDialog.h
     src/views/TaskPage.cpp
@@ -80,4 +82,14 @@ if(BUILD_TESTING)
     target_include_directories(FocusTimerTests PRIVATE src)
     target_link_libraries(FocusTimerTests PRIVATE Qt6::Core Qt6::Test)
     add_test(NAME FocusTimerTests COMMAND FocusTimerTests)
+
+    qt_add_executable(PriorityServiceTests
+        tests/tst_PriorityService.cpp
+        src/services/PriorityService.cpp
+        src/services/PriorityService.h
+        src/models/Task.h
+    )
+    target_include_directories(PriorityServiceTests PRIVATE src)
+    target_link_libraries(PriorityServiceTests PRIVATE Qt6::Core Qt6::Test)
+    add_test(NAME PriorityServiceTests COMMAND PriorityServiceTests)
 endif()
