@@ -5,17 +5,21 @@
 #include "repositories/SettingsRepository.h"
 #include "repositories/TaskRepository.h"
 #include "views/DashboardPage.h"
+#include "views/ProjectPage.h"
+#include "views/TaskPage.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
 #include <QLabel>
+#include <QHeaderView>
 #include <QListWidget>
 #include <QSignalSpy>
 #include <QSqlQuery>
 #include <QStackedWidget>
 #include <QStandardPaths>
+#include <QTableWidget>
 #include <QTest>
 #include <QUuid>
 
@@ -45,6 +49,7 @@ private slots:
     void completedFocusAllowsEmptyInterruptionReason();
     void closeToTrayReminderPreferenceRoundTrips();
     void projectDeletionKeepsTasksWithoutProject();
+    void tablesExposeSafePredictableSorting();
     void cleanupTestCase();
 
 private:
@@ -351,6 +356,93 @@ void DashboardPageTests::projectDeletionKeepsTasksWithoutProject()
     QVERIFY(preservedTask.exec());
     QVERIFY(preservedTask.next());
     QVERIFY(preservedTask.value(0).isNull());
+}
+
+void DashboardPageTests::tablesExposeSafePredictableSorting()
+{
+    Task lowImportance;
+    lowImportance.title = QStringLiteral("排序测试-低重要度");
+    lowImportance.description = QStringLiteral("");
+    lowImportance.importance = 1;
+    lowImportance.estimatedMinutes = 90;
+    Task highImportance;
+    highImportance.title = QStringLiteral("排序测试-高重要度");
+    highImportance.description = QStringLiteral("");
+    highImportance.importance = 5;
+    highImportance.estimatedMinutes = 5;
+    QString error;
+    TaskRepository taskRepository;
+    QVERIFY2(taskRepository.save(lowImportance, &error), qPrintable(error));
+    QVERIFY2(taskRepository.save(highImportance, &error), qPrintable(error));
+
+    TaskPage taskPage;
+    auto *taskTable =
+        taskPage.findChild<QTableWidget *>(QStringLiteral("taskTable"));
+    QVERIFY(taskTable != nullptr);
+    QCOMPARE(taskTable->horizontalHeader()->sortIndicatorSection(), 4);
+    QCOMPARE(taskTable->horizontalHeader()->sortIndicatorOrder(),
+             Qt::DescendingOrder);
+    for (int row = 1; row < taskTable->rowCount(); ++row) {
+        const double previous =
+            taskTable->item(row - 1, 4)->data(Qt::UserRole + 1).toDouble();
+        const double current =
+            taskTable->item(row, 4)->data(Qt::UserRole + 1).toDouble();
+        QVERIFY(previous >= current);
+    }
+
+    taskTable->sortItems(5, Qt::AscendingOrder);
+    for (int row = 1; row < taskTable->rowCount(); ++row) {
+        const double previous =
+            taskTable->item(row - 1, 5)->data(Qt::UserRole + 1).toDouble();
+        const double current =
+            taskTable->item(row, 5)->data(Qt::UserRole + 1).toDouble();
+        QVERIFY(previous <= current);
+    }
+
+    Project activeProject;
+    activeProject.name = QStringLiteral("排序测试-进行中");
+    activeProject.description = QStringLiteral("");
+    activeProject.color = QStringLiteral("#4F6EF7");
+    Project archivedProject;
+    archivedProject.name = QStringLiteral("排序测试-已归档");
+    archivedProject.description = QStringLiteral("");
+    archivedProject.color = QStringLiteral("#C335B4");
+    archivedProject.archived = true;
+    ProjectRepository projectRepository;
+    QVERIFY2(projectRepository.saveProject(activeProject, &error), qPrintable(error));
+    QVERIFY2(projectRepository.saveProject(archivedProject, &error), qPrintable(error));
+
+    ProjectPage projectPage;
+    auto *projectTable =
+        projectPage.findChild<QTableWidget *>(QStringLiteral("projectTable"));
+    auto *categoryTable =
+        projectPage.findChild<QTableWidget *>(QStringLiteral("categoryTable"));
+    QVERIFY(projectTable != nullptr);
+    QVERIFY(categoryTable != nullptr);
+    QCOMPARE(projectTable->horizontalHeader()->sortIndicatorSection(), 3);
+    QCOMPARE(projectTable->horizontalHeader()->sortIndicatorOrder(),
+             Qt::AscendingOrder);
+    for (int row = 1; row < projectTable->rowCount(); ++row) {
+        const int previous =
+            projectTable->item(row - 1, 3)->data(Qt::UserRole + 1).toInt();
+        const int current =
+            projectTable->item(row, 3)->data(Qt::UserRole + 1).toInt();
+        QVERIFY(previous <= current);
+    }
+
+    projectTable->sortItems(3, Qt::DescendingOrder);
+    if (projectTable->rowCount() > 0) {
+        QCOMPARE(projectTable->item(0, 3)->data(Qt::UserRole + 1).toInt(), 1);
+        QVERIFY(projectTable->item(0, 2)->icon().isNull());
+        QVERIFY(!projectTable->item(0, 2)
+                     ->data(Qt::UserRole + 2)
+                     .toString()
+                     .isEmpty());
+    }
+    QVERIFY(projectTable->itemDelegateForColumn(2)
+            != projectTable->itemDelegate());
+    QVERIFY(categoryTable->itemDelegateForColumn(1)
+            != categoryTable->itemDelegate());
 }
 
 void DashboardPageTests::cleanupTestCase()

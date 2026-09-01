@@ -1,6 +1,7 @@
 #include "views/ProjectPage.h"
 
 #include "widgets/ClearSelectionOnBlankClick.h"
+#include "widgets/SortKeyTableWidgetItem.h"
 
 #include <QAbstractItemView>
 #include <QColorDialog>
@@ -16,6 +17,7 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QPushButton>
+#include <QStyledItemDelegate>
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -23,6 +25,52 @@
 #include <QVBoxLayout>
 
 namespace {
+constexpr int kColorRole = Qt::UserRole + 2;
+
+class ColorSwatchDelegate final : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter *painter,
+               const QStyleOptionViewItem &option,
+               const QModelIndex &index) const override
+    {
+        QStyleOptionViewItem backgroundOption(option);
+        initStyleOption(&backgroundOption, index);
+        backgroundOption.text.clear();
+        backgroundOption.icon = {};
+        QStyledItemDelegate::paint(painter, backgroundOption, index);
+
+        QColor color(index.data(kColorRole).toString());
+        if (!color.isValid()) {
+            color = QColor(QStringLiteral("#D0D5DD"));
+        }
+        const QPoint center = option.rect.center();
+        const QRectF swatch(center.x() - 10.0,
+                           center.y() - 10.0,
+                           20.0,
+                           20.0);
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing);
+        painter->setPen(QPen(QColor(QStringLiteral("#98A2B3")), 1));
+        painter->setBrush(color);
+        painter->drawRoundedRect(swatch.adjusted(1.0, 1.0, -1.0, -1.0),
+                                 4.0,
+                                 4.0);
+        painter->restore();
+    }
+
+    QSize sizeHint(const QStyleOptionViewItem &option,
+                   const QModelIndex &index) const override
+    {
+        QSize size = QStyledItemDelegate::sizeHint(option, index);
+        size.setWidth(qMax(size.width(), 40));
+        size.setHeight(qMax(size.height(), 32));
+        return size;
+    }
+};
+
 QString chooseColor(QWidget *parent, const QString &current)
 {
     const QColor initial(current);
@@ -79,6 +127,7 @@ void ProjectPage::buildInterface()
     projectButtons->addStretch();
 
     projectTable_ = new QTableWidget(projectTab);
+    projectTable_->setObjectName(QStringLiteral("projectTable"));
     projectTable_->setColumnCount(4);
     projectTable_->setHorizontalHeaderLabels({
         QStringLiteral("项目名称"),
@@ -97,6 +146,14 @@ void ProjectPage::buildInterface()
     projectTable_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     projectTable_->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     projectTable_->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    projectTable_->horizontalHeader()->setSectionsClickable(true);
+    projectTable_->horizontalHeader()->setSortIndicatorShown(true);
+    projectTable_->horizontalHeader()->setSortIndicator(3, Qt::AscendingOrder);
+    projectTable_->horizontalHeader()->setToolTip(
+        QStringLiteral("点击列标题排序；点击状态可切换归档项在前或在后"));
+    projectTable_->setItemDelegateForColumn(
+        2, new ColorSwatchDelegate(projectTable_));
+    projectTable_->setSortingEnabled(true);
     enableClearSelectionOnBlankClick(projectTable_);
     projectLayout->addLayout(projectButtons);
     projectLayout->addWidget(projectTable_);
@@ -116,6 +173,7 @@ void ProjectPage::buildInterface()
     categoryButtons->addStretch();
 
     categoryTable_ = new QTableWidget(categoryTab);
+    categoryTable_->setObjectName(QStringLiteral("categoryTable"));
     categoryTable_->setColumnCount(2);
     categoryTable_->setHorizontalHeaderLabels({QStringLiteral("分类名称"),
                                                QStringLiteral("颜色")});
@@ -128,6 +186,14 @@ void ProjectPage::buildInterface()
     categoryTable_->verticalHeader()->setVisible(false);
     categoryTable_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     categoryTable_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    categoryTable_->horizontalHeader()->setSectionsClickable(true);
+    categoryTable_->horizontalHeader()->setSortIndicatorShown(true);
+    categoryTable_->horizontalHeader()->setSortIndicator(0, Qt::AscendingOrder);
+    categoryTable_->horizontalHeader()->setToolTip(
+        QStringLiteral("点击列标题排序，再次点击可切换升序或降序"));
+    categoryTable_->setItemDelegateForColumn(
+        1, new ColorSwatchDelegate(categoryTable_));
+    categoryTable_->setSortingEnabled(true);
     enableClearSelectionOnBlankClick(categoryTable_);
     categoryLayout->addLayout(categoryButtons);
     categoryLayout->addWidget(categoryTable_);
@@ -153,37 +219,53 @@ void ProjectPage::buildInterface()
 void ProjectPage::refresh()
 {
     projects_ = repository_.projects(true);
+    const int projectSortColumn =
+        projectTable_->horizontalHeader()->sortIndicatorSection();
+    const Qt::SortOrder projectSortOrder =
+        projectTable_->horizontalHeader()->sortIndicatorOrder();
+    projectTable_->setSortingEnabled(false);
     projectTable_->setRowCount(projects_.size());
     for (qsizetype row = 0; row < projects_.size(); ++row) {
         const auto &project = projects_.at(row);
-        auto *name = new QTableWidgetItem(project.name);
+        auto *name = new SortKeyTableWidgetItem(project.name);
         name->setData(Qt::UserRole, project.id);
         projectTable_->setItem(row, 0, name);
-        projectTable_->setItem(row, 1, new QTableWidgetItem(project.description));
-        auto *color = new QTableWidgetItem;
-        color->setIcon(colorSwatchIcon(project.color));
-        color->setTextAlignment(Qt::AlignCenter);
+        projectTable_->setItem(
+            row, 1, new SortKeyTableWidgetItem(project.description));
+        auto *color = new SortKeyTableWidgetItem({}, project.color);
+        color->setData(kColorRole, project.color);
         color->setToolTip(project.color);
         projectTable_->setItem(row, 2, color);
         projectTable_->setItem(row, 3,
-                               new QTableWidgetItem(project.archived
-                                                        ? QStringLiteral("已归档")
-                                                        : QStringLiteral("进行中")));
+                               new SortKeyTableWidgetItem(
+                                   project.archived ? QStringLiteral("已归档")
+                                                    : QStringLiteral("进行中"),
+                                   project.archived ? 1 : 0));
     }
+    projectTable_->setSortingEnabled(true);
+    projectTable_->sortItems(projectSortColumn >= 0 ? projectSortColumn : 3,
+                             projectSortOrder);
 
     categories_ = repository_.categories();
+    const int categorySortColumn =
+        categoryTable_->horizontalHeader()->sortIndicatorSection();
+    const Qt::SortOrder categorySortOrder =
+        categoryTable_->horizontalHeader()->sortIndicatorOrder();
+    categoryTable_->setSortingEnabled(false);
     categoryTable_->setRowCount(categories_.size());
     for (qsizetype row = 0; row < categories_.size(); ++row) {
         const auto &category = categories_.at(row);
-        auto *name = new QTableWidgetItem(category.name);
+        auto *name = new SortKeyTableWidgetItem(category.name);
         name->setData(Qt::UserRole, category.id);
         categoryTable_->setItem(row, 0, name);
-        auto *color = new QTableWidgetItem;
-        color->setIcon(colorSwatchIcon(category.color));
-        color->setTextAlignment(Qt::AlignCenter);
+        auto *color = new SortKeyTableWidgetItem({}, category.color);
+        color->setData(kColorRole, category.color);
         color->setToolTip(category.color);
         categoryTable_->setItem(row, 1, color);
     }
+    categoryTable_->setSortingEnabled(true);
+    categoryTable_->sortItems(categorySortColumn >= 0 ? categorySortColumn : 0,
+                              categorySortOrder);
 }
 
 void ProjectPage::addProject()
@@ -400,13 +482,39 @@ bool ProjectPage::editCategoryValues(LookupItem &category)
 int ProjectPage::selectedProjectIndex() const
 {
     const int row = projectTable_->currentRow();
-    return row >= 0 && row < projects_.size() ? row : -1;
+    if (row < 0) {
+        return -1;
+    }
+    const QTableWidgetItem *name = projectTable_->item(row, 0);
+    if (name == nullptr) {
+        return -1;
+    }
+    const int projectId = name->data(Qt::UserRole).toInt();
+    for (qsizetype index = 0; index < projects_.size(); ++index) {
+        if (projects_.at(index).id == projectId) {
+            return static_cast<int>(index);
+        }
+    }
+    return -1;
 }
 
 int ProjectPage::selectedCategoryIndex() const
 {
     const int row = categoryTable_->currentRow();
-    return row >= 0 && row < categories_.size() ? row : -1;
+    if (row < 0) {
+        return -1;
+    }
+    const QTableWidgetItem *name = categoryTable_->item(row, 0);
+    if (name == nullptr) {
+        return -1;
+    }
+    const int categoryId = name->data(Qt::UserRole).toInt();
+    for (qsizetype index = 0; index < categories_.size(); ++index) {
+        if (categories_.at(index).id == categoryId) {
+            return static_cast<int>(index);
+        }
+    }
+    return -1;
 }
 
 void ProjectPage::showError(const QString &action, const QString &details)

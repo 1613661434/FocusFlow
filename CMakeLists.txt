@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.10 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.11 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -68,6 +68,7 @@ qt_add_executable(FocusFlow WIN32
     src/widgets/FocusAwareSpinBox.h
     src/widgets/ClearSelectionOnBlankClick.cpp
     src/widgets/ClearSelectionOnBlankClick.h
+    src/widgets/SortKeyTableWidgetItem.h
 )
 
 target_include_directories(FocusFlow PRIVATE src)
@@ -169,6 +170,12 @@ if(BUILD_TESTING)
         tests/tst_DashboardPage.cpp
         src/views/DashboardPage.cpp
         src/views/DashboardPage.h
+        src/views/TaskPage.cpp
+        src/views/TaskPage.h
+        src/views/TaskDialog.cpp
+        src/views/TaskDialog.h
+        src/views/ProjectPage.cpp
+        src/views/ProjectPage.h
         src/data/DatabaseManager.cpp
         src/data/DatabaseManager.h
         src/repositories/AnalyticsRepository.cpp
@@ -185,6 +192,11 @@ if(BUILD_TESTING)
         src/services/PriorityService.h
         src/widgets/ClearSelectionOnBlankClick.cpp
         src/widgets/ClearSelectionOnBlankClick.h
+        src/widgets/ChineseCalendarWidget.cpp
+        src/widgets/ChineseCalendarWidget.h
+        src/widgets/FocusAwareSpinBox.cpp
+        src/widgets/FocusAwareSpinBox.h
+        src/widgets/SortKeyTableWidgetItem.h
         src/models/Task.h
     )
     target_include_directories(DashboardPageTests PRIVATE src)

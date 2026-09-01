@@ -91,7 +91,7 @@ void StatisticsPage::updateDailyChart()
     series->append(focusSet);
     auto *chart = new QChart;
     chart->addSeries(series);
-    chart->setTitle(QStringLiteral("近7天专注时长"));
+    chart->setTitle(QStringLiteral("近7天专注时长（秒）"));
     chart->setAnimationOptions(QChart::SeriesAnimations);
     chart->legend()->setVisible(false);
 
@@ -99,7 +99,6 @@ void StatisticsPage::updateDailyChart()
     axisX->append(labels);
     auto *axisY = new QValueAxis;
     axisY->setRange(0, maximum);
-    axisY->setTitleText(QStringLiteral("秒"));
     axisY->setLabelFormat(QStringLiteral("%d"));
     chart->addAxis(axisX, Qt::AlignBottom);
     chart->addAxis(axisY, Qt::AlignLeft);

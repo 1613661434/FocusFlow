@@ -3,6 +3,7 @@
 #include "views/TaskDialog.h"
 #include "services/PriorityService.h"
 #include "widgets/ClearSelectionOnBlankClick.h"
+#include "widgets/SortKeyTableWidgetItem.h"
 
 #include <QAbstractItemView>
 #include <QComboBox>
@@ -18,6 +19,7 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <limits>
 
 namespace {
 enum Column {
@@ -84,6 +86,7 @@ void TaskPage::buildInterface()
     toolbar->addWidget(deleteButton);
 
     table_ = new QTableWidget(this);
+    table_->setObjectName(QStringLiteral("taskTable"));
     table_->setColumnCount(ColumnCount);
     table_->setHorizontalHeaderLabels({
         QStringLiteral("任务"),
@@ -111,6 +114,13 @@ void TaskPage::buildInterface()
     table_->horizontalHeader()->setSectionResizeMode(EstimateColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(ScoreColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(StatusColumn, QHeaderView::ResizeToContents);
+    table_->horizontalHeader()->setSectionsClickable(true);
+    table_->horizontalHeader()->setSortIndicatorShown(true);
+    table_->horizontalHeader()->setSortIndicator(ImportanceColumn,
+                                                 Qt::DescendingOrder);
+    table_->horizontalHeader()->setToolTip(
+        QStringLiteral("点击列标题排序，再次点击可切换升序或降序"));
+    table_->setSortingEnabled(true);
     enableClearSelectionOnBlankClick(table_);
 
     summaryLabel_ = new QLabel(this);
@@ -155,10 +165,14 @@ void TaskPage::refresh()
         });
     }
 
+    const int sortColumn = table_->horizontalHeader()->sortIndicatorSection();
+    const Qt::SortOrder sortOrder =
+        table_->horizontalHeader()->sortIndicatorOrder();
+    table_->setSortingEnabled(false);
     table_->setRowCount(tasks_.size());
     for (qsizetype row = 0; row < tasks_.size(); ++row) {
         const auto &task = tasks_.at(row);
-        auto *title = new QTableWidgetItem(task.title);
+        auto *title = new SortKeyTableWidgetItem(task.title);
         title->setData(Qt::UserRole, task.id);
         if (task.status == QStringLiteral("completed")) {
             QFont font = title->font();
@@ -169,13 +183,15 @@ void TaskPage::refresh()
 
         table_->setItem(row, TitleColumn, title);
         table_->setItem(row, ProjectColumn,
-                        new QTableWidgetItem(task.projectName.isEmpty()
-                                                 ? QStringLiteral("—")
-                                                 : task.projectName));
+                        new SortKeyTableWidgetItem(
+                            task.projectName.isEmpty() ? QStringLiteral("—")
+                                                       : task.projectName,
+                            task.projectName.toCaseFolded()));
         table_->setItem(row, CategoryColumn,
-                        new QTableWidgetItem(task.categoryName.isEmpty()
-                                                 ? QStringLiteral("未分类")
-                                                 : task.categoryName));
+                        new SortKeyTableWidgetItem(
+                            task.categoryName.isEmpty() ? QStringLiteral("未分类")
+                                                        : task.categoryName,
+                            task.categoryName.toCaseFolded()));
 
         QString dueText = QStringLiteral("无截止时间");
         if (task.dueAt.isValid()) {
@@ -185,17 +201,35 @@ void TaskPage::refresh()
                 dueText = QStringLiteral("已逾期 ") + dueText;
             }
         }
-        table_->setItem(row, DueColumn, new QTableWidgetItem(dueText));
+        const qint64 dueSortKey = task.dueAt.isValid()
+                                      ? task.dueAt.toMSecsSinceEpoch()
+                                      : std::numeric_limits<qint64>::max();
+        table_->setItem(row, DueColumn,
+                        new SortKeyTableWidgetItem(dueText, dueSortKey));
         table_->setItem(row, ImportanceColumn,
-                        new QTableWidgetItem(importanceText(task.importance)));
+                        new SortKeyTableWidgetItem(
+                            importanceText(task.importance), task.importance));
         table_->setItem(row, EstimateColumn,
-                        new QTableWidgetItem(QStringLiteral("%1 分钟")
-                                                 .arg(task.estimatedMinutes)));
+                        new SortKeyTableWidgetItem(
+                            QStringLiteral("%1 分钟").arg(task.estimatedMinutes),
+                            task.estimatedMinutes));
+        const int score = PriorityService::score(task);
         table_->setItem(row, ScoreColumn,
-                        new QTableWidgetItem(QString::number(PriorityService::score(task))));
+                        new SortKeyTableWidgetItem(QString::number(score), score));
+        int statusSortKey = 0;
+        if (task.status == QStringLiteral("in_progress")) {
+            statusSortKey = 1;
+        } else if (task.status == QStringLiteral("completed")) {
+            statusSortKey = 2;
+        } else if (task.status == QStringLiteral("cancelled")) {
+            statusSortKey = 3;
+        }
         table_->setItem(row, StatusColumn,
-                        new QTableWidgetItem(statusText(task.status)));
+                        new SortKeyTableWidgetItem(
+                            statusText(task.status), statusSortKey));
     }
+    table_->setSortingEnabled(true);
+    table_->sortItems(sortColumn >= 0 ? sortColumn : ImportanceColumn, sortOrder);
 
     summaryLabel_->setText(QStringLiteral("当前显示 %1 项任务").arg(tasks_.size()));
     completeButton_->setText(QStringLiteral("完成"));
@@ -318,7 +352,20 @@ int TaskPage::selectedTaskId() const
 int TaskPage::selectedTaskIndex() const
 {
     const int row = table_->currentRow();
-    return row >= 0 && row < tasks_.size() ? row : -1;
+    if (row < 0) {
+        return -1;
+    }
+    const QTableWidgetItem *title = table_->item(row, TitleColumn);
+    if (title == nullptr) {
+        return -1;
+    }
+    const int taskId = title->data(Qt::UserRole).toInt();
+    for (qsizetype index = 0; index < tasks_.size(); ++index) {
+        if (tasks_.at(index).id == taskId) {
+            return static_cast<int>(index);
+        }
+    }
+    return -1;
 }
 
 void TaskPage::showRepositoryError(const QString &action, const QString &details)
