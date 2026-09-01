@@ -4,14 +4,16 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QIcon>
+#include <QLocale>
 #include <QMessageBox>
 
 int main(int argc, char *argv[])
 {
     QApplication application(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("FocusFlow"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.1"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.2"));
     QCoreApplication::setOrganizationName(QStringLiteral("FocusFlow"));
+    QLocale::setDefault(QLocale(QLocale::Chinese, QLocale::China));
     application.setWindowIcon(QIcon(QStringLiteral(":/icons/focusflow.svg")));
 
     auto &databaseManager = DatabaseManager::instance();
