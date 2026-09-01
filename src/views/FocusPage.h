@@ -30,8 +30,8 @@ public slots:
     void selectTask(int taskId);
 
 private slots:
+    void handlePrimaryAction();
     void startCurrentPhase();
-    void togglePause();
     void stopEarly();
     void updateTime(int remainingSeconds, int plannedSeconds);
     void updateState(FocusTimer::State state);
@@ -63,8 +63,7 @@ private:
     QLabel *cycleLabel_ = nullptr;
     QLabel *statusLabel_ = nullptr;
     QProgressBar *progress_ = nullptr;
-    QPushButton *startButton_ = nullptr;
-    QPushButton *pauseButton_ = nullptr;
+    QPushButton *primaryActionButton_ = nullptr;
     QPushButton *stopButton_ = nullptr;
     int completedFocusCycles_ = 0;
     int currentTaskId_ = -1;

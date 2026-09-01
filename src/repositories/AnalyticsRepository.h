@@ -26,12 +26,30 @@ struct CategoryFocus
     int focusSeconds = 0;
 };
 
+struct ProjectFocus
+{
+    QString name;
+    int focusSeconds = 0;
+};
+
+struct RecentFocusSession
+{
+    QString startedAt;
+    QString taskName;
+    QString projectName;
+    QString categoryName;
+    int focusSeconds = 0;
+    bool completed = false;
+};
+
 class AnalyticsRepository final
 {
 public:
     DashboardMetrics dashboardMetrics() const;
     QVector<DailyProductivity> lastSevenDays() const;
     QVector<CategoryFocus> focusByCategory() const;
+    QVector<ProjectFocus> focusByProject() const;
+    QVector<RecentFocusSession> recentFocusSessions(int limit = 10) const;
 
 private:
     int scalar(const QString &sql) const;

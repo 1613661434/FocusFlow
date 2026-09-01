@@ -2,6 +2,7 @@
 
 #include "repositories/AnalyticsRepository.h"
 
+#include <QAbstractItemView>
 #include <QBarCategoryAxis>
 #include <QBarSeries>
 #include <QBarSet>
@@ -14,6 +15,9 @@
 #include <QLegend>
 #include <QPieSeries>
 #include <QPieSlice>
+#include <QScrollArea>
+#include <QHeaderView>
+#include <QTableWidget>
 #include <QValueAxis>
 #include <QVBoxLayout>
 
@@ -26,8 +30,14 @@ StatisticsPage::StatisticsPage(QWidget *parent)
 
 void StatisticsPage::buildInterface()
 {
-    auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(0, 0, 0, 0);
+    auto *outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    auto *scrollArea = new QScrollArea(this);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    auto *content = new QWidget(scrollArea);
+    auto *root = new QVBoxLayout(content);
+    root->setContentsMargins(0, 0, 16, 16);
     root->setSpacing(16);
 
     auto createSummary = [this](const QString &title, QLabel **value) {
@@ -55,14 +65,44 @@ void StatisticsPage::buildInterface()
     categoryChartView_ = new QChartView(this);
     categoryChartView_->setRenderHint(QPainter::Antialiasing);
     categoryChartView_->setMinimumHeight(320);
+    projectChartView_ = new QChartView(this);
+    projectChartView_->setRenderHint(QPainter::Antialiasing);
+    projectChartView_->setMinimumHeight(320);
 
-    auto *charts = new QHBoxLayout;
+    auto *charts = new QGridLayout;
     charts->setSpacing(16);
-    charts->addWidget(dailyChartView_, 3);
-    charts->addWidget(categoryChartView_, 2);
+    charts->addWidget(dailyChartView_, 0, 0, 1, 2);
+    charts->addWidget(categoryChartView_, 1, 0);
+    charts->addWidget(projectChartView_, 1, 1);
+
+    auto *recentCard = new QFrame(content);
+    recentCard->setObjectName(QStringLiteral("card"));
+    auto *recentLayout = new QVBoxLayout(recentCard);
+    recentLayout->setContentsMargins(18, 16, 18, 16);
+    recentLayout->setSpacing(12);
+    auto *recentTitle = new QLabel(QStringLiteral("最近专注记录"), recentCard);
+    recentTitle->setObjectName(QStringLiteral("cardTitle"));
+    recentSessions_ = new QTableWidget(0, 6, recentCard);
+    recentSessions_->setObjectName(QStringLiteral("recentFocusSessions"));
+    recentSessions_->setHorizontalHeaderLabels(
+        {QStringLiteral("开始时间"), QStringLiteral("任务"),
+         QStringLiteral("项目"), QStringLiteral("分类"),
+         QStringLiteral("时长"), QStringLiteral("结果")});
+    recentSessions_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    recentSessions_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    recentSessions_->setAlternatingRowColors(true);
+    recentSessions_->verticalHeader()->setVisible(false);
+    recentSessions_->horizontalHeader()->setSectionResizeMode(
+        QHeaderView::Stretch);
+    recentSessions_->setMinimumHeight(280);
+    recentLayout->addWidget(recentTitle);
+    recentLayout->addWidget(recentSessions_);
 
     root->addLayout(summary);
     root->addLayout(charts, 1);
+    root->addWidget(recentCard);
+    scrollArea->setWidget(content);
+    outer->addWidget(scrollArea);
 }
 
 void StatisticsPage::refresh()
@@ -73,6 +113,8 @@ void StatisticsPage::refresh()
     completedValue_->setText(QString::number(metrics.completedToday));
     updateDailyChart();
     updateCategoryChart();
+    updateProjectChart();
+    updateRecentSessions();
 }
 
 void StatisticsPage::updateDailyChart()
@@ -137,6 +179,61 @@ void StatisticsPage::updateCategoryChart()
     chart->legend()->setVisible(false);
     chart->setAnimationOptions(QChart::SeriesAnimations);
     categoryChartView_->setChart(chart);
+}
+
+void StatisticsPage::updateProjectChart()
+{
+    const auto projects = AnalyticsRepository().focusByProject();
+    auto *series = new QPieSeries;
+    for (const auto &project : projects) {
+        series->append(project.name, project.focusSeconds);
+    }
+    if (projects.isEmpty()) {
+        series->append(QStringLiteral("暂无数据"), 1);
+    }
+    const auto slices = series->slices();
+    for (qsizetype index = 0; index < slices.size(); ++index) {
+        auto *slice = slices.at(index);
+        slice->setLabelVisible(true);
+        if (projects.isEmpty()) {
+            slice->setLabel(QStringLiteral("暂无数据"));
+        } else {
+            slice->setLabel(QStringLiteral("%1 %2% · %3")
+                                .arg(projects.at(index).name)
+                                .arg(slice->percentage() * 100.0, 0, 'f', 0)
+                                .arg(formatDuration(projects.at(index).focusSeconds)));
+        }
+    }
+
+    auto *chart = new QChart;
+    chart->addSeries(series);
+    chart->setTitle(QStringLiteral("近30天项目专注占比"));
+    chart->legend()->setVisible(false);
+    chart->setAnimationOptions(QChart::SeriesAnimations);
+    projectChartView_->setChart(chart);
+}
+
+void StatisticsPage::updateRecentSessions()
+{
+    const auto sessions = AnalyticsRepository().recentFocusSessions();
+    recentSessions_->setRowCount(sessions.size());
+    for (qsizetype row = 0; row < sessions.size(); ++row) {
+        const auto &session = sessions.at(row);
+        const QStringList values{
+            session.startedAt,
+            session.taskName,
+            session.projectName,
+            session.categoryName,
+            formatDuration(session.focusSeconds),
+            session.completed ? QStringLiteral("已完成")
+                              : QStringLiteral("已终止"),
+        };
+        for (int column = 0; column < values.size(); ++column) {
+            auto *item = new QTableWidgetItem(values.at(column));
+            item->setTextAlignment(Qt::AlignCenter);
+            recentSessions_->setItem(row, column, item);
+        }
+    }
 }
 
 QString StatisticsPage::formatDuration(int seconds)

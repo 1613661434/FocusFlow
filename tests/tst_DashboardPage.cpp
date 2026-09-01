@@ -45,6 +45,7 @@ private slots:
     void initTestCase();
     void emptyStateKeepsContentTopAligned();
     void interruptedFocusIsIncludedInStatistics();
+    void todayFocusMetricShowsSeconds();
     void recommendationSupportsFocusShortcutAndBlankDeselection();
     void recommendationFiltersByProjectAndCategory();
     void taskDeletionIsPermanentAndPreservesFocusHistory();
@@ -201,6 +202,37 @@ void DashboardPageTests::interruptedFocusIsIncludedInStatistics()
         }
     }
     QVERIFY(foundCategory);
+
+    const auto projectFocus = analytics.focusByProject();
+    QVERIFY(!projectFocus.isEmpty());
+    QCOMPARE(projectFocus.constFirst().name, QStringLiteral("无项目"));
+    QCOMPARE(projectFocus.constFirst().focusSeconds, 59);
+
+    const auto recentSessions = analytics.recentFocusSessions();
+    QVERIFY(!recentSessions.isEmpty());
+    QCOMPARE(recentSessions.constFirst().taskName,
+             QStringLiteral("一分钟测试任务"));
+    QCOMPARE(recentSessions.constFirst().projectName,
+             QStringLiteral("无项目"));
+    QCOMPARE(recentSessions.constFirst().categoryName, categoryName);
+    QCOMPARE(recentSessions.constFirst().focusSeconds, 59);
+    QVERIFY(!recentSessions.constFirst().completed);
+}
+
+void DashboardPageTests::todayFocusMetricShowsSeconds()
+{
+    DashboardPage page;
+    QLabel *focusValue = nullptr;
+    const auto labels = page.findChildren<QLabel *>();
+    for (QLabel *label : labels) {
+        if (label->property("dashboardMetric").toString()
+            == QStringLiteral("focusToday")) {
+            focusValue = label;
+            break;
+        }
+    }
+    QVERIFY(focusValue != nullptr);
+    QCOMPARE(focusValue->text(), QStringLiteral("59秒"));
 }
 
 void DashboardPageTests::recommendationSupportsFocusShortcutAndBlankDeselection()

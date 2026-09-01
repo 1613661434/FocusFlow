@@ -44,6 +44,7 @@ void DashboardPage::buildInterface()
     metrics->addWidget(createMetricCard(QStringLiteral("已逾期"), &overdueValue_), 0, 2);
     metrics->addWidget(createMetricCard(QStringLiteral("今日完成"), &completedValue_), 0, 3);
     metrics->addWidget(createMetricCard(QStringLiteral("今日专注"), &focusValue_), 0, 4);
+    focusValue_->setProperty("dashboardMetric", QStringLiteral("focusToday"));
 
     auto *recommendationCard = new QFrame(this);
     recommendationCard->setObjectName(QStringLiteral("card"));
@@ -234,12 +235,20 @@ void DashboardPage::refreshRecommendations()
 
 QString DashboardPage::formatDuration(int seconds)
 {
-    const int minutes = qMax(0, seconds) / 60;
-    if (seconds > 0 && minutes == 0) {
-        return QStringLiteral("不足1分");
+    const int safeSeconds = qMax(0, seconds);
+    const int hours = safeSeconds / 3600;
+    const int minutes = (safeSeconds % 3600) / 60;
+    const int remainingSeconds = safeSeconds % 60;
+    if (hours > 0) {
+        return QStringLiteral("%1时%2分%3秒")
+            .arg(hours)
+            .arg(minutes, 2, 10, QLatin1Char('0'))
+            .arg(remainingSeconds, 2, 10, QLatin1Char('0'));
     }
-    if (minutes < 60) {
-        return QStringLiteral("%1分").arg(minutes);
+    if (minutes > 0) {
+        return QStringLiteral("%1分%2秒")
+            .arg(minutes)
+            .arg(remainingSeconds, 2, 10, QLatin1Char('0'));
     }
-    return QStringLiteral("%1时%2分").arg(minutes / 60).arg(minutes % 60);
+    return QStringLiteral("%1秒").arg(remainingSeconds);
 }

@@ -97,7 +97,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.13"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.14"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -413,6 +413,11 @@ void MainWindow::applyTheme()
         }
         QPushButton#dangerButton {
             color: #d84a4a;
+        }
+        QPushButton#dangerButton:disabled {
+            color: #a8b0bf;
+            background: #f6f8fb;
+            border-color: #e5e9f1;
         }
         QTableWidget {
             background: #ffffff;
