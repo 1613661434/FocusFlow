@@ -29,12 +29,16 @@ DashboardMetrics AnalyticsRepository::dashboardMetrics() const
     )"));
     metrics.focusSecondsToday = scalar(QStringLiteral(R"(
         SELECT COALESCE(SUM(actual_seconds), 0) FROM focus_sessions
-        WHERE session_type = 'focus' AND status = 'completed'
+        WHERE session_type = 'focus'
+          AND status IN ('completed', 'interrupted')
+          AND actual_seconds > 0
           AND date(start_time) = date('now', 'localtime')
     )"));
     metrics.focusSecondsLastSevenDays = scalar(QStringLiteral(R"(
         SELECT COALESCE(SUM(actual_seconds), 0) FROM focus_sessions
-        WHERE session_type = 'focus' AND status = 'completed'
+        WHERE session_type = 'focus'
+          AND status IN ('completed', 'interrupted')
+          AND actual_seconds > 0
           AND date(start_time) >= date('now', 'localtime', '-6 days')
     )"));
     return metrics;
@@ -50,7 +54,9 @@ QVector<DailyProductivity> AnalyticsRepository::lastSevenDays() const
     focusQuery.prepare(QStringLiteral(R"(
         SELECT COALESCE(SUM(actual_seconds), 0)
         FROM focus_sessions
-        WHERE session_type = 'focus' AND status = 'completed'
+        WHERE session_type = 'focus'
+          AND status IN ('completed', 'interrupted')
+          AND actual_seconds > 0
           AND date(start_time) = :date
     )"));
     QSqlQuery taskQuery(database);
@@ -75,7 +81,7 @@ QVector<DailyProductivity> AnalyticsRepository::lastSevenDays() const
             completed = taskQuery.value(0).toInt();
         }
         result.push_back({date.toString(QStringLiteral("MM-dd")),
-                          focusSeconds / 60,
+                          focusSeconds > 0 ? (focusSeconds + 59) / 60 : 0,
                           completed});
     }
     return result;
@@ -86,11 +92,15 @@ QVector<CategoryFocus> AnalyticsRepository::focusByCategory() const
     QSqlQuery query(DatabaseManager::instance().database());
     query.exec(QStringLiteral(R"(
         SELECT COALESCE(c.name, '未分类') AS category_name,
-               COALESCE(SUM(fs.actual_seconds), 0) / 60 AS focus_minutes
+               CASE WHEN COALESCE(SUM(fs.actual_seconds), 0) > 0
+                    THEN (SUM(fs.actual_seconds) + 59) / 60
+                    ELSE 0 END AS focus_minutes
         FROM focus_sessions fs
         LEFT JOIN tasks t ON t.id = fs.task_id
         LEFT JOIN categories c ON c.id = t.category_id
-        WHERE fs.session_type = 'focus' AND fs.status = 'completed'
+        WHERE fs.session_type = 'focus'
+          AND fs.status IN ('completed', 'interrupted')
+          AND fs.actual_seconds > 0
           AND date(fs.start_time) >= date('now', 'localtime', '-29 days')
         GROUP BY COALESCE(c.name, '未分类')
         HAVING focus_minutes > 0

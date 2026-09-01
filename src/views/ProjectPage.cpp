@@ -1,5 +1,7 @@
 #include "views/ProjectPage.h"
 
+#include "widgets/ClearSelectionOnBlankClick.h"
+
 #include <QAbstractItemView>
 #include <QColorDialog>
 #include <QDialog>
@@ -73,6 +75,7 @@ void ProjectPage::buildInterface()
     projectTable_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     projectTable_->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     projectTable_->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    enableClearSelectionOnBlankClick(projectTable_);
     projectLayout->addLayout(projectButtons);
     projectLayout->addWidget(projectTable_);
 
@@ -102,6 +105,7 @@ void ProjectPage::buildInterface()
     categoryTable_->verticalHeader()->setVisible(false);
     categoryTable_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     categoryTable_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    enableClearSelectionOnBlankClick(categoryTable_);
     categoryLayout->addLayout(categoryButtons);
     categoryLayout->addWidget(categoryTable_);
 

@@ -218,11 +218,10 @@ bool TaskRepository::setCompleted(int id, bool completed, QString *errorMessage)
     return true;
 }
 
-bool TaskRepository::moveToTrash(int id, QString *errorMessage) const
+bool TaskRepository::deleteTask(int id, QString *errorMessage) const
 {
     QSqlQuery query(DatabaseManager::instance().database());
-    query.prepare(QStringLiteral(
-        "UPDATE tasks SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = :id"));
+    query.prepare(QStringLiteral("DELETE FROM tasks WHERE id = :id"));
     query.bindValue(QStringLiteral(":id"), id);
     if (!query.exec()) {
         assignError(query.lastError().text(), errorMessage);

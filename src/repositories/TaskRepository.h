@@ -25,7 +25,7 @@ public:
 
     bool save(Task &task, QString *errorMessage = nullptr) const;
     bool setCompleted(int id, bool completed, QString *errorMessage = nullptr) const;
-    bool moveToTrash(int id, QString *errorMessage = nullptr) const;
+    bool deleteTask(int id, QString *errorMessage = nullptr) const;
 
 private:
     static Task fromQuery(const class QSqlQuery &query);

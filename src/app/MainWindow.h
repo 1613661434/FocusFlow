@@ -6,7 +6,7 @@ class QLabel;
 class QListWidget;
 class QStackedWidget;
 class QSystemTrayIcon;
-class QEvent;
+class QCloseEvent;
 
 class MainWindow final : public QMainWindow
 {
@@ -21,7 +21,7 @@ private slots:
     void showNotification(const QString &title, const QString &message);
 
 protected:
-    void changeEvent(QEvent *event) override;
+    void closeEvent(QCloseEvent *event) override;
 
 private:
     QWidget *createPlaceholderPage(const QString &title, const QString &description);
@@ -33,4 +33,5 @@ private:
     QStackedWidget *pages_ = nullptr;
     QLabel *pageTitle_ = nullptr;
     QSystemTrayIcon *trayIcon_ = nullptr;
+    bool quitRequested_ = false;
 };

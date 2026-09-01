@@ -164,6 +164,19 @@ void FocusPage::refreshTasks()
     taskCombo_->setCurrentIndex(previousIndex >= 0 ? previousIndex : 0);
 }
 
+void FocusPage::selectTask(int taskId)
+{
+    if (timer_.state() != FocusTimer::State::Idle) {
+        return;
+    }
+    refreshTasks();
+    const int taskIndex = taskCombo_->findData(taskId);
+    if (taskIndex >= 0) {
+        taskCombo_->setCurrentIndex(taskIndex);
+        selectPhase(FocusTimer::Phase::Focus);
+    }
+}
+
 void FocusPage::startCurrentPhase()
 {
     if (timer_.state() != FocusTimer::State::Idle) {
@@ -187,15 +200,46 @@ void FocusPage::togglePause()
 
 void FocusPage::stopEarly()
 {
-    const auto choice = QMessageBox::question(
-        this,
-        QStringLiteral("提前结束"),
-        QStringLiteral("要结束当前计时并保存实际用时吗？"),
-        QMessageBox::Yes | QMessageBox::No,
-        QMessageBox::No);
-    if (choice == QMessageBox::Yes) {
-        timer_.stopEarly();
+    completeTaskWhenSessionEnds_ = false;
+    const bool hasLinkedTask = timer_.phase() == FocusTimer::Phase::Focus
+        && currentTaskId_ > 0;
+
+    if (hasLinkedTask) {
+        QMessageBox dialog(QMessageBox::Question,
+                           QStringLiteral("提前结束"),
+                           QStringLiteral("实际用时会保存并计入专注统计。\n"
+                                          "是否同时将关联任务标记为完成？"),
+                           QMessageBox::NoButton,
+                           this);
+        auto *finishOnlyButton = dialog.addButton(
+            QStringLiteral("仅结束计时"), QMessageBox::AcceptRole);
+        auto *completeTaskButton = dialog.addButton(
+            QStringLiteral("结束并完成任务"), QMessageBox::ActionRole);
+        auto *cancelButton = dialog.addButton(
+            QStringLiteral("取消"), QMessageBox::RejectRole);
+        dialog.setDefaultButton(cancelButton);
+        dialog.exec();
+
+        if (dialog.clickedButton() == cancelButton) {
+            return;
+        }
+        completeTaskWhenSessionEnds_ =
+            dialog.clickedButton() == completeTaskButton;
+        Q_UNUSED(finishOnlyButton);
+    } else {
+        const auto choice = QMessageBox::question(
+            this,
+            QStringLiteral("提前结束"),
+            QStringLiteral("要结束当前计时并保存实际用时吗？\n"
+                           "已产生的专注时间会计入统计。"),
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No);
+        if (choice != QMessageBox::Yes) {
+            return;
+        }
     }
+
+    timer_.stopEarly();
 }
 
 void FocusPage::updateTime(int remainingSeconds, int plannedSeconds)
@@ -235,20 +279,53 @@ void FocusPage::handleSessionEnded(FocusTimer::Phase phase,
                                    int actualSeconds)
 {
     QString error;
-    FocusRepository().recordSession(taskId,
-                                    phase,
-                                    completed,
-                                    startedAt,
-                                    endedAt,
-                                    plannedSeconds,
-                                    actualSeconds,
-                                    completed ? QString() : QStringLiteral("用户提前结束"),
-                                    &error);
+    const bool saved = FocusRepository().recordSession(
+        taskId,
+        phase,
+        completed,
+        startedAt,
+        endedAt,
+        plannedSeconds,
+        actualSeconds,
+        completed ? QString() : QStringLiteral("用户提前结束"),
+        &error);
+    if (!saved) {
+        completeTaskWhenSessionEnds_ = false;
+        statusLabel_->setText(QStringLiteral("专注记录保存失败：%1").arg(error));
+        updateIdleDuration();
+        return;
+    }
+
+    bool taskMarkedCompleted = false;
+    if (phase == FocusTimer::Phase::Focus
+        && taskId > 0
+        && completeTaskWhenSessionEnds_) {
+        QString taskError;
+        taskMarkedCompleted =
+            TaskRepository().setCompleted(taskId, true, &taskError);
+        if (!taskMarkedCompleted) {
+            QMessageBox::warning(
+                this,
+                QStringLiteral("任务状态更新失败"),
+                QStringLiteral("专注记录已经保存，但关联任务未能标记为完成：\n%1")
+                    .arg(taskError));
+        }
+    }
+    completeTaskWhenSessionEnds_ = false;
+
+    if (taskMarkedCompleted) {
+        refreshTasks();
+        emit tasksChanged();
+    }
     emit focusDataChanged();
 
     if (!completed) {
-        statusLabel_->setText(QStringLiteral("本次%1已提前结束，实际用时 %2。")
-                                  .arg(phaseText(phase), formatSeconds(actualSeconds)));
+        QString status = QStringLiteral("本次%1已提前结束，实际用时 %2，已计入统计。")
+                             .arg(phaseText(phase), formatSeconds(actualSeconds));
+        if (taskMarkedCompleted) {
+            status += QStringLiteral(" 关联任务已完成。");
+        }
+        statusLabel_->setText(status);
         updateIdleDuration();
         return;
     }
