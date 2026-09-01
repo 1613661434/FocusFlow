@@ -22,6 +22,7 @@ public:
 
 signals:
     void settingsSaved();
+    void statisticsCleared();
 
 public slots:
     void reloadSettings();
@@ -35,6 +36,7 @@ private slots:
     void restoreDatabase();
     void exportTasks();
     void exportFocusSessions();
+    void clearStatistics();
 
 private:
     void buildInterface();

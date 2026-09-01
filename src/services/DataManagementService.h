@@ -14,6 +14,7 @@ public:
                         QString *errorMessage = nullptr) const;
     bool exportFocusSessionsCsv(const QString &destinationPath,
                                 QString *errorMessage = nullptr) const;
+    bool clearFocusStatistics(QString *errorMessage = nullptr) const;
 
 private:
     bool validateBackup(const QString &sourcePath,

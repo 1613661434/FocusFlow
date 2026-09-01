@@ -208,6 +208,27 @@ bool DataManagementService::exportFocusSessionsCsv(const QString &destinationPat
     return true;
 }
 
+bool DataManagementService::clearFocusStatistics(QString *errorMessage) const
+{
+    QSqlDatabase database = DatabaseManager::instance().database();
+    if (!database.transaction()) {
+        assignError(database.lastError().text(), errorMessage);
+        return false;
+    }
+
+    QSqlQuery query(database);
+    if (!query.exec(QStringLiteral("DELETE FROM focus_sessions"))) {
+        database.rollback();
+        assignError(query.lastError().text(), errorMessage);
+        return false;
+    }
+    if (!database.commit()) {
+        assignError(database.lastError().text(), errorMessage);
+        return false;
+    }
+    return true;
+}
+
 bool DataManagementService::validateBackup(const QString &sourcePath,
                                            QString *errorMessage) const
 {

@@ -210,10 +210,14 @@ void SettingsPage::buildInterface()
     auto *restoreButton = new QPushButton(QStringLiteral("从备份恢复"), dataGroup);
     auto *exportTasksButton = new QPushButton(QStringLiteral("导出任务 CSV"), dataGroup);
     auto *exportFocusButton = new QPushButton(QStringLiteral("导出专注记录 CSV"), dataGroup);
+    auto *clearStatisticsButton = new QPushButton(
+        QStringLiteral("清空统计数据"), dataGroup);
+    clearStatisticsButton->setObjectName(QStringLiteral("dangerButton"));
     dataButtons->addWidget(backupButton);
     dataButtons->addWidget(restoreButton);
     dataButtons->addWidget(exportTasksButton);
     dataButtons->addWidget(exportFocusButton);
+    dataButtons->addWidget(clearStatisticsButton);
     dataButtons->addStretch();
 
     auto *dataHint = new QLabel(
@@ -235,6 +239,8 @@ void SettingsPage::buildInterface()
             this, &SettingsPage::exportTasks);
     connect(exportFocusButton, &QPushButton::clicked,
             this, &SettingsPage::exportFocusSessions);
+    connect(clearStatisticsButton, &QPushButton::clicked,
+            this, &SettingsPage::clearStatistics);
 
     auto *saveButton = new QPushButton(QStringLiteral("保存设置"), content);
     saveButton->setObjectName(QStringLiteral("primaryButton"));
@@ -459,6 +465,32 @@ void SettingsPage::exportFocusSessions()
         this,
         QStringLiteral("导出完成"),
         QStringLiteral("专注记录已导出到：\n%1").arg(destination));
+}
+
+void SettingsPage::clearStatistics()
+{
+    const auto choice = QMessageBox::warning(
+        this,
+        QStringLiteral("确认清空统计数据"),
+        QStringLiteral("将永久删除全部专注和休息记录，今日专注、近7天专注和分类专注统计会归零。\n\n"
+                       "任务、项目、分类和任务完成状态不会受到影响。此操作无法撤销，是否继续？"),
+        QMessageBox::Yes | QMessageBox::Cancel,
+        QMessageBox::Cancel);
+    if (choice != QMessageBox::Yes) {
+        return;
+    }
+
+    QString error;
+    if (!DataManagementService().clearFocusStatistics(&error)) {
+        QMessageBox::critical(this,
+                              QStringLiteral("清空失败"),
+                              QStringLiteral("无法清空统计数据：\n%1").arg(error));
+        return;
+    }
+    emit statisticsCleared();
+    QMessageBox::information(this,
+                             QStringLiteral("统计数据已清空"),
+                             QStringLiteral("全部专注和休息记录已删除，任务数据已保留。"));
 }
 
 void SettingsPage::browseSound(QLineEdit *destination, const QString &prefix)

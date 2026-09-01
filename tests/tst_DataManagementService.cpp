@@ -19,6 +19,7 @@ private slots:
     void initTestCase();
     void backupAndCsvExports();
     void prepareValidatedRestore();
+    void clearFocusStatisticsKeepsTasks();
     void cleanupTestCase();
 
 private:
@@ -97,6 +98,23 @@ void DataManagementServiceTests::prepareValidatedRestore()
     QVERIFY(QFileInfo::exists(recoveryPath));
     QVERIFY(QFileInfo::exists(
         QDir(dataDirectory_).filePath(QStringLiteral("focusflow.restore-pending.db"))));
+}
+
+void DataManagementServiceTests::clearFocusStatisticsKeepsTasks()
+{
+    DataManagementService service;
+    QString error;
+    QVERIFY2(service.clearFocusStatistics(&error), qPrintable(error));
+
+    QSqlQuery focusCount(DatabaseManager::instance().database());
+    QVERIFY(focusCount.exec(QStringLiteral("SELECT COUNT(*) FROM focus_sessions")));
+    QVERIFY(focusCount.next());
+    QCOMPARE(focusCount.value(0).toInt(), 0);
+
+    QSqlQuery taskCount(DatabaseManager::instance().database());
+    QVERIFY(taskCount.exec(QStringLiteral("SELECT COUNT(*) FROM tasks")));
+    QVERIFY(taskCount.next());
+    QVERIFY(taskCount.value(0).toInt() > 0);
 }
 
 void DataManagementServiceTests::cleanupTestCase()

@@ -74,9 +74,21 @@ public:
 QString chooseColor(QWidget *parent, const QString &current)
 {
     const QColor initial(current);
-    const QColor selected = QColorDialog::getColor(initial.isValid() ? initial : QColor("#4F6EF7"),
-                                                    parent,
-                                                    QStringLiteral("选择颜色"));
+    QColorDialog dialog(initial.isValid() ? initial : QColor("#4F6EF7"),
+                        parent);
+    dialog.setWindowTitle(QStringLiteral("选择颜色"));
+    dialog.setOption(QColorDialog::DontUseNativeDialog, true);
+    if (auto *buttons = dialog.findChild<QDialogButtonBox *>()) {
+        if (auto *ok = buttons->button(QDialogButtonBox::Ok)) {
+            ok->setText(QStringLiteral("确定"));
+        }
+        if (auto *cancel = buttons->button(QDialogButtonBox::Cancel)) {
+            cancel->setText(QStringLiteral("取消"));
+        }
+    }
+    const QColor selected = dialog.exec() == QDialog::Accepted
+                                ? dialog.selectedColor()
+                                : QColor();
     return selected.isValid() ? selected.name(QColor::HexRgb).toUpper() : current;
 }
 
@@ -241,6 +253,11 @@ void ProjectPage::refresh()
                                    project.archived ? QStringLiteral("已归档")
                                                     : QStringLiteral("进行中"),
                                    project.archived ? 1 : 0));
+        for (int column = 0; column < projectTable_->columnCount(); ++column) {
+            if (auto *item = projectTable_->item(row, column)) {
+                item->setTextAlignment(Qt::AlignCenter);
+            }
+        }
     }
     projectTable_->setSortingEnabled(true);
     projectTable_->sortItems(projectSortColumn >= 0 ? projectSortColumn : 3,
@@ -262,6 +279,11 @@ void ProjectPage::refresh()
         color->setData(kColorRole, category.color);
         color->setToolTip(category.color);
         categoryTable_->setItem(row, 1, color);
+        for (int column = 0; column < categoryTable_->columnCount(); ++column) {
+            if (auto *item = categoryTable_->item(row, column)) {
+                item->setTextAlignment(Qt::AlignCenter);
+            }
+        }
     }
     categoryTable_->setSortingEnabled(true);
     categoryTable_->sortItems(categorySortColumn >= 0 ? categorySortColumn : 0,
@@ -441,6 +463,8 @@ bool ProjectPage::editProjectValues(Project &project)
     form->addRow(QStringLiteral("项目颜色："), colorButton);
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel,
                                          &dialog);
+    buttons->button(QDialogButtonBox::Save)->setText(QStringLiteral("保存"));
+    buttons->button(QDialogButtonBox::Cancel)->setText(QStringLiteral("取消"));
     connect(buttons, &QDialogButtonBox::accepted, &dialog, [&] {
         if (name->text().trimmed().isEmpty()) {
             QMessageBox::warning(&dialog, QStringLiteral("无法保存"),

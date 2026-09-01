@@ -9,6 +9,7 @@
 #include "views/TaskPage.h"
 
 #include <QCoreApplication>
+#include <QComboBox>
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
@@ -45,6 +46,7 @@ private slots:
     void emptyStateKeepsContentTopAligned();
     void interruptedFocusIsIncludedInStatistics();
     void recommendationSupportsFocusShortcutAndBlankDeselection();
+    void recommendationFiltersByProjectAndCategory();
     void taskDeletionIsPermanentAndPreservesFocusHistory();
     void completedFocusAllowsEmptyInterruptionReason();
     void closeToTrayReminderPreferenceRoundTrips();
@@ -86,12 +88,15 @@ void DashboardPageTests::emptyStateKeepsContentTopAligned()
         page.findChild<QStackedWidget *>(QStringLiteral("recommendationContent"));
     auto *list =
         page.findChild<QListWidget *>(QStringLiteral("recommendationList"));
+    auto *projectFilter = page.findChild<QComboBox *>(
+        QStringLiteral("recommendationProjectFilter"));
 
     QVERIFY(title != nullptr);
     QVERIFY(description != nullptr);
     QVERIFY(emptyState != nullptr);
     QVERIFY(content != nullptr);
     QVERIFY(list != nullptr);
+    QVERIFY(projectFilter != nullptr);
     QCOMPARE(content->currentIndex(), 1);
     QVERIFY(emptyState->isVisible());
     QVERIFY(!list->isVisible());
@@ -103,13 +108,17 @@ void DashboardPageTests::emptyStateKeepsContentTopAligned()
     const int titleBottom = titleTop + title->height();
     const int descriptionTop = description->mapTo(card, QPoint(0, 0)).y();
     const int descriptionBottom = descriptionTop + description->height();
+    const int filterTop = projectFilter->mapTo(card, QPoint(0, 0)).y();
+    const int filterBottom = filterTop + projectFilter->height();
     const int emptyStateTop = emptyState->mapTo(card, QPoint(0, 0)).y();
 
     QVERIFY(titleTop <= 30);
     QVERIFY(descriptionTop >= titleBottom);
     QVERIFY(descriptionTop - titleBottom <= 16);
-    QVERIFY(emptyStateTop >= descriptionBottom);
-    QVERIFY(emptyStateTop - descriptionBottom <= 20);
+    QVERIFY(filterTop >= descriptionBottom);
+    QVERIFY(filterTop - descriptionBottom <= 20);
+    QVERIFY(emptyStateTop >= filterBottom);
+    QVERIFY(emptyStateTop - filterBottom <= 20);
     QVERIFY(emptyStateTop < card->height() / 4);
 }
 
@@ -232,6 +241,59 @@ void DashboardPageTests::recommendationSupportsFocusShortcutAndBlankDeselection(
                       Qt::NoModifier, blankPoint);
     QVERIFY(list->selectedItems().isEmpty());
     QVERIFY(list->currentItem() == nullptr);
+}
+
+void DashboardPageTests::recommendationFiltersByProjectAndCategory()
+{
+    const QString suffix =
+        QUuid::createUuid().toString(QUuid::WithoutBraces);
+    Project project;
+    project.name = QStringLiteral("筛选项目-%1").arg(suffix);
+    project.description = QStringLiteral("");
+    project.color = QStringLiteral("#4F6EF7");
+    ProjectRepository projectRepository;
+    QString error;
+    QVERIFY2(projectRepository.saveProject(project, &error), qPrintable(error));
+
+    LookupItem category;
+    category.name = QStringLiteral("筛选分类-%1").arg(suffix);
+    category.color = QStringLiteral("#C335B4");
+    QVERIFY2(projectRepository.saveCategory(category, &error), qPrintable(error));
+
+    Task task;
+    task.title = QStringLiteral("筛选建议任务-%1").arg(suffix);
+    task.description = QStringLiteral("");
+    task.projectId = project.id;
+    task.categoryId = category.id;
+    task.importance = 5;
+    QVERIFY2(TaskRepository().save(task, &error), qPrintable(error));
+
+    DashboardPage page;
+    auto *projectFilter = page.findChild<QComboBox *>(
+        QStringLiteral("recommendationProjectFilter"));
+    auto *categoryFilter = page.findChild<QComboBox *>(
+        QStringLiteral("recommendationCategoryFilter"));
+    auto *list = page.findChild<QListWidget *>(
+        QStringLiteral("recommendationList"));
+    QVERIFY(projectFilter != nullptr);
+    QVERIFY(categoryFilter != nullptr);
+    QVERIFY(list != nullptr);
+
+    const int projectIndex = projectFilter->findData(project.id);
+    const int categoryIndex = categoryFilter->findData(category.id);
+    QVERIFY(projectIndex >= 0);
+    QVERIFY(categoryIndex >= 0);
+    projectFilter->setCurrentIndex(projectIndex);
+    categoryFilter->setCurrentIndex(categoryIndex);
+    QCoreApplication::processEvents();
+
+    QCOMPARE(list->count(), 1);
+    QListWidgetItem *item = list->item(0);
+    QCOMPARE(item->data(Qt::UserRole).toInt(), task.id);
+    QCOMPARE(item->data(Qt::UserRole + 1).toInt(), project.id);
+    QCOMPARE(item->data(Qt::UserRole + 2).toInt(), category.id);
+    QVERIFY(item->text().contains(QStringLiteral("项目：%1").arg(project.name)));
+    QVERIFY(item->text().contains(QStringLiteral("分类：%1").arg(category.name)));
 }
 
 void DashboardPageTests::taskDeletionIsPermanentAndPreservesFocusHistory()
@@ -379,23 +441,39 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     auto *taskTable =
         taskPage.findChild<QTableWidget *>(QStringLiteral("taskTable"));
     QVERIFY(taskTable != nullptr);
-    QCOMPARE(taskTable->horizontalHeader()->sortIndicatorSection(), 4);
+    QCOMPARE(taskTable->horizontalHeader()->sortIndicatorSection(), 5);
     QCOMPARE(taskTable->horizontalHeader()->sortIndicatorOrder(),
              Qt::DescendingOrder);
-    for (int row = 1; row < taskTable->rowCount(); ++row) {
-        const double previous =
-            taskTable->item(row - 1, 4)->data(Qt::UserRole + 1).toDouble();
-        const double current =
-            taskTable->item(row, 4)->data(Qt::UserRole + 1).toDouble();
-        QVERIFY(previous >= current);
-    }
-
-    taskTable->sortItems(5, Qt::AscendingOrder);
     for (int row = 1; row < taskTable->rowCount(); ++row) {
         const double previous =
             taskTable->item(row - 1, 5)->data(Qt::UserRole + 1).toDouble();
         const double current =
             taskTable->item(row, 5)->data(Qt::UserRole + 1).toDouble();
+        QVERIFY(previous >= current);
+    }
+
+    QCOMPARE(taskTable->horizontalHeaderItem(1)->text(),
+             QStringLiteral("详细描述"));
+    bool foundCenteredEmptyProject = false;
+    for (int row = 0; row < taskTable->rowCount(); ++row) {
+        for (int column = 0; column < taskTable->columnCount(); ++column) {
+            QCOMPARE(taskTable->item(row, column)->textAlignment(),
+                     static_cast<int>(Qt::AlignCenter));
+        }
+        if (taskTable->item(row, 2)->text() == QStringLiteral("—")) {
+            QCOMPARE(taskTable->item(row, 2)->textAlignment(),
+                     static_cast<int>(Qt::AlignCenter));
+            foundCenteredEmptyProject = true;
+        }
+    }
+    QVERIFY(foundCenteredEmptyProject);
+
+    taskTable->sortItems(6, Qt::AscendingOrder);
+    for (int row = 1; row < taskTable->rowCount(); ++row) {
+        const double previous =
+            taskTable->item(row - 1, 6)->data(Qt::UserRole + 1).toDouble();
+        const double current =
+            taskTable->item(row, 6)->data(Qt::UserRole + 1).toDouble();
         QVERIFY(previous <= current);
     }
 
@@ -428,6 +506,18 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
         const int current =
             projectTable->item(row, 3)->data(Qt::UserRole + 1).toInt();
         QVERIFY(previous <= current);
+    }
+    for (int row = 0; row < projectTable->rowCount(); ++row) {
+        for (int column = 0; column < projectTable->columnCount(); ++column) {
+            QCOMPARE(projectTable->item(row, column)->textAlignment(),
+                     static_cast<int>(Qt::AlignCenter));
+        }
+    }
+    for (int row = 0; row < categoryTable->rowCount(); ++row) {
+        for (int column = 0; column < categoryTable->columnCount(); ++column) {
+            QCOMPARE(categoryTable->item(row, column)->textAlignment(),
+                     static_cast<int>(Qt::AlignCenter));
+        }
     }
 
     projectTable->sortItems(3, Qt::DescendingOrder);

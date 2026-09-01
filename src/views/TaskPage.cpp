@@ -24,6 +24,7 @@
 namespace {
 enum Column {
     TitleColumn,
+    DescriptionColumn,
     ProjectColumn,
     CategoryColumn,
     DueColumn,
@@ -90,6 +91,7 @@ void TaskPage::buildInterface()
     table_->setColumnCount(ColumnCount);
     table_->setHorizontalHeaderLabels({
         QStringLiteral("任务"),
+        QStringLiteral("详细描述"),
         QStringLiteral("项目"),
         QStringLiteral("分类"),
         QStringLiteral("截止时间"),
@@ -106,7 +108,8 @@ void TaskPage::buildInterface()
     table_->verticalHeader()->setVisible(false);
     table_->verticalHeader()->setDefaultSectionSize(44);
     table_->horizontalHeader()->setStretchLastSection(false);
-    table_->horizontalHeader()->setSectionResizeMode(TitleColumn, QHeaderView::Stretch);
+    table_->horizontalHeader()->setSectionResizeMode(TitleColumn, QHeaderView::ResizeToContents);
+    table_->horizontalHeader()->setSectionResizeMode(DescriptionColumn, QHeaderView::Stretch);
     table_->horizontalHeader()->setSectionResizeMode(ProjectColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(CategoryColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(DueColumn, QHeaderView::ResizeToContents);
@@ -182,11 +185,26 @@ void TaskPage::refresh()
         }
 
         table_->setItem(row, TitleColumn, title);
-        table_->setItem(row, ProjectColumn,
-                        new SortKeyTableWidgetItem(
-                            task.projectName.isEmpty() ? QStringLiteral("—")
-                                                       : task.projectName,
-                            task.projectName.toCaseFolded()));
+        const bool hasDescription = !task.description.trimmed().isEmpty();
+        auto *description = new SortKeyTableWidgetItem(
+            hasDescription ? task.description : QStringLiteral("—"),
+            task.description.toCaseFolded());
+        description->setToolTip(hasDescription ? task.description
+                                                : QStringLiteral("暂无详细描述"));
+        if (!hasDescription) {
+            description->setTextAlignment(Qt::AlignCenter);
+        }
+        table_->setItem(row, DescriptionColumn, description);
+
+        const bool hasProject = !task.projectName.isEmpty();
+        auto *project = new SortKeyTableWidgetItem(
+            hasProject ? task.projectName : QStringLiteral("—"),
+            task.projectName.toCaseFolded());
+        if (!hasProject) {
+            project->setTextAlignment(Qt::AlignCenter);
+            project->setToolTip(QStringLiteral("未选择项目"));
+        }
+        table_->setItem(row, ProjectColumn, project);
         table_->setItem(row, CategoryColumn,
                         new SortKeyTableWidgetItem(
                             task.categoryName.isEmpty() ? QStringLiteral("未分类")
@@ -227,6 +245,11 @@ void TaskPage::refresh()
         table_->setItem(row, StatusColumn,
                         new SortKeyTableWidgetItem(
                             statusText(task.status), statusSortKey));
+        for (int column = 0; column < ColumnCount; ++column) {
+            if (auto *item = table_->item(row, column)) {
+                item->setTextAlignment(Qt::AlignCenter);
+            }
+        }
     }
     table_->setSortingEnabled(true);
     table_->sortItems(sortColumn >= 0 ? sortColumn : ImportanceColumn, sortOrder);
