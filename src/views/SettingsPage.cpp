@@ -30,7 +30,7 @@ SettingsPage::SettingsPage(QWidget *parent)
       soundPlayer_(new NotificationSoundPlayer(this))
 {
     buildInterface();
-    loadSettings();
+    reloadSettings();
 }
 
 void SettingsPage::buildInterface()
@@ -155,6 +155,21 @@ void SettingsPage::buildInterface()
     hint->setWordWrap(true);
     soundForm->addRow(QString(), hint);
 
+    auto *windowGroup = new QGroupBox(QStringLiteral("窗口行为"), content);
+    auto *windowLayout = new QVBoxLayout(windowGroup);
+    windowLayout->setSpacing(8);
+    suppressCloseToTrayReminder_ = new QCheckBox(
+        QStringLiteral("关闭窗口时不再提醒（直接隐藏到系统托盘）"),
+        windowGroup);
+    auto *windowHint = new QLabel(
+        QStringLiteral("最小化仍保留在任务栏；关闭窗口不会退出程序，"
+                       "需要从托盘图标右键菜单选择“退出”。"),
+        windowGroup);
+    windowHint->setObjectName(QStringLiteral("mutedLabel"));
+    windowHint->setWordWrap(true);
+    windowLayout->addWidget(suppressCloseToTrayReminder_);
+    windowLayout->addWidget(windowHint);
+
     auto *dataGroup = new QGroupBox(QStringLiteral("数据管理"), content);
     auto *dataLayout = new QVBoxLayout(dataGroup);
     dataLayout->setSpacing(12);
@@ -204,6 +219,7 @@ void SettingsPage::buildInterface()
 
     root->addWidget(timerGroup);
     root->addWidget(soundGroup);
+    root->addWidget(windowGroup);
     root->addWidget(dataGroup);
     root->addWidget(saveButton, 0, Qt::AlignRight);
     root->addStretch();
@@ -211,7 +227,7 @@ void SettingsPage::buildInterface()
     outerLayout->addWidget(scrollArea);
 }
 
-void SettingsPage::loadSettings()
+void SettingsPage::reloadSettings()
 {
     const TimerSettings settings = SettingsRepository().loadTimerSettings();
     focusMinutes_->setValue(settings.focusMinutes);
@@ -226,6 +242,8 @@ void SettingsPage::loadSettings()
     volume_->setValue(settings.volumePercent);
     maxSoundSeconds_->setValue(settings.maxSoundSeconds);
     soundRepeatCount_->setValue(settings.soundRepeatCount);
+    suppressCloseToTrayReminder_->setChecked(
+        settings.suppressCloseToTrayReminder);
 }
 
 TimerSettings SettingsPage::settingsFromForm() const
@@ -243,6 +261,8 @@ TimerSettings SettingsPage::settingsFromForm() const
     settings.volumePercent = volume_->value();
     settings.maxSoundSeconds = maxSoundSeconds_->value();
     settings.soundRepeatCount = soundRepeatCount_->value();
+    settings.suppressCloseToTrayReminder =
+        suppressCloseToTrayReminder_->isChecked();
     return settings;
 }
 
@@ -258,7 +278,7 @@ void SettingsPage::saveSettings()
     emit settingsSaved();
     QMessageBox::information(this,
                              QStringLiteral("设置已保存"),
-                             QStringLiteral("专注和声音设置已立即生效。"));
+                             QStringLiteral("专注、声音和窗口设置已立即生效。"));
 }
 
 void SettingsPage::browseFocusSound()

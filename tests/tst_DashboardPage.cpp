@@ -1,6 +1,7 @@
 #include "data/DatabaseManager.h"
 #include "repositories/AnalyticsRepository.h"
 #include "repositories/FocusRepository.h"
+#include "repositories/SettingsRepository.h"
 #include "repositories/TaskRepository.h"
 #include "views/DashboardPage.h"
 
@@ -41,6 +42,7 @@ private slots:
     void recommendationSupportsFocusShortcutAndBlankDeselection();
     void taskDeletionIsPermanentAndPreservesFocusHistory();
     void completedFocusAllowsEmptyInterruptionReason();
+    void closeToTrayReminderPreferenceRoundTrips();
     void cleanupTestCase();
 
 private:
@@ -282,6 +284,23 @@ void DashboardPageTests::completedFocusAllowsEmptyInterruptionReason()
     QCOMPARE(session.value(0).toString(), QStringLiteral("completed"));
     QVERIFY(!session.value(1).isNull());
     QCOMPARE(session.value(1).toString(), QStringLiteral(""));
+}
+
+void DashboardPageTests::closeToTrayReminderPreferenceRoundTrips()
+{
+    SettingsRepository repository;
+    TimerSettings settings = repository.loadTimerSettings();
+    QVERIFY(!settings.suppressCloseToTrayReminder);
+
+    settings.suppressCloseToTrayReminder = true;
+    QString error;
+    QVERIFY2(repository.saveTimerSettings(settings, &error), qPrintable(error));
+    QVERIFY(repository.loadTimerSettings().suppressCloseToTrayReminder);
+
+    settings = repository.loadTimerSettings();
+    settings.suppressCloseToTrayReminder = false;
+    QVERIFY2(repository.saveTimerSettings(settings, &error), qPrintable(error));
+    QVERIFY(!repository.loadTimerSettings().suppressCloseToTrayReminder);
 }
 
 void DashboardPageTests::cleanupTestCase()

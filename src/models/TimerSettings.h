@@ -17,4 +17,6 @@ struct TimerSettings
     int volumePercent = 70;
     int maxSoundSeconds = 5;
     int soundRepeatCount = 1;
+
+    bool suppressCloseToTrayReminder = false;
 };

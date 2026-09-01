@@ -6,6 +6,7 @@
 #include "views/DashboardPage.h"
 #include "views/StatisticsPage.h"
 #include "views/SettingsPage.h"
+#include "repositories/SettingsRepository.h"
 
 #include <QAction>
 #include <QApplication>
@@ -15,6 +16,9 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QMenu>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QScreen>
 #include <QStackedWidget>
 #include <QStyle>
 #include <QSystemTrayIcon>
@@ -92,7 +96,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.7"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.8"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -116,8 +120,8 @@ void MainWindow::buildInterface()
     pages_->addWidget(focusPage);
     auto *statisticsPage = new StatisticsPage(pages_);
     pages_->addWidget(statisticsPage);
-    auto *settingsPage = new SettingsPage(pages_);
-    pages_->addWidget(settingsPage);
+    settingsPage_ = new SettingsPage(pages_);
+    pages_->addWidget(settingsPage_);
     contentLayout->addWidget(pages_, 1);
 
     rootLayout->addWidget(sidebar);
@@ -134,7 +138,7 @@ void MainWindow::buildInterface()
             statisticsPage, &StatisticsPage::refresh);
     connect(projectPage, &ProjectPage::lookupsChanged,
             taskPage, &TaskPage::refresh);
-    connect(settingsPage, &SettingsPage::settingsSaved,
+    connect(settingsPage_, &SettingsPage::settingsSaved,
             focusPage, &FocusPage::reloadSettings);
     connect(focusPage, &FocusPage::notificationRequested,
             this, &MainWindow::showNotification);
@@ -180,6 +184,9 @@ void MainWindow::showPage(int index)
 
     pages_->setCurrentIndex(index);
     pageTitle_->setText(kPageNames.at(index));
+    if (index == 5 && settingsPage_ != nullptr) {
+        settingsPage_->reloadSettings();
+    }
 }
 
 void MainWindow::applyTheme()
@@ -432,13 +439,50 @@ void MainWindow::showNotification(const QString &title, const QString &message)
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     if (!quitRequested_ && trayIcon_ != nullptr && trayIcon_->isVisible()) {
+        TimerSettings settings = SettingsRepository().loadTimerSettings();
+        if (!settings.suppressCloseToTrayReminder) {
+            QMessageBox reminder(
+                QMessageBox::Information,
+                QStringLiteral("隐藏到系统托盘"),
+                QStringLiteral("FocusFlow 将继续在后台运行。\n"
+                               "右键系统托盘图标并选择“退出”，才会真正结束程序。"),
+                QMessageBox::NoButton,
+                this);
+            auto *hideButton = reminder.addButton(
+                QStringLiteral("隐藏到托盘"), QMessageBox::AcceptRole);
+            auto *dontRemindButton = reminder.addButton(
+                QStringLiteral("下次不再提醒"), QMessageBox::ActionRole);
+            auto *cancelButton = reminder.addButton(
+                QStringLiteral("取消"), QMessageBox::RejectRole);
+            reminder.setDefaultButton(hideButton);
+            reminder.adjustSize();
+            if (QScreen *targetScreen = screen()) {
+                const QRect available = targetScreen->availableGeometry();
+                reminder.move(available.right() - reminder.width() - 20,
+                              available.bottom() - reminder.height() - 20);
+            }
+            reminder.exec();
+
+            if (reminder.clickedButton() == cancelButton
+                || reminder.clickedButton() == nullptr) {
+                event->ignore();
+                return;
+            }
+            if (reminder.clickedButton() == dontRemindButton) {
+                settings.suppressCloseToTrayReminder = true;
+                QString error;
+                if (!SettingsRepository().saveTimerSettings(settings, &error)) {
+                    QMessageBox::warning(
+                        this,
+                        QStringLiteral("偏好保存失败"),
+                        QStringLiteral("本次仍会隐藏到托盘，但“下次不再提醒”"
+                                       "没有保存成功：\n%1")
+                            .arg(error));
+                }
+            }
+        }
         hide();
         event->ignore();
-        trayIcon_->showMessage(
-            QStringLiteral("FocusFlow 已隐藏到托盘"),
-            QStringLiteral("计时会继续运行；右键托盘图标可退出程序。"),
-            QSystemTrayIcon::Information,
-            3000);
         return;
     }
     QMainWindow::closeEvent(event);

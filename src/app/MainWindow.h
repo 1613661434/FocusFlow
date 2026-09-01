@@ -7,6 +7,7 @@ class QListWidget;
 class QStackedWidget;
 class QSystemTrayIcon;
 class QCloseEvent;
+class SettingsPage;
 
 class MainWindow final : public QMainWindow
 {
@@ -33,5 +34,6 @@ private:
     QStackedWidget *pages_ = nullptr;
     QLabel *pageTitle_ = nullptr;
     QSystemTrayIcon *trayIcon_ = nullptr;
+    SettingsPage *settingsPage_ = nullptr;
     bool quitRequested_ = false;
 };

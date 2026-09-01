@@ -21,6 +21,9 @@ public:
 signals:
     void settingsSaved();
 
+public slots:
+    void reloadSettings();
+
 private slots:
     void saveSettings();
     void browseFocusSound();
@@ -34,7 +37,6 @@ private slots:
 
 private:
     void buildInterface();
-    void loadSettings();
     TimerSettings settingsFromForm() const;
     void browseSound(QLineEdit *destination, const QString &prefix);
     QString installSound(const QString &sourcePath, const QString &prefix) const;
@@ -54,4 +56,5 @@ private:
     QLabel *volumeLabel_ = nullptr;
     QSpinBox *maxSoundSeconds_ = nullptr;
     QSpinBox *soundRepeatCount_ = nullptr;
+    QCheckBox *suppressCloseToTrayReminder_ = nullptr;
 };
