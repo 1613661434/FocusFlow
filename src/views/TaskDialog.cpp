@@ -5,9 +5,12 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDate>
+#include <QDateTime>
 #include <QDateTimeEdit>
 #include <QDialogButtonBox>
 #include <QFormLayout>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QLocale>
@@ -15,6 +18,7 @@
 #include <QPushButton>
 #include <QSpinBox>
 #include <QTextEdit>
+#include <QTime>
 #include <QVBoxLayout>
 
 TaskDialog::TaskDialog(const QVector<LookupItem> &projects,
@@ -64,21 +68,53 @@ void TaskDialog::buildInterface(const QVector<LookupItem> &projects,
     importanceCombo_->addItem(QStringLiteral("5 - 紧急且重要"), 5);
     importanceCombo_->setCurrentIndex(2);
 
+    const QDateTime defaultDue(QDate::currentDate(), QTime(23, 59));
     dueEnabled_ = new QCheckBox(QStringLiteral("设置截止时间"), this);
-    dueEdit_ = new QDateTimeEdit(QDateTime::currentDateTime().addDays(1), this);
+    dueEnabled_->setObjectName(QStringLiteral("dueEnabled"));
+    dueEnabled_->setChecked(true);
+
+    dueEdit_ = new QDateTimeEdit(defaultDue, this);
+    dueEdit_->setObjectName(QStringLiteral("dueDateEdit"));
     dueEdit_->setLocale(QLocale(QLocale::Chinese, QLocale::China));
     dueEdit_->setCalendarPopup(true);
     dueEdit_->setCalendarWidget(new ChineseCalendarWidget(dueEdit_));
-    dueEdit_->setDisplayFormat(QStringLiteral("yyyy-MM-dd HH:mm"));
-    dueEdit_->setEnabled(false);
-    connect(dueEnabled_, &QCheckBox::toggled, dueEdit_, &QWidget::setEnabled);
+    dueEdit_->setDisplayFormat(QStringLiteral("yyyy年MM月dd日"));
+
+    dueHour_ = new FocusAwareSpinBox(this);
+    dueHour_->setObjectName(QStringLiteral("dueHourSpin"));
+    dueHour_->setRange(0, 23);
+    dueHour_->setValue(defaultDue.time().hour());
+    dueHour_->setSuffix(QStringLiteral(" 时"));
+    dueHour_->setMinimumWidth(88);
+    dueHour_->setToolTip(QStringLiteral("截止小时（24 小时制）"));
+
+    dueMinute_ = new FocusAwareSpinBox(this);
+    dueMinute_->setObjectName(QStringLiteral("dueMinuteSpin"));
+    dueMinute_->setRange(0, 59);
+    dueMinute_->setValue(defaultDue.time().minute());
+    dueMinute_->setSuffix(QStringLiteral(" 分"));
+    dueMinute_->setMinimumWidth(88);
+    dueMinute_->setToolTip(QStringLiteral("截止分钟"));
+
+    auto *dueTimeLayout = new QHBoxLayout;
+    dueTimeLayout->setContentsMargins(0, 0, 0, 0);
+    dueTimeLayout->setSpacing(8);
+    dueTimeLayout->addWidget(dueEdit_, 1);
+    dueTimeLayout->addWidget(dueHour_);
+    dueTimeLayout->addWidget(dueMinute_);
+
+    connect(dueEnabled_, &QCheckBox::toggled, this, [this](bool enabled) {
+        dueEdit_->setEnabled(enabled);
+        dueHour_->setEnabled(enabled);
+        dueMinute_->setEnabled(enabled);
+    });
 
     auto *dueWidget = new QWidget(this);
     auto *dueLayout = new QVBoxLayout(dueWidget);
     dueLayout->setContentsMargins(0, 0, 0, 0);
     dueLayout->setSpacing(6);
     dueLayout->addWidget(dueEnabled_);
-    dueLayout->addWidget(dueEdit_);
+    dueLayout->addLayout(dueTimeLayout);
 
     estimatedMinutes_ = new FocusAwareSpinBox(this);
     estimatedMinutes_->setRange(0, 1440);
@@ -118,7 +154,9 @@ void TaskDialog::setTask(const Task &task)
     estimatedMinutes_->setValue(task.estimatedMinutes);
     dueEnabled_->setChecked(task.dueAt.isValid());
     if (task.dueAt.isValid()) {
-        dueEdit_->setDateTime(task.dueAt);
+        dueEdit_->setDate(task.dueAt.date());
+        dueHour_->setValue(task.dueAt.time().hour());
+        dueMinute_->setValue(task.dueAt.time().minute());
     }
 }
 
@@ -130,7 +168,10 @@ Task TaskDialog::task() const
     result.projectId = projectCombo_->currentData().toInt();
     result.categoryId = categoryCombo_->currentData().toInt();
     result.importance = importanceCombo_->currentData().toInt();
-    result.dueAt = dueEnabled_->isChecked() ? dueEdit_->dateTime() : QDateTime();
+    result.dueAt = dueEnabled_->isChecked()
+                       ? QDateTime(dueEdit_->date(),
+                                   QTime(dueHour_->value(), dueMinute_->value()))
+                       : QDateTime();
     result.estimatedMinutes = estimatedMinutes_->value();
     return result;
 }

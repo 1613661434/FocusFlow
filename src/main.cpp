@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 {
     QApplication application(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("FocusFlow"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.9"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.10"));
     QCoreApplication::setOrganizationName(QStringLiteral("FocusFlow"));
     QLocale::setDefault(QLocale(QLocale::Chinese, QLocale::China));
     application.setWindowIcon(QIcon(QStringLiteral(":/icons/focusflow.svg")));

@@ -17,6 +17,8 @@ class SettingsPage final : public QWidget
 
 public:
     explicit SettingsPage(QWidget *parent = nullptr);
+    bool hasUnsavedChanges() const;
+    bool saveSettings(bool showConfirmation = true);
 
 signals:
     void settingsSaved();
@@ -25,7 +27,6 @@ public slots:
     void reloadSettings();
 
 private slots:
-    void saveSettings();
     void browseFocusSound();
     void browseBreakSound();
     void previewFocusSound();
@@ -57,4 +58,5 @@ private:
     QSpinBox *maxSoundSeconds_ = nullptr;
     QSpinBox *soundRepeatCount_ = nullptr;
     QCheckBox *suppressCloseToTrayReminder_ = nullptr;
+    TimerSettings savedSettings_;
 };

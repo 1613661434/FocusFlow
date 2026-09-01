@@ -202,7 +202,8 @@ void FocusPage::togglePause()
 void FocusPage::stopEarly()
 {
     completeTaskWhenSessionEnds_ = false;
-    const bool hasLinkedTask = timer_.phase() == FocusTimer::Phase::Focus
+    const FocusTimer::Phase phase = timer_.phase();
+    const bool hasLinkedTask = phase == FocusTimer::Phase::Focus
         && currentTaskId_ > 0;
 
     if (hasLinkedTask) {
@@ -221,18 +222,31 @@ void FocusPage::stopEarly()
         dialog.setDefaultButton(cancelButton);
         dialog.exec();
 
-        if (dialog.clickedButton() == cancelButton) {
+        if (dialog.clickedButton() == cancelButton
+            || dialog.clickedButton() == nullptr) {
             return;
         }
         completeTaskWhenSessionEnds_ =
             dialog.clickedButton() == completeTaskButton;
         Q_UNUSED(finishOnlyButton);
-    } else {
+    } else if (phase == FocusTimer::Phase::Focus) {
         const auto choice = QMessageBox::question(
             this,
             QStringLiteral("提前结束"),
-            QStringLiteral("要结束当前计时并保存实际用时吗？\n"
+            QStringLiteral("要结束当前专注并保存实际用时吗？\n"
                            "已产生的专注时间会计入统计。"),
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No);
+        if (choice != QMessageBox::Yes) {
+            return;
+        }
+    } else {
+        const auto choice = QMessageBox::question(
+            this,
+            QStringLiteral("提前结束休息"),
+            QStringLiteral("要提前结束当前%1吗？\n"
+                           "休息时间不会计入专注统计。")
+                .arg(phaseText(phase)),
             QMessageBox::Yes | QMessageBox::No,
             QMessageBox::No);
         if (choice != QMessageBox::Yes) {
@@ -292,7 +306,7 @@ void FocusPage::handleSessionEnded(FocusTimer::Phase phase,
         &error);
     if (!saved) {
         completeTaskWhenSessionEnds_ = false;
-        statusLabel_->setText(QStringLiteral("专注记录保存失败：%1").arg(error));
+        statusLabel_->setText(QStringLiteral("计时记录保存失败：%1").arg(error));
         updateIdleDuration();
         return;
     }
@@ -321,8 +335,16 @@ void FocusPage::handleSessionEnded(FocusTimer::Phase phase,
     emit focusDataChanged();
 
     if (!completed) {
-        QString status = QStringLiteral("本次%1已提前结束，实际用时 %2，已计入统计。")
-                             .arg(phaseText(phase), formatSeconds(actualSeconds));
+        QString status;
+        if (phase == FocusTimer::Phase::Focus) {
+            status = QStringLiteral("本次专注已提前结束，实际用时 %1，"
+                                    "已计入专注统计。")
+                         .arg(formatSeconds(actualSeconds));
+        } else {
+            status = QStringLiteral("本次%1已提前结束，实际用时 %2；"
+                                    "休息时间未计入专注统计。")
+                         .arg(phaseText(phase), formatSeconds(actualSeconds));
+        }
         if (taskMarkedCompleted) {
             status += QStringLiteral(" 关联任务已完成。");
         }

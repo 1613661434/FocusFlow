@@ -14,6 +14,7 @@ public:
 
     bool saveProject(Project &project, QString *errorMessage = nullptr) const;
     bool setProjectArchived(int id, bool archived, QString *errorMessage = nullptr) const;
+    bool deleteProject(int id, QString *errorMessage = nullptr) const;
     bool saveCategory(LookupItem &category, QString *errorMessage = nullptr) const;
     bool deleteCategory(int id, QString *errorMessage = nullptr) const;
 

@@ -13,6 +13,8 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QPainter>
+#include <QPixmap>
 #include <QPushButton>
 #include <QTabWidget>
 #include <QTableWidget>
@@ -28,6 +30,22 @@ QString chooseColor(QWidget *parent, const QString &current)
                                                     parent,
                                                     QStringLiteral("选择颜色"));
     return selected.isValid() ? selected.name(QColor::HexRgb).toUpper() : current;
+}
+
+QIcon colorSwatchIcon(const QString &colorText)
+{
+    QColor color(colorText);
+    if (!color.isValid()) {
+        color = QColor(QStringLiteral("#D0D5DD"));
+    }
+    QPixmap pixmap(20, 20);
+    pixmap.fill(Qt::transparent);
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(QPen(QColor(QStringLiteral("#98A2B3")), 1));
+    painter.setBrush(color);
+    painter.drawRoundedRect(QRectF(1.0, 1.0, 18.0, 18.0), 4.0, 4.0);
+    return QIcon(pixmap);
 }
 }
 
@@ -52,9 +70,12 @@ void ProjectPage::buildInterface()
     addProjectButton->setObjectName(QStringLiteral("primaryButton"));
     auto *editProjectButton = new QPushButton(QStringLiteral("编辑"), projectTab);
     auto *archiveProjectButton = new QPushButton(QStringLiteral("归档 / 恢复"), projectTab);
+    auto *deleteProjectButton = new QPushButton(QStringLiteral("删除项目"), projectTab);
+    deleteProjectButton->setObjectName(QStringLiteral("dangerButton"));
     projectButtons->addWidget(addProjectButton);
     projectButtons->addWidget(editProjectButton);
     projectButtons->addWidget(archiveProjectButton);
+    projectButtons->addWidget(deleteProjectButton);
     projectButtons->addStretch();
 
     projectTable_ = new QTableWidget(projectTab);
@@ -70,6 +91,7 @@ void ProjectPage::buildInterface()
     projectTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     projectTable_->setAlternatingRowColors(true);
     projectTable_->setShowGrid(false);
+    projectTable_->setIconSize(QSize(20, 20));
     projectTable_->verticalHeader()->setVisible(false);
     projectTable_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     projectTable_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
@@ -102,6 +124,7 @@ void ProjectPage::buildInterface()
     categoryTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     categoryTable_->setAlternatingRowColors(true);
     categoryTable_->setShowGrid(false);
+    categoryTable_->setIconSize(QSize(20, 20));
     categoryTable_->verticalHeader()->setVisible(false);
     categoryTable_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     categoryTable_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
@@ -116,6 +139,8 @@ void ProjectPage::buildInterface()
     connect(addProjectButton, &QPushButton::clicked, this, &ProjectPage::addProject);
     connect(editProjectButton, &QPushButton::clicked, this, &ProjectPage::editProject);
     connect(archiveProjectButton, &QPushButton::clicked, this, &ProjectPage::toggleProjectArchive);
+    connect(deleteProjectButton, &QPushButton::clicked,
+            this, &ProjectPage::deleteProject);
     connect(addCategoryButton, &QPushButton::clicked, this, &ProjectPage::addCategory);
     connect(editCategoryButton, &QPushButton::clicked, this, &ProjectPage::editCategory);
     connect(deleteCategoryButton, &QPushButton::clicked, this, &ProjectPage::deleteCategory);
@@ -135,8 +160,10 @@ void ProjectPage::refresh()
         name->setData(Qt::UserRole, project.id);
         projectTable_->setItem(row, 0, name);
         projectTable_->setItem(row, 1, new QTableWidgetItem(project.description));
-        auto *color = new QTableWidgetItem(project.color);
-        color->setForeground(QColor(project.color));
+        auto *color = new QTableWidgetItem;
+        color->setIcon(colorSwatchIcon(project.color));
+        color->setTextAlignment(Qt::AlignCenter);
+        color->setToolTip(project.color);
         projectTable_->setItem(row, 2, color);
         projectTable_->setItem(row, 3,
                                new QTableWidgetItem(project.archived
@@ -151,8 +178,10 @@ void ProjectPage::refresh()
         auto *name = new QTableWidgetItem(category.name);
         name->setData(Qt::UserRole, category.id);
         categoryTable_->setItem(row, 0, name);
-        auto *color = new QTableWidgetItem(category.color);
-        color->setForeground(QColor(category.color));
+        auto *color = new QTableWidgetItem;
+        color->setIcon(colorSwatchIcon(category.color));
+        color->setTextAlignment(Qt::AlignCenter);
+        color->setToolTip(category.color);
         categoryTable_->setItem(row, 1, color);
     }
 }
@@ -205,6 +234,35 @@ void ProjectPage::toggleProjectArchive()
     QString error;
     if (!repository_.setProjectArchived(project.id, !project.archived, &error)) {
         showError(QStringLiteral("更新项目状态"), error);
+        return;
+    }
+    refresh();
+    emit lookupsChanged();
+}
+
+void ProjectPage::deleteProject()
+{
+    const int index = selectedProjectIndex();
+    if (index < 0) {
+        QMessageBox::information(this, QStringLiteral("删除项目"),
+                                 QStringLiteral("请先选择一个项目。"));
+        return;
+    }
+    const Project &project = projects_.at(index);
+    const auto answer = QMessageBox::question(
+        this,
+        QStringLiteral("永久删除项目"),
+        QStringLiteral("确定永久删除“%1”吗？\n"
+                       "此操作无法撤销；项目中的任务会保留并变为“无项目”。")
+            .arg(project.name),
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No);
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+    QString error;
+    if (!repository_.deleteProject(project.id, &error)) {
+        showError(QStringLiteral("删除项目"), error);
         return;
     }
     refresh();
@@ -288,11 +346,13 @@ bool ProjectPage::editProjectValues(Project &project)
     auto *description = new QTextEdit(&dialog);
     description->setPlainText(project.description);
     description->setMaximumHeight(100);
-    auto *colorButton = new QPushButton(project.color, &dialog);
+    QString selectedColor = project.color;
+    auto *colorButton = new QPushButton(QStringLiteral("选择颜色"), &dialog);
+    colorButton->setIcon(colorSwatchIcon(selectedColor));
+    colorButton->setIconSize(QSize(20, 20));
     connect(colorButton, &QPushButton::clicked, &dialog, [&, colorButton] {
-        const QString color = chooseColor(&dialog, colorButton->text());
-        colorButton->setText(color);
-        colorButton->setStyleSheet(QStringLiteral("color: %1;").arg(color));
+        selectedColor = chooseColor(&dialog, selectedColor);
+        colorButton->setIcon(colorSwatchIcon(selectedColor));
     });
     form->addRow(QStringLiteral("项目名称："), name);
     form->addRow(QStringLiteral("详细说明："), description);
@@ -315,7 +375,7 @@ bool ProjectPage::editProjectValues(Project &project)
     }
     project.name = name->text().trimmed();
     project.description = description->toPlainText().trimmed();
-    project.color = colorButton->text();
+    project.color = selectedColor;
     return true;
 }
 

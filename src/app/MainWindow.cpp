@@ -16,6 +16,9 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QMenu>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QSignalBlocker>
 #include <QStackedWidget>
 #include <QStyle>
 #include <QSystemTrayIcon>
@@ -93,7 +96,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.9"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.10"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -177,6 +180,40 @@ void MainWindow::showPage(int index)
 {
     if (index < 0 || index >= pages_->count()) {
         return;
+    }
+
+    const int previousIndex = pages_->currentIndex();
+    if (previousIndex == 5 && index != previousIndex
+        && settingsPage_ != nullptr
+        && settingsPage_->hasUnsavedChanges()) {
+        QMessageBox prompt(this);
+        prompt.setIcon(QMessageBox::Warning);
+        prompt.setWindowTitle(QStringLiteral("设置尚未保存"));
+        prompt.setText(QStringLiteral("你对设置进行了修改，但还没有保存。"));
+        prompt.setInformativeText(QStringLiteral("是否先保存修改，再切换到其他页面？"));
+        auto *saveButton = prompt.addButton(
+            QStringLiteral("保存并切换"), QMessageBox::AcceptRole);
+        auto *discardButton = prompt.addButton(
+            QStringLiteral("放弃修改"), QMessageBox::DestructiveRole);
+        auto *cancelButton = prompt.addButton(
+            QStringLiteral("取消切换"), QMessageBox::RejectRole);
+        prompt.setDefaultButton(saveButton);
+        prompt.exec();
+
+        if (prompt.clickedButton() == saveButton) {
+            if (!settingsPage_->saveSettings(false)) {
+                const QSignalBlocker blocker(navigation_);
+                navigation_->setCurrentRow(previousIndex);
+                return;
+            }
+        } else if (prompt.clickedButton() == discardButton) {
+            settingsPage_->reloadSettings();
+        } else {
+            Q_UNUSED(cancelButton);
+            const QSignalBlocker blocker(navigation_);
+            navigation_->setCurrentRow(previousIndex);
+            return;
+        }
     }
 
     pages_->setCurrentIndex(index);
@@ -294,6 +331,22 @@ void MainWindow::applyTheme()
             subcontrol-origin: margin;
             left: 16px;
             padding: 0 6px;
+        }
+        QGroupBox#settingsSection {
+            margin-top: 22px;
+            padding: 24px 18px 18px 18px;
+        }
+        QGroupBox#settingsSection::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            left: 16px;
+            color: #2f49c7;
+            background: #eef2ff;
+            border: 1px solid #aebdff;
+            border-bottom: 3px solid #4f6ef7;
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-weight: 700;
         }
         QProgressBar {
             background: #e8ecf5;

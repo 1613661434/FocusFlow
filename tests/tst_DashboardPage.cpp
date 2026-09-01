@@ -1,6 +1,7 @@
 #include "data/DatabaseManager.h"
 #include "repositories/AnalyticsRepository.h"
 #include "repositories/FocusRepository.h"
+#include "repositories/ProjectRepository.h"
 #include "repositories/SettingsRepository.h"
 #include "repositories/TaskRepository.h"
 #include "views/DashboardPage.h"
@@ -43,6 +44,7 @@ private slots:
     void taskDeletionIsPermanentAndPreservesFocusHistory();
     void completedFocusAllowsEmptyInterruptionReason();
     void closeToTrayReminderPreferenceRoundTrips();
+    void projectDeletionKeepsTasksWithoutProject();
     void cleanupTestCase();
 
 private:
@@ -146,6 +148,21 @@ void DashboardPageTests::interruptedFocusIsIncludedInStatistics()
                       QDateTime::currentDateTime().toString(Qt::ISODate));
     QVERIFY(session.exec());
 
+    session.prepare(QStringLiteral(R"(
+        INSERT INTO focus_sessions(
+            task_id, session_type, status, start_time, end_time,
+            planned_seconds, actual_seconds, interruption_reason
+        ) VALUES(
+            :task_id, 'short_break', 'interrupted', :start_time, :end_time,
+            300, 120, '用户提前结束'
+        )
+    )"));
+    session.bindValue(QStringLiteral(":task_id"), taskId);
+    session.bindValue(QStringLiteral(":start_time"), startedAt.toString(Qt::ISODate));
+    session.bindValue(QStringLiteral(":end_time"),
+                      QDateTime::currentDateTime().toString(Qt::ISODate));
+    QVERIFY(session.exec());
+
     const AnalyticsRepository analytics;
     const DashboardMetrics metrics = analytics.dashboardMetrics();
     QCOMPARE(metrics.focusSecondsToday, 59);
@@ -156,7 +173,7 @@ void DashboardPageTests::interruptedFocusIsIncludedInStatistics()
         QDate::currentDate().toString(QStringLiteral("MM-dd"));
     for (const DailyProductivity &day : analytics.lastSevenDays()) {
         if (day.label == todayLabel) {
-            QCOMPARE(day.focusMinutes, 1);
+            QCOMPARE(day.focusSeconds, 59);
             foundToday = true;
         }
     }
@@ -165,7 +182,7 @@ void DashboardPageTests::interruptedFocusIsIncludedInStatistics()
     bool foundCategory = false;
     for (const CategoryFocus &categoryFocus : analytics.focusByCategory()) {
         if (categoryFocus.name == categoryName) {
-            QCOMPARE(categoryFocus.focusMinutes, 1);
+            QCOMPARE(categoryFocus.focusSeconds, 59);
             foundCategory = true;
         }
     }
@@ -301,6 +318,39 @@ void DashboardPageTests::closeToTrayReminderPreferenceRoundTrips()
     settings.suppressCloseToTrayReminder = false;
     QVERIFY2(repository.saveTimerSettings(settings, &error), qPrintable(error));
     QVERIFY(!repository.loadTimerSettings().suppressCloseToTrayReminder);
+}
+
+void DashboardPageTests::projectDeletionKeepsTasksWithoutProject()
+{
+    auto database = DatabaseManager::instance().database();
+    Project project;
+    project.name = QStringLiteral("待删除项目-%1")
+                       .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    project.description = QStringLiteral("验证项目删除行为");
+    project.color = QStringLiteral("#4F6EF7");
+    QString error;
+    ProjectRepository repository;
+    QVERIFY2(repository.saveProject(project, &error), qPrintable(error));
+    QVERIFY(project.id > 0);
+
+    QSqlQuery task(database);
+    task.prepare(QStringLiteral(R"(
+        INSERT INTO tasks(title, project_id, status)
+        VALUES('项目删除后的保留任务', :project_id, 'pending')
+    )"));
+    task.bindValue(QStringLiteral(":project_id"), project.id);
+    QVERIFY(task.exec());
+    const int taskId = task.lastInsertId().toInt();
+
+    QVERIFY2(repository.deleteProject(project.id, &error), qPrintable(error));
+
+    QSqlQuery preservedTask(database);
+    preservedTask.prepare(QStringLiteral(
+        "SELECT project_id FROM tasks WHERE id = :id"));
+    preservedTask.bindValue(QStringLiteral(":id"), taskId);
+    QVERIFY(preservedTask.exec());
+    QVERIFY(preservedTask.next());
+    QVERIFY(preservedTask.value(0).isNull());
 }
 
 void DashboardPageTests::cleanupTestCase()
