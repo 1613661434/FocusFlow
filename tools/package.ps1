@@ -12,7 +12,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $distributionRoot = Join-Path $projectRoot "dist"
-$packageDirectory = Join-Path $distributionRoot "FocusFlow-0.1.0-$timestamp"
+$packageDirectory = Join-Path $distributionRoot "FocusFlow-0.1.1-$timestamp"
 $executable = Join-Path $projectRoot "build\FocusFlow.exe"
 $deployTool = Join-Path $QtRoot "bin\windeployqt.exe"
 
@@ -38,4 +38,3 @@ if ($LASTEXITCODE -ne 0) {
 $archivePath = "$packageDirectory.zip"
 Compress-Archive -Path (Join-Path $packageDirectory "*") -DestinationPath $archivePath
 Write-Host "演示包已生成：$archivePath"
-
