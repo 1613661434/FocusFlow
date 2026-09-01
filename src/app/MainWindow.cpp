@@ -93,7 +93,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.3"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.4"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -266,6 +266,11 @@ void MainWindow::applyTheme()
         QListWidget#recommendationList::item:hover:!selected {
             background: #f4f6ff;
             color: #182230;
+        }
+        QLabel#emptyStateLabel {
+            color: #344054;
+            background: transparent;
+            padding: 10px 12px;
         }
         QGroupBox {
             background: #ffffff;
