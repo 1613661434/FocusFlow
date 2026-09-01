@@ -1,12 +1,21 @@
 #include "app/MainWindow.h"
 
 #include "views/TaskPage.h"
+#include "views/FocusPage.h"
+#include "views/SettingsPage.h"
 
+#include <QAction>
+#include <QApplication>
+#include <QEvent>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
+#include <QMenu>
 #include <QStackedWidget>
+#include <QStyle>
+#include <QSystemTrayIcon>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -41,6 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     buildInterface();
     applyTheme();
+    setupTray();
 }
 
 void MainWindow::buildInterface()
@@ -83,11 +93,14 @@ void MainWindow::buildInterface()
 
     pages_ = new QStackedWidget(content);
     pages_->addWidget(createPlaceholderPage(kPageNames.at(0), kPageDescriptions.at(0)));
-    pages_->addWidget(new TaskPage(pages_));
-    for (qsizetype index = 2; index < kPageNames.size(); ++index) {
-        pages_->addWidget(createPlaceholderPage(kPageNames.at(index),
-                                                kPageDescriptions.at(index)));
-    }
+    auto *taskPage = new TaskPage(pages_);
+    pages_->addWidget(taskPage);
+    pages_->addWidget(createPlaceholderPage(kPageNames.at(2), kPageDescriptions.at(2)));
+    auto *focusPage = new FocusPage(pages_);
+    pages_->addWidget(focusPage);
+    pages_->addWidget(createPlaceholderPage(kPageNames.at(4), kPageDescriptions.at(4)));
+    auto *settingsPage = new SettingsPage(pages_);
+    pages_->addWidget(settingsPage);
     contentLayout->addWidget(pages_, 1);
 
     rootLayout->addWidget(sidebar);
@@ -96,6 +109,12 @@ void MainWindow::buildInterface()
 
     connect(navigation_, &QListWidget::currentRowChanged,
             this, &MainWindow::showPage);
+    connect(taskPage, &TaskPage::tasksChanged,
+            focusPage, &FocusPage::refreshTasks);
+    connect(settingsPage, &SettingsPage::settingsSaved,
+            focusPage, &FocusPage::reloadSettings);
+    connect(focusPage, &FocusPage::notificationRequested,
+            this, &MainWindow::showNotification);
 }
 
 QWidget *MainWindow::createPlaceholderPage(const QString &title,
@@ -178,6 +197,33 @@ void MainWindow::applyTheme()
             font-size: 20px;
             font-weight: 650;
         }
+        QLabel#timerLabel {
+            color: #172033;
+            font-size: 64px;
+            font-weight: 700;
+        }
+        QGroupBox {
+            background: #ffffff;
+            border: 1px solid #e5e9f1;
+            border-radius: 12px;
+            margin-top: 16px;
+            padding: 18px;
+            font-weight: 650;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 16px;
+            padding: 0 6px;
+        }
+        QProgressBar {
+            background: #e8ecf5;
+            border: none;
+            border-radius: 5px;
+        }
+        QProgressBar::chunk {
+            background: #4f6ef7;
+            border-radius: 5px;
+        }
         QLabel#mutedLabel {
             color: #778196;
         }
@@ -233,4 +279,61 @@ void MainWindow::applyTheme()
             padding-left: 8px;
         }
     )"));
+}
+
+void MainWindow::setupTray()
+{
+    if (!QSystemTrayIcon::isSystemTrayAvailable()) {
+        return;
+    }
+
+    trayIcon_ = new QSystemTrayIcon(
+        style()->standardIcon(QStyle::SP_ComputerIcon), this);
+    trayIcon_->setToolTip(QStringLiteral("FocusFlow"));
+
+    auto *menu = new QMenu(this);
+    auto *showAction = menu->addAction(QStringLiteral("显示 FocusFlow"));
+    auto *quitAction = menu->addAction(QStringLiteral("退出"));
+    connect(showAction, &QAction::triggered, this, &MainWindow::showFromTray);
+    connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
+    connect(trayIcon_, &QSystemTrayIcon::activated, this,
+            [this](QSystemTrayIcon::ActivationReason reason) {
+                if (reason == QSystemTrayIcon::DoubleClick
+                    || reason == QSystemTrayIcon::Trigger) {
+                    showFromTray();
+                }
+            });
+    trayIcon_->setContextMenu(menu);
+    trayIcon_->show();
+}
+
+void MainWindow::showFromTray()
+{
+    showNormal();
+    raise();
+    activateWindow();
+}
+
+void MainWindow::showNotification(const QString &title, const QString &message)
+{
+    if (trayIcon_ != nullptr && trayIcon_->supportsMessages()) {
+        trayIcon_->showMessage(title,
+                               message,
+                               QSystemTrayIcon::Information,
+                               8000);
+    }
+}
+
+void MainWindow::changeEvent(QEvent *event)
+{
+    QMainWindow::changeEvent(event);
+    if (event->type() == QEvent::WindowStateChange
+        && isMinimized()
+        && trayIcon_ != nullptr) {
+        QTimer::singleShot(0, this, &QWidget::hide);
+        trayIcon_->showMessage(QStringLiteral("FocusFlow 仍在运行"),
+                               QStringLiteral("计时和提醒将继续工作。"),
+                               QSystemTrayIcon::Information,
+                               3000);
+    }
 }

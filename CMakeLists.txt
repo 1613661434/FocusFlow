@@ -14,6 +14,7 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS
     Sql
     Multimedia
     Charts
+    Test
 )
 
 qt_standard_project_setup()
@@ -25,12 +26,25 @@ qt_add_executable(FocusFlow WIN32
     src/data/DatabaseManager.cpp
     src/data/DatabaseManager.h
     src/models/Task.h
+    src/models/TimerSettings.h
+    src/repositories/FocusRepository.cpp
+    src/repositories/FocusRepository.h
+    src/repositories/SettingsRepository.cpp
+    src/repositories/SettingsRepository.h
     src/repositories/TaskRepository.cpp
     src/repositories/TaskRepository.h
+    src/services/FocusTimer.cpp
+    src/services/FocusTimer.h
+    src/services/NotificationSoundPlayer.cpp
+    src/services/NotificationSoundPlayer.h
     src/views/TaskDialog.cpp
     src/views/TaskDialog.h
     src/views/TaskPage.cpp
     src/views/TaskPage.h
+    src/views/FocusPage.cpp
+    src/views/FocusPage.h
+    src/views/SettingsPage.cpp
+    src/views/SettingsPage.h
 )
 
 target_include_directories(FocusFlow PRIVATE src)
@@ -50,3 +64,15 @@ include(GNUInstallDirs)
 install(TARGETS FocusFlow
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+include(CTest)
+if(BUILD_TESTING)
+    qt_add_executable(FocusTimerTests
+        tests/tst_FocusTimer.cpp
+        src/services/FocusTimer.cpp
+        src/services/FocusTimer.h
+    )
+    target_include_directories(FocusTimerTests PRIVATE src)
+    target_link_libraries(FocusTimerTests PRIVATE Qt6::Core Qt6::Test)
+    add_test(NAME FocusTimerTests COMMAND FocusTimerTests)
+endif()
