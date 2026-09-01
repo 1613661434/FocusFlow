@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.7 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.8 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -158,6 +158,8 @@ if(BUILD_TESTING)
         src/repositories/AnalyticsRepository.h
         src/repositories/FocusRepository.cpp
         src/repositories/FocusRepository.h
+        src/repositories/SettingsRepository.cpp
+        src/repositories/SettingsRepository.h
         src/repositories/TaskRepository.cpp
         src/repositories/TaskRepository.h
         src/services/PriorityService.cpp

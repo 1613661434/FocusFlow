@@ -32,6 +32,9 @@ TimerSettings SettingsRepository::loadTimerSettings() const
                                      QString::number(settings.maxSoundSeconds)).toInt();
     settings.soundRepeatCount = value(QStringLiteral("sound.repeat_count"),
                                       QString::number(settings.soundRepeatCount)).toInt();
+    settings.suppressCloseToTrayReminder = value(
+        QStringLiteral("window.suppress_close_to_tray_reminder"),
+        QStringLiteral("0")) == QStringLiteral("1");
     return settings;
 }
 
@@ -47,11 +50,16 @@ bool SettingsRepository::saveTimerSettings(const TimerSettings &settings,
         {QStringLiteral("timer.auto_start_break"), settings.autoStartBreak ? QStringLiteral("1") : QStringLiteral("0")},
         {QStringLiteral("timer.auto_start_focus"), settings.autoStartFocus ? QStringLiteral("1") : QStringLiteral("0")},
         {QStringLiteral("sound.enabled"), settings.soundEnabled ? QStringLiteral("1") : QStringLiteral("0")},
-        {QStringLiteral("sound.focus_path"), settings.focusSoundPath},
-        {QStringLiteral("sound.break_path"), settings.breakSoundPath},
+        {QStringLiteral("sound.focus_path"),
+         settings.focusSoundPath.isNull() ? QStringLiteral("") : settings.focusSoundPath},
+        {QStringLiteral("sound.break_path"),
+         settings.breakSoundPath.isNull() ? QStringLiteral("") : settings.breakSoundPath},
         {QStringLiteral("sound.volume_percent"), QString::number(settings.volumePercent)},
         {QStringLiteral("sound.max_seconds"), QString::number(settings.maxSoundSeconds)},
         {QStringLiteral("sound.repeat_count"), QString::number(settings.soundRepeatCount)},
+        {QStringLiteral("window.suppress_close_to_tray_reminder"),
+         settings.suppressCloseToTrayReminder ? QStringLiteral("1")
+                                                : QStringLiteral("0")},
     };
 
     auto database = DatabaseManager::instance().database();
