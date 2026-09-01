@@ -3,14 +3,16 @@
 
 #include <QApplication>
 #include <QCoreApplication>
+#include <QIcon>
 #include <QMessageBox>
 
 int main(int argc, char *argv[])
 {
     QApplication application(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("FocusFlow"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.0"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.1"));
     QCoreApplication::setOrganizationName(QStringLiteral("FocusFlow"));
+    application.setWindowIcon(QIcon(QStringLiteral(":/icons/focusflow.svg")));
 
     auto &databaseManager = DatabaseManager::instance();
     if (!databaseManager.initialize()) {

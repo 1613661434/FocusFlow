@@ -70,9 +70,21 @@ void MainWindow::buildInterface()
     sidebarLayout->setContentsMargins(18, 24, 18, 24);
     sidebarLayout->setSpacing(20);
 
-    auto *brand = new QLabel(QStringLiteral("FocusFlow"), sidebar);
+    auto *brandRow = new QWidget(sidebar);
+    brandRow->setObjectName(QStringLiteral("brandRow"));
+    auto *brandLayout = new QHBoxLayout(brandRow);
+    brandLayout->setContentsMargins(8, 0, 8, 10);
+    brandLayout->setSpacing(10);
+    auto *brandIcon = new QLabel(brandRow);
+    brandIcon->setObjectName(QStringLiteral("brandIcon"));
+    brandIcon->setPixmap(qApp->windowIcon().pixmap(32, 32));
+    brandIcon->setFixedSize(32, 32);
+    auto *brand = new QLabel(QStringLiteral("FocusFlow"), brandRow);
     brand->setObjectName(QStringLiteral("brand"));
-    sidebarLayout->addWidget(brand);
+    brandLayout->addWidget(brandIcon);
+    brandLayout->addWidget(brand);
+    brandLayout->addStretch();
+    sidebarLayout->addWidget(brandRow);
 
     navigation_ = new QListWidget(sidebar);
     navigation_->setObjectName(QStringLiteral("navigation"));
@@ -81,7 +93,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.0"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.1"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -167,20 +179,30 @@ void MainWindow::showPage(int index)
 void MainWindow::applyTheme()
 {
     setStyleSheet(QStringLiteral(R"(
-        QMainWindow, QWidget {
+        QMainWindow {
             background: #f5f7fb;
+        }
+        QWidget {
             color: #182230;
             font-family: "Microsoft YaHei UI";
             font-size: 14px;
         }
+        QLabel {
+            background: transparent;
+        }
         QFrame#sidebar {
             background: #172033;
         }
+        QWidget#brandRow {
+            background: transparent;
+        }
         QLabel#brand {
             color: #ffffff;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
-            padding: 4px 8px 14px 8px;
+        }
+        QLabel#brandIcon {
+            background: transparent;
         }
         QListWidget#navigation {
             background: transparent;
@@ -225,6 +247,7 @@ void MainWindow::applyTheme()
         }
         QListWidget#recommendationList {
             background: transparent;
+            alternate-background-color: #f8faff;
             border: none;
             outline: none;
         }
@@ -255,7 +278,8 @@ void MainWindow::applyTheme()
             border-radius: 5px;
         }
         QLabel#mutedLabel {
-            color: #778196;
+            color: #667085;
+            background: transparent;
         }
         QLineEdit, QComboBox, QDateTimeEdit, QSpinBox, QTextEdit {
             background: #ffffff;
@@ -305,7 +329,7 @@ void MainWindow::applyTheme()
             font-weight: 600;
         }
         QFrame#sidebar QLabel#mutedLabel {
-            color: #71809b;
+            color: #aeb9cc;
             padding-left: 8px;
         }
     )"));
@@ -317,8 +341,10 @@ void MainWindow::setupTray()
         return;
     }
 
-    trayIcon_ = new QSystemTrayIcon(
-        style()->standardIcon(QStyle::SP_ComputerIcon), this);
+    const QIcon trayIcon = qApp->windowIcon().isNull()
+        ? style()->standardIcon(QStyle::SP_ComputerIcon)
+        : qApp->windowIcon();
+    trayIcon_ = new QSystemTrayIcon(trayIcon, this);
     trayIcon_->setToolTip(QStringLiteral("FocusFlow"));
 
     auto *menu = new QMenu(this);
