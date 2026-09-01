@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.4 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.5 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -145,4 +145,26 @@ if(BUILD_TESTING)
         Qt6::Test
     )
     add_test(NAME FocusAwareSpinBoxTests COMMAND FocusAwareSpinBoxTests)
+
+    qt_add_executable(DashboardPageTests
+        tests/tst_DashboardPage.cpp
+        src/views/DashboardPage.cpp
+        src/views/DashboardPage.h
+        src/data/DatabaseManager.cpp
+        src/data/DatabaseManager.h
+        src/repositories/AnalyticsRepository.cpp
+        src/repositories/AnalyticsRepository.h
+        src/repositories/TaskRepository.cpp
+        src/repositories/TaskRepository.h
+        src/services/PriorityService.cpp
+        src/services/PriorityService.h
+        src/models/Task.h
+    )
+    target_include_directories(DashboardPageTests PRIVATE src)
+    target_link_libraries(DashboardPageTests PRIVATE
+        Qt6::Widgets
+        Qt6::Sql
+        Qt6::Test
+    )
+    add_test(NAME DashboardPageTests COMMAND DashboardPageTests)
 endif()
