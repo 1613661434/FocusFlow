@@ -19,6 +19,7 @@ public:
 private:
     DatabaseManager() = default;
 
+    bool applyPendingRestore(const QString &applicationDataPath);
     bool createSchema();
     bool executeStatement(const QString &statement);
     bool seedDefaults();

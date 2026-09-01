@@ -1,6 +1,8 @@
 #include "views/SettingsPage.h"
 
+#include "data/DatabaseManager.h"
 #include "repositories/SettingsRepository.h"
+#include "services/DataManagementService.h"
 #include "services/NotificationSoundPlayer.h"
 
 #include <QCheckBox>
@@ -152,6 +154,48 @@ void SettingsPage::buildInterface()
     hint->setWordWrap(true);
     soundForm->addRow(QString(), hint);
 
+    auto *dataGroup = new QGroupBox(QStringLiteral("数据管理"), content);
+    auto *dataLayout = new QVBoxLayout(dataGroup);
+    dataLayout->setSpacing(12);
+
+    auto *dataPathTitle = new QLabel(QStringLiteral("本地数据库位置"), dataGroup);
+    auto *dataPath = new QLabel(DatabaseManager::instance().databasePath(), dataGroup);
+    dataPath->setObjectName(QStringLiteral("mutedLabel"));
+    dataPath->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    dataPath->setWordWrap(true);
+
+    auto *dataButtons = new QHBoxLayout;
+    dataButtons->setSpacing(8);
+    auto *backupButton = new QPushButton(QStringLiteral("备份数据库"), dataGroup);
+    auto *restoreButton = new QPushButton(QStringLiteral("从备份恢复"), dataGroup);
+    auto *exportTasksButton = new QPushButton(QStringLiteral("导出任务 CSV"), dataGroup);
+    auto *exportFocusButton = new QPushButton(QStringLiteral("导出专注记录 CSV"), dataGroup);
+    dataButtons->addWidget(backupButton);
+    dataButtons->addWidget(restoreButton);
+    dataButtons->addWidget(exportTasksButton);
+    dataButtons->addWidget(exportFocusButton);
+    dataButtons->addStretch();
+
+    auto *dataHint = new QLabel(
+        QStringLiteral("恢复操作会先自动备份当前数据，并在下次启动 FocusFlow 时生效。"),
+        dataGroup);
+    dataHint->setObjectName(QStringLiteral("mutedLabel"));
+    dataHint->setWordWrap(true);
+
+    dataLayout->addWidget(dataPathTitle);
+    dataLayout->addWidget(dataPath);
+    dataLayout->addLayout(dataButtons);
+    dataLayout->addWidget(dataHint);
+
+    connect(backupButton, &QPushButton::clicked,
+            this, &SettingsPage::backupDatabase);
+    connect(restoreButton, &QPushButton::clicked,
+            this, &SettingsPage::restoreDatabase);
+    connect(exportTasksButton, &QPushButton::clicked,
+            this, &SettingsPage::exportTasks);
+    connect(exportFocusButton, &QPushButton::clicked,
+            this, &SettingsPage::exportFocusSessions);
+
     auto *saveButton = new QPushButton(QStringLiteral("保存设置"), content);
     saveButton->setObjectName(QStringLiteral("primaryButton"));
     saveButton->setMinimumWidth(130);
@@ -159,6 +203,7 @@ void SettingsPage::buildInterface()
 
     root->addWidget(timerGroup);
     root->addWidget(soundGroup);
+    root->addWidget(dataGroup);
     root->addWidget(saveButton, 0, Qt::AlignRight);
     root->addStretch();
     scrollArea->setWidget(content);
@@ -233,6 +278,129 @@ void SettingsPage::previewFocusSound()
 void SettingsPage::previewBreakSound()
 {
     previewSound(breakSoundPath_->text());
+}
+
+void SettingsPage::backupDatabase()
+{
+    const QString documents =
+        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    const QString defaultPath = QDir(documents).filePath(
+        QStringLiteral("FocusFlow-backup-%1.db")
+            .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"))));
+    const QString destination = QFileDialog::getSaveFileName(
+        this,
+        QStringLiteral("备份 FocusFlow 数据"),
+        defaultPath,
+        QStringLiteral("FocusFlow 数据库 (*.db)"));
+    if (destination.isEmpty()) {
+        return;
+    }
+
+    QString error;
+    if (!DataManagementService().backupDatabase(destination, &error)) {
+        QMessageBox::critical(this,
+                              QStringLiteral("备份失败"),
+                              QStringLiteral("无法创建备份：\n%1").arg(error));
+        return;
+    }
+    QMessageBox::information(this,
+                             QStringLiteral("备份完成"),
+                             QStringLiteral("数据已备份到：\n%1").arg(destination));
+}
+
+void SettingsPage::restoreDatabase()
+{
+    const QString source = QFileDialog::getOpenFileName(
+        this,
+        QStringLiteral("选择 FocusFlow 备份"),
+        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation),
+        QStringLiteral("FocusFlow 数据库 (*.db);;所有文件 (*.*)"));
+    if (source.isEmpty()) {
+        return;
+    }
+
+    const auto choice = QMessageBox::warning(
+        this,
+        QStringLiteral("确认恢复数据"),
+        QStringLiteral("下次启动时，当前任务、项目、设置和专注记录将被备份文件替换。"
+                       "\n\nFocusFlow 会先自动备份现有数据。是否继续？"),
+        QMessageBox::Yes | QMessageBox::Cancel,
+        QMessageBox::Cancel);
+    if (choice != QMessageBox::Yes) {
+        return;
+    }
+
+    QString recoveryPath;
+    QString error;
+    if (!DataManagementService().prepareRestore(source, &recoveryPath, &error)) {
+        QMessageBox::critical(this,
+                              QStringLiteral("无法恢复"),
+                              QStringLiteral("备份验证或准备失败：\n%1").arg(error));
+        return;
+    }
+    QMessageBox::information(
+        this,
+        QStringLiteral("恢复已准备"),
+        QStringLiteral("请退出并重新打开 FocusFlow，恢复的数据就会生效。"
+                       "\n\n当前数据的自动备份：\n%1")
+            .arg(recoveryPath));
+}
+
+void SettingsPage::exportTasks()
+{
+    const QString documents =
+        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    const QString defaultPath = QDir(documents).filePath(
+        QStringLiteral("FocusFlow-tasks-%1.csv")
+            .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd"))));
+    const QString destination = QFileDialog::getSaveFileName(
+        this,
+        QStringLiteral("导出任务"),
+        defaultPath,
+        QStringLiteral("CSV 表格 (*.csv)"));
+    if (destination.isEmpty()) {
+        return;
+    }
+
+    QString error;
+    if (!DataManagementService().exportTasksCsv(destination, &error)) {
+        QMessageBox::critical(this,
+                              QStringLiteral("导出失败"),
+                              QStringLiteral("无法导出任务：\n%1").arg(error));
+        return;
+    }
+    QMessageBox::information(this,
+                             QStringLiteral("导出完成"),
+                             QStringLiteral("任务已导出到：\n%1").arg(destination));
+}
+
+void SettingsPage::exportFocusSessions()
+{
+    const QString documents =
+        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    const QString defaultPath = QDir(documents).filePath(
+        QStringLiteral("FocusFlow-focus-sessions-%1.csv")
+            .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd"))));
+    const QString destination = QFileDialog::getSaveFileName(
+        this,
+        QStringLiteral("导出专注记录"),
+        defaultPath,
+        QStringLiteral("CSV 表格 (*.csv)"));
+    if (destination.isEmpty()) {
+        return;
+    }
+
+    QString error;
+    if (!DataManagementService().exportFocusSessionsCsv(destination, &error)) {
+        QMessageBox::critical(this,
+                              QStringLiteral("导出失败"),
+                              QStringLiteral("无法导出专注记录：\n%1").arg(error));
+        return;
+    }
+    QMessageBox::information(
+        this,
+        QStringLiteral("导出完成"),
+        QStringLiteral("专注记录已导出到：\n%1").arg(destination));
 }
 
 void SettingsPage::browseSound(QLineEdit *destination, const QString &prefix)

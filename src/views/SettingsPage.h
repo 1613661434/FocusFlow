@@ -27,6 +27,10 @@ private slots:
     void browseBreakSound();
     void previewFocusSound();
     void previewBreakSound();
+    void backupDatabase();
+    void restoreDatabase();
+    void exportTasks();
+    void exportFocusSessions();
 
 private:
     void buildInterface();

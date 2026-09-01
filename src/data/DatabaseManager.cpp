@@ -1,6 +1,8 @@
 #include "data/DatabaseManager.h"
 
 #include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QStandardPaths>
@@ -28,6 +30,10 @@ bool DatabaseManager::initialize()
     }
 
     databasePath_ = directory.filePath(QStringLiteral("focusflow.db"));
+    if (!applyPendingRestore(applicationData)) {
+        return false;
+    }
+
     auto db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName_);
     db.setDatabaseName(databasePath_);
     if (!db.open()) {
@@ -41,6 +47,40 @@ bool DatabaseManager::initialize()
     pragma.exec(QStringLiteral("PRAGMA busy_timeout = 5000"));
 
     return createSchema() && seedDefaults();
+}
+
+bool DatabaseManager::applyPendingRestore(const QString &applicationDataPath)
+{
+    QDir directory(applicationDataPath);
+    const QString pendingPath =
+        directory.filePath(QStringLiteral("focusflow.restore-pending.db"));
+    if (!QFileInfo::exists(pendingPath)) {
+        return true;
+    }
+
+    const QString previousPath =
+        directory.filePath(QStringLiteral("focusflow.before-restore.db"));
+    QFile::remove(previousPath);
+
+    const bool hadCurrentDatabase = QFileInfo::exists(databasePath_);
+    if (hadCurrentDatabase && !QFile::rename(databasePath_, previousPath)) {
+        lastError_ = QStringLiteral("无法暂存当前数据库，恢复操作已取消。");
+        return false;
+    }
+
+    if (!QFile::rename(pendingPath, databasePath_)) {
+        if (hadCurrentDatabase) {
+            QFile::rename(previousPath, databasePath_);
+        }
+        lastError_ = QStringLiteral("无法应用待恢复的数据库，原数据未被替换。");
+        return false;
+    }
+
+    // WAL/SHM 文件属于被替换的旧数据库，不能让它们作用于恢复后的文件。
+    QFile::remove(databasePath_ + QStringLiteral("-wal"));
+    QFile::remove(databasePath_ + QStringLiteral("-shm"));
+    QFile::remove(previousPath);
+    return true;
 }
 
 QSqlDatabase DatabaseManager::database() const
