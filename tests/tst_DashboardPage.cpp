@@ -1,5 +1,6 @@
 #include "data/DatabaseManager.h"
 #include "repositories/AnalyticsRepository.h"
+#include "repositories/FocusRepository.h"
 #include "repositories/TaskRepository.h"
 #include "views/DashboardPage.h"
 
@@ -39,6 +40,7 @@ private slots:
     void interruptedFocusIsIncludedInStatistics();
     void recommendationSupportsFocusShortcutAndBlankDeselection();
     void taskDeletionIsPermanentAndPreservesFocusHistory();
+    void completedFocusAllowsEmptyInterruptionReason();
     void cleanupTestCase();
 
 private:
@@ -250,6 +252,36 @@ void DashboardPageTests::taskDeletionIsPermanentAndPreservesFocusHistory()
     QVERIFY(preservedSession.exec());
     QVERIFY(preservedSession.next());
     QVERIFY(preservedSession.value(0).isNull());
+}
+
+void DashboardPageTests::completedFocusAllowsEmptyInterruptionReason()
+{
+    const QDateTime endedAt = QDateTime::currentDateTime();
+    const QDateTime startedAt = endedAt.addSecs(-60);
+    QString error;
+    QVERIFY2(FocusRepository().recordSession(
+                 -1,
+                 FocusTimer::Phase::Focus,
+                 true,
+                 startedAt,
+                 endedAt,
+                 60,
+                 60,
+                 QString(),
+                 &error),
+             qPrintable(error));
+
+    QSqlQuery session(DatabaseManager::instance().database());
+    QVERIFY(session.exec(QStringLiteral(R"(
+        SELECT status, interruption_reason
+        FROM focus_sessions
+        ORDER BY id DESC
+        LIMIT 1
+    )")));
+    QVERIFY(session.next());
+    QCOMPARE(session.value(0).toString(), QStringLiteral("completed"));
+    QVERIFY(!session.value(1).isNull());
+    QCOMPARE(session.value(1).toString(), QStringLiteral(""));
 }
 
 void DashboardPageTests::cleanupTestCase()
