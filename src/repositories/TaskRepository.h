@@ -10,6 +10,7 @@ class TaskRepository final
 public:
     enum class Filter {
         All,
+        Recommended,
         Today,
         ThisWeek,
         Overdue,
