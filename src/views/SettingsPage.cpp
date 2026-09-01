@@ -159,7 +159,7 @@ void SettingsPage::buildInterface()
     auto *windowLayout = new QVBoxLayout(windowGroup);
     windowLayout->setSpacing(8);
     suppressCloseToTrayReminder_ = new QCheckBox(
-        QStringLiteral("关闭窗口时不再提醒（直接隐藏到系统托盘）"),
+        QStringLiteral("关闭窗口隐藏到托盘时不显示提醒"),
         windowGroup);
     auto *windowHint = new QLabel(
         QStringLiteral("最小化仍保留在任务栏；关闭窗口不会退出程序，"
