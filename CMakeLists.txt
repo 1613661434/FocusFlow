@@ -40,6 +40,8 @@ qt_add_executable(FocusFlow WIN32
     src/repositories/TaskRepository.h
     src/services/FocusTimer.cpp
     src/services/FocusTimer.h
+    src/services/DataManagementService.cpp
+    src/services/DataManagementService.h
     src/services/NotificationSoundPlayer.cpp
     src/services/NotificationSoundPlayer.h
     src/services/PriorityService.cpp
@@ -98,4 +100,19 @@ if(BUILD_TESTING)
     target_include_directories(PriorityServiceTests PRIVATE src)
     target_link_libraries(PriorityServiceTests PRIVATE Qt6::Core Qt6::Test)
     add_test(NAME PriorityServiceTests COMMAND PriorityServiceTests)
+
+    qt_add_executable(DataManagementServiceTests
+        tests/tst_DataManagementService.cpp
+        src/data/DatabaseManager.cpp
+        src/data/DatabaseManager.h
+        src/services/DataManagementService.cpp
+        src/services/DataManagementService.h
+    )
+    target_include_directories(DataManagementServiceTests PRIVATE src)
+    target_link_libraries(DataManagementServiceTests PRIVATE
+        Qt6::Core
+        Qt6::Sql
+        Qt6::Test
+    )
+    add_test(NAME DataManagementServiceTests COMMAND DataManagementServiceTests)
 endif()
