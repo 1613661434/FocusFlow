@@ -9,6 +9,7 @@
 #include <QGridLayout>
 #include <QLabel>
 #include <QListWidget>
+#include <QStackedWidget>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -44,20 +45,33 @@ void DashboardPage::buildInterface()
         QStringLiteral("综合重要程度、截止时间、逾期情况和预计耗时排序。"),
         recommendationCard);
     description->setObjectName(QStringLiteral("mutedLabel"));
-    emptyStateLabel_ = new QLabel(
-        QStringLiteral("暂无待办任务，可以好好休息一下。"),
-        recommendationCard);
-    emptyStateLabel_->setObjectName(QStringLiteral("emptyStateLabel"));
-    emptyStateLabel_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-    recommendations_ = new QListWidget(recommendationCard);
+    recommendationContent_ = new QStackedWidget(recommendationCard);
+    recommendationContent_->setObjectName(QStringLiteral("recommendationContent"));
+
+    recommendations_ = new QListWidget(recommendationContent_);
     recommendations_->setObjectName(QStringLiteral("recommendationList"));
     recommendations_->setAlternatingRowColors(true);
     recommendations_->setFocusPolicy(Qt::StrongFocus);
     recommendations_->setSelectionMode(QAbstractItemView::SingleSelection);
+
+    auto *emptyStatePage = new QWidget(recommendationContent_);
+    auto *emptyStateLayout = new QVBoxLayout(emptyStatePage);
+    emptyStateLayout->setContentsMargins(0, 0, 0, 0);
+    emptyStateLayout->setSpacing(0);
+    emptyStateLabel_ = new QLabel(
+        QStringLiteral("暂无待办任务，可以好好休息一下。"),
+        emptyStatePage);
+    emptyStateLabel_->setObjectName(QStringLiteral("emptyStateLabel"));
+    emptyStateLabel_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    emptyStateLabel_->setAttribute(Qt::WA_TransparentForMouseEvents);
+    emptyStateLayout->addWidget(emptyStateLabel_);
+    emptyStateLayout->addStretch(1);
+
+    recommendationContent_->addWidget(recommendations_);
+    recommendationContent_->addWidget(emptyStatePage);
     recommendationLayout->addWidget(title);
     recommendationLayout->addWidget(description);
-    recommendationLayout->addWidget(emptyStateLabel_);
-    recommendationLayout->addWidget(recommendations_, 1);
+    recommendationLayout->addWidget(recommendationContent_, 1);
 
     root->addLayout(metrics);
     root->addWidget(recommendationCard, 1);
@@ -94,8 +108,7 @@ void DashboardPage::refresh()
     recommendations_->clear();
     const int count = qMin(6, tasks.size());
     const bool isEmpty = count == 0;
-    emptyStateLabel_->setVisible(isEmpty);
-    recommendations_->setVisible(!isEmpty);
+    recommendationContent_->setCurrentIndex(isEmpty ? 1 : 0);
     for (int index = 0; index < count; ++index) {
         const Task &task = tasks.at(index);
         QString detail = QStringLiteral("推荐分 %1").arg(PriorityService::score(task));

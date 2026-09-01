@@ -4,6 +4,7 @@
 
 class QLabel;
 class QListWidget;
+class QStackedWidget;
 
 class DashboardPage final : public QWidget
 {
@@ -27,4 +28,5 @@ private:
     QLabel *focusValue_ = nullptr;
     QLabel *emptyStateLabel_ = nullptr;
     QListWidget *recommendations_ = nullptr;
+    QStackedWidget *recommendationContent_ = nullptr;
 };
