@@ -1,7 +1,9 @@
 #include "app/MainWindow.h"
+#include "data/DatabaseManager.h"
 
 #include <QApplication>
 #include <QCoreApplication>
+#include <QMessageBox>
 
 int main(int argc, char *argv[])
 {
@@ -9,6 +11,15 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationName(QStringLiteral("FocusFlow"));
     QCoreApplication::setApplicationVersion(QStringLiteral("0.1.0"));
     QCoreApplication::setOrganizationName(QStringLiteral("FocusFlow"));
+
+    auto &databaseManager = DatabaseManager::instance();
+    if (!databaseManager.initialize()) {
+        QMessageBox::critical(nullptr,
+                              QStringLiteral("无法启动 FocusFlow"),
+                              QStringLiteral("数据库初始化失败：\n%1")
+                                  .arg(databaseManager.lastError()));
+        return 1;
+    }
 
     MainWindow window;
     window.show();

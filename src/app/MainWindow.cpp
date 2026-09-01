@@ -1,5 +1,7 @@
 #include "app/MainWindow.h"
 
+#include "views/TaskPage.h"
+
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -80,7 +82,9 @@ void MainWindow::buildInterface()
     contentLayout->addWidget(pageTitle_);
 
     pages_ = new QStackedWidget(content);
-    for (qsizetype index = 0; index < kPageNames.size(); ++index) {
+    pages_->addWidget(createPlaceholderPage(kPageNames.at(0), kPageDescriptions.at(0)));
+    pages_->addWidget(new TaskPage(pages_));
+    for (qsizetype index = 2; index < kPageNames.size(); ++index) {
         pages_->addWidget(createPlaceholderPage(kPageNames.at(index),
                                                 kPageDescriptions.at(index)));
     }
@@ -176,6 +180,53 @@ void MainWindow::applyTheme()
         }
         QLabel#mutedLabel {
             color: #778196;
+        }
+        QLineEdit, QComboBox, QDateTimeEdit, QSpinBox, QTextEdit {
+            background: #ffffff;
+            border: 1px solid #dce2ec;
+            border-radius: 7px;
+            padding: 7px 9px;
+            selection-background-color: #4f6ef7;
+        }
+        QLineEdit:focus, QComboBox:focus, QDateTimeEdit:focus,
+        QSpinBox:focus, QTextEdit:focus {
+            border-color: #4f6ef7;
+        }
+        QPushButton {
+            background: #ffffff;
+            border: 1px solid #dce2ec;
+            border-radius: 7px;
+            padding: 8px 14px;
+        }
+        QPushButton:hover {
+            background: #f0f3f9;
+        }
+        QPushButton#primaryButton {
+            background: #4f6ef7;
+            border-color: #4f6ef7;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        QPushButton#primaryButton:hover {
+            background: #405dde;
+        }
+        QPushButton#dangerButton {
+            color: #d84a4a;
+        }
+        QTableWidget {
+            background: #ffffff;
+            alternate-background-color: #f8f9fc;
+            border: 1px solid #e5e9f1;
+            border-radius: 10px;
+            selection-background-color: #e9edff;
+            selection-color: #182230;
+        }
+        QHeaderView::section {
+            background: #f6f8fc;
+            border: none;
+            border-bottom: 1px solid #e5e9f1;
+            padding: 10px;
+            font-weight: 600;
         }
         QFrame#sidebar QLabel#mutedLabel {
             color: #71809b;

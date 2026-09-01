@@ -22,6 +22,15 @@ qt_add_executable(FocusFlow WIN32
     src/main.cpp
     src/app/MainWindow.cpp
     src/app/MainWindow.h
+    src/data/DatabaseManager.cpp
+    src/data/DatabaseManager.h
+    src/models/Task.h
+    src/repositories/TaskRepository.cpp
+    src/repositories/TaskRepository.h
+    src/views/TaskDialog.cpp
+    src/views/TaskDialog.h
+    src/views/TaskPage.cpp
+    src/views/TaskPage.h
 )
 
 target_include_directories(FocusFlow PRIVATE src)
