@@ -6,6 +6,7 @@
 #include "repositories/TaskRepository.h"
 #include "views/DashboardPage.h"
 #include "views/ProjectPage.h"
+#include "views/StatisticsPage.h"
 #include "views/TaskPage.h"
 
 #include <QCoreApplication>
@@ -46,6 +47,7 @@ private slots:
     void emptyStateKeepsContentTopAligned();
     void interruptedFocusIsIncludedInStatistics();
     void todayFocusMetricShowsSeconds();
+    void recentFocusTableShowsTenRowsWithoutNestedScrolling();
     void recommendationSupportsFocusShortcutAndBlankDeselection();
     void recommendationFiltersByProjectAndCategory();
     void taskDeletionIsPermanentAndPreservesFocusHistory();
@@ -233,6 +235,46 @@ void DashboardPageTests::todayFocusMetricShowsSeconds()
     }
     QVERIFY(focusValue != nullptr);
     QCOMPARE(focusValue->text(), QStringLiteral("59秒"));
+}
+
+void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
+{
+    QSqlQuery insert(DatabaseManager::instance().database());
+    insert.prepare(QStringLiteral(R"(
+        INSERT INTO focus_sessions(
+            session_type, status, start_time, end_time,
+            planned_seconds, actual_seconds, interruption_reason
+        ) VALUES('focus', 'completed', :started_at, :started_at, 1, 1, '')
+    )"));
+    for (int index = 0; index < 12; ++index) {
+        insert.bindValue(
+            QStringLiteral(":started_at"),
+            QDateTime::currentDateTime().addSecs(-100 - index).toString(Qt::ISODate));
+        QVERIFY(insert.exec());
+    }
+
+    StatisticsPage page;
+    page.resize(1200, 800);
+    page.show();
+    QCoreApplication::processEvents();
+
+    auto *table = page.findChild<QTableWidget *>(
+        QStringLiteral("recentFocusSessions"));
+    auto *hint = page.findChild<QLabel *>(QStringLiteral("recentFocusHint"));
+    QVERIFY(table != nullptr);
+    QVERIFY(hint != nullptr);
+    QCOMPARE(table->columnCount(), 7);
+    QCOMPARE(table->rowCount(), 10);
+    QCOMPARE(table->horizontalHeaderItem(0)->text(), QStringLiteral("编号"));
+    QCOMPARE(table->item(0, 0)->text(), QStringLiteral("1"));
+    QCOMPARE(table->item(9, 0)->text(), QStringLiteral("10"));
+    QCOMPARE(table->verticalScrollBarPolicy(), Qt::ScrollBarAlwaysOff);
+    QCOMPARE(table->horizontalScrollBarPolicy(), Qt::ScrollBarAlwaysOff);
+    QVERIFY(hint->text().contains(QStringLiteral("最近 10 条")));
+
+    const QRect lastRow = table->visualItemRect(table->item(9, 0));
+    QVERIFY(lastRow.isValid());
+    QVERIFY(table->viewport()->rect().contains(lastRow.bottomLeft()));
 }
 
 void DashboardPageTests::recommendationSupportsFocusShortcutAndBlankDeselection()

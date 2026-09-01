@@ -82,20 +82,34 @@ void StatisticsPage::buildInterface()
     recentLayout->setSpacing(12);
     auto *recentTitle = new QLabel(QStringLiteral("最近专注记录"), recentCard);
     recentTitle->setObjectName(QStringLiteral("cardTitle"));
-    recentSessions_ = new QTableWidget(0, 6, recentCard);
+    auto *recentHint = new QLabel(
+        QStringLiteral("仅显示最近 10 条专注记录，编号 1 表示最新记录。"),
+        recentCard);
+    recentHint->setObjectName(QStringLiteral("recentFocusHint"));
+    recentHint->setProperty("muted", true);
+    recentHint->setStyleSheet(QStringLiteral("color: #667085;"));
+    recentSessions_ = new QTableWidget(0, 7, recentCard);
     recentSessions_->setObjectName(QStringLiteral("recentFocusSessions"));
     recentSessions_->setHorizontalHeaderLabels(
-        {QStringLiteral("开始时间"), QStringLiteral("任务"),
+        {QStringLiteral("编号"), QStringLiteral("开始时间"), QStringLiteral("任务"),
          QStringLiteral("项目"), QStringLiteral("分类"),
          QStringLiteral("时长"), QStringLiteral("结果")});
     recentSessions_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     recentSessions_->setSelectionBehavior(QAbstractItemView::SelectRows);
     recentSessions_->setAlternatingRowColors(true);
     recentSessions_->verticalHeader()->setVisible(false);
+    recentSessions_->verticalHeader()->setMinimumSectionSize(40);
+    recentSessions_->verticalHeader()->setDefaultSectionSize(40);
+    recentSessions_->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+    recentSessions_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    recentSessions_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     recentSessions_->horizontalHeader()->setSectionResizeMode(
         QHeaderView::Stretch);
-    recentSessions_->setMinimumHeight(280);
+    recentSessions_->horizontalHeader()->setSectionResizeMode(
+        0, QHeaderView::ResizeToContents);
+    recentSessions_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     recentLayout->addWidget(recentTitle);
+    recentLayout->addWidget(recentHint);
     recentLayout->addWidget(recentSessions_);
 
     root->addLayout(summary);
@@ -220,6 +234,7 @@ void StatisticsPage::updateRecentSessions()
     for (qsizetype row = 0; row < sessions.size(); ++row) {
         const auto &session = sessions.at(row);
         const QStringList values{
+            QString::number(row + 1),
             session.startedAt,
             session.taskName,
             session.projectName,
@@ -234,6 +249,14 @@ void StatisticsPage::updateRecentSessions()
             recentSessions_->setItem(row, column, item);
         }
     }
+
+    const int visibleRows = qMax(1, recentSessions_->rowCount());
+    const int tableHeight = recentSessions_->horizontalHeader()->sizeHint().height()
+                            + visibleRows
+                                  * recentSessions_->verticalHeader()
+                                        ->defaultSectionSize()
+                            + recentSessions_->frameWidth() * 2 + 2;
+    recentSessions_->setFixedHeight(tableHeight);
 }
 
 QString StatisticsPage::formatDuration(int seconds)

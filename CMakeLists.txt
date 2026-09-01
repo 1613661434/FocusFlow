@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.14 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.15 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -217,6 +217,8 @@ if(BUILD_TESTING)
         src/views/TaskDialog.h
         src/views/ProjectPage.cpp
         src/views/ProjectPage.h
+        src/views/StatisticsPage.cpp
+        src/views/StatisticsPage.h
         src/data/DatabaseManager.cpp
         src/data/DatabaseManager.h
         src/repositories/AnalyticsRepository.cpp
@@ -244,6 +246,7 @@ if(BUILD_TESTING)
     target_link_libraries(DashboardPageTests PRIVATE
         Qt6::Widgets
         Qt6::Sql
+        Qt6::Charts
         Qt6::Test
     )
     add_test(NAME DashboardPageTests COMMAND DashboardPageTests)
