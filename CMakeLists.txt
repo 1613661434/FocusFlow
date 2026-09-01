@@ -26,11 +26,14 @@ qt_add_executable(FocusFlow WIN32
     src/data/DatabaseManager.cpp
     src/data/DatabaseManager.h
     src/models/Task.h
+    src/models/Project.h
     src/models/TimerSettings.h
     src/repositories/FocusRepository.cpp
     src/repositories/FocusRepository.h
     src/repositories/SettingsRepository.cpp
     src/repositories/SettingsRepository.h
+    src/repositories/ProjectRepository.cpp
+    src/repositories/ProjectRepository.h
     src/repositories/TaskRepository.cpp
     src/repositories/TaskRepository.h
     src/services/FocusTimer.cpp
@@ -45,6 +48,8 @@ qt_add_executable(FocusFlow WIN32
     src/views/FocusPage.h
     src/views/SettingsPage.cpp
     src/views/SettingsPage.h
+    src/views/ProjectPage.cpp
+    src/views/ProjectPage.h
 )
 
 target_include_directories(FocusFlow PRIVATE src)

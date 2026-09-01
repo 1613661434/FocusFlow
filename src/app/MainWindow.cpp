@@ -2,6 +2,7 @@
 
 #include "views/TaskPage.h"
 #include "views/FocusPage.h"
+#include "views/ProjectPage.h"
 #include "views/SettingsPage.h"
 
 #include <QAction>
@@ -95,7 +96,8 @@ void MainWindow::buildInterface()
     pages_->addWidget(createPlaceholderPage(kPageNames.at(0), kPageDescriptions.at(0)));
     auto *taskPage = new TaskPage(pages_);
     pages_->addWidget(taskPage);
-    pages_->addWidget(createPlaceholderPage(kPageNames.at(2), kPageDescriptions.at(2)));
+    auto *projectPage = new ProjectPage(pages_);
+    pages_->addWidget(projectPage);
     auto *focusPage = new FocusPage(pages_);
     pages_->addWidget(focusPage);
     pages_->addWidget(createPlaceholderPage(kPageNames.at(4), kPageDescriptions.at(4)));
@@ -111,6 +113,8 @@ void MainWindow::buildInterface()
             this, &MainWindow::showPage);
     connect(taskPage, &TaskPage::tasksChanged,
             focusPage, &FocusPage::refreshTasks);
+    connect(projectPage, &ProjectPage::lookupsChanged,
+            taskPage, &TaskPage::refresh);
     connect(settingsPage, &SettingsPage::settingsSaved,
             focusPage, &FocusPage::reloadSettings);
     connect(focusPage, &FocusPage::notificationRequested,
