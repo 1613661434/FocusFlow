@@ -29,6 +29,7 @@ private:
     void buildInterface();
     void applyTheme();
     void setupTray();
+    void restoreNavigationSelection(int index);
 
     QListWidget *navigation_ = nullptr;
     QStackedWidget *pages_ = nullptr;

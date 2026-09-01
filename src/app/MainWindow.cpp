@@ -22,6 +22,7 @@
 #include <QStackedWidget>
 #include <QStyle>
 #include <QSystemTrayIcon>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -96,7 +97,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.10"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.11"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -198,20 +199,18 @@ void MainWindow::showPage(int index)
         auto *cancelButton = prompt.addButton(
             QStringLiteral("取消切换"), QMessageBox::RejectRole);
         prompt.setDefaultButton(saveButton);
+        prompt.setEscapeButton(cancelButton);
         prompt.exec();
 
         if (prompt.clickedButton() == saveButton) {
             if (!settingsPage_->saveSettings(false)) {
-                const QSignalBlocker blocker(navigation_);
-                navigation_->setCurrentRow(previousIndex);
+                restoreNavigationSelection(previousIndex);
                 return;
             }
         } else if (prompt.clickedButton() == discardButton) {
             settingsPage_->reloadSettings();
         } else {
-            Q_UNUSED(cancelButton);
-            const QSignalBlocker blocker(navigation_);
-            navigation_->setCurrentRow(previousIndex);
+            restoreNavigationSelection(previousIndex);
             return;
         }
     }
@@ -221,6 +220,22 @@ void MainWindow::showPage(int index)
     if (index == 5 && settingsPage_ != nullptr) {
         settingsPage_->reloadSettings();
     }
+}
+
+void MainWindow::restoreNavigationSelection(int index)
+{
+    const auto restore = [this, index] {
+        if (navigation_ == nullptr || index < 0
+            || index >= navigation_->count()) {
+            return;
+        }
+        const QSignalBlocker blocker(navigation_);
+        navigation_->setCurrentRow(index);
+        navigation_->scrollToItem(navigation_->item(index));
+    };
+
+    restore();
+    QTimer::singleShot(0, this, restore);
 }
 
 void MainWindow::applyTheme()

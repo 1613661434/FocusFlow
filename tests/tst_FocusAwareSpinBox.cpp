@@ -13,6 +13,7 @@ class FocusAwareSpinBoxTests final : public QObject
 
 private slots:
     void ignoresWheelUntilFocused();
+    void keepsCursorOutOfSuffix();
 };
 
 namespace {
@@ -55,6 +56,34 @@ void FocusAwareSpinBoxTests::ignoresWheelUntilFocused()
     QApplication::sendEvent(spinBox, &acceptedWheel);
     QCOMPARE(spinBox->value(), 11);
     QVERIFY(acceptedWheel.isAccepted());
+}
+
+void FocusAwareSpinBoxTests::keepsCursorOutOfSuffix()
+{
+    FocusAwareSpinBox spinBox;
+    spinBox.setRange(0, 100);
+    spinBox.setValue(25);
+    spinBox.setSuffix(QStringLiteral(" 分钟"));
+    spinBox.resize(180, 40);
+    spinBox.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&spinBox));
+
+    auto *editor = spinBox.findChild<QLineEdit *>();
+    QVERIFY(editor != nullptr);
+    editor->setFocus();
+    QTest::mouseClick(editor,
+                      Qt::LeftButton,
+                      Qt::NoModifier,
+                      QPoint(editor->width() - 2, editor->height() / 2));
+    QCoreApplication::processEvents();
+
+    const int numericEnd = editor->text().size() - spinBox.suffix().size();
+    QVERIFY(editor->cursorPosition() <= numericEnd);
+
+    editor->selectAll();
+    QTest::keyClick(editor, Qt::Key_End);
+    QCoreApplication::processEvents();
+    QCOMPARE(editor->cursorPosition(), numericEnd);
 }
 
 QTEST_MAIN(FocusAwareSpinBoxTests)
