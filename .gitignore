@@ -1,6 +1,7 @@
 # CMake and Qt build output
 /build*/
 /out/
+/dist/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
