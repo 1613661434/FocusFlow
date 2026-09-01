@@ -13,6 +13,9 @@ class DashboardPage final : public QWidget
 public:
     explicit DashboardPage(QWidget *parent = nullptr);
 
+signals:
+    void focusTaskRequested(int taskId);
+
 public slots:
     void refresh();
 

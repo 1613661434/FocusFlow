@@ -2,6 +2,7 @@
 
 #include "views/TaskDialog.h"
 #include "services/PriorityService.h"
+#include "widgets/ClearSelectionOnBlankClick.h"
 
 #include <QAbstractItemView>
 #include <QComboBox>
@@ -110,6 +111,7 @@ void TaskPage::buildInterface()
     table_->horizontalHeader()->setSectionResizeMode(EstimateColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(ScoreColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(StatusColumn, QHeaderView::ResizeToContents);
+    enableClearSelectionOnBlankClick(table_);
 
     summaryLabel_ = new QLabel(this);
     summaryLabel_->setObjectName(QStringLiteral("mutedLabel"));
@@ -283,8 +285,10 @@ void TaskPage::deleteSelectedTask()
     const auto &task = tasks_.at(index);
     const auto choice = QMessageBox::question(
         this,
-        QStringLiteral("删除任务"),
-        QStringLiteral("确定将“%1”移入回收站吗？").arg(task.title),
+        QStringLiteral("永久删除任务"),
+        QStringLiteral("确定永久删除“%1”吗？\n"
+                       "此操作无法撤销；已有专注记录会保留，但将解除任务关联。")
+            .arg(task.title),
         QMessageBox::Yes | QMessageBox::No,
         QMessageBox::No);
     if (choice != QMessageBox::Yes) {
@@ -292,7 +296,7 @@ void TaskPage::deleteSelectedTask()
     }
 
     QString error;
-    if (!repository_.moveToTrash(task.id, &error)) {
+    if (!repository_.deleteTask(task.id, &error)) {
         showRepositoryError(QStringLiteral("删除任务"), error);
         return;
     }

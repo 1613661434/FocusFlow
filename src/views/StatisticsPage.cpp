@@ -134,6 +134,9 @@ void StatisticsPage::updateCategoryChart()
 QString StatisticsPage::formatDuration(int seconds)
 {
     const int minutes = qMax(0, seconds) / 60;
+    if (seconds > 0 && minutes == 0) {
+        return QStringLiteral("不足 1 分钟");
+    }
     return minutes < 60
         ? QStringLiteral("%1 分钟").arg(minutes)
         : QStringLiteral("%1 小时 %2 分钟").arg(minutes / 60).arg(minutes % 60);

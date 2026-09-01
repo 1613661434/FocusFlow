@@ -22,10 +22,12 @@ public:
 signals:
     void notificationRequested(const QString &title, const QString &message);
     void focusDataChanged();
+    void tasksChanged();
 
 public slots:
     void reloadSettings();
     void refreshTasks();
+    void selectTask(int taskId);
 
 private slots:
     void startCurrentPhase();
@@ -66,4 +68,5 @@ private:
     QPushButton *stopButton_ = nullptr;
     int completedFocusCycles_ = 0;
     int currentTaskId_ = -1;
+    bool completeTaskWhenSessionEnds_ = false;
 };

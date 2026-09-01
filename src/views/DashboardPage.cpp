@@ -3,6 +3,7 @@
 #include "repositories/AnalyticsRepository.h"
 #include "repositories/TaskRepository.h"
 #include "services/PriorityService.h"
+#include "widgets/ClearSelectionOnBlankClick.h"
 
 #include <QFrame>
 #include <QAbstractItemView>
@@ -53,6 +54,7 @@ void DashboardPage::buildInterface()
     recommendations_->setAlternatingRowColors(true);
     recommendations_->setFocusPolicy(Qt::StrongFocus);
     recommendations_->setSelectionMode(QAbstractItemView::SingleSelection);
+    enableClearSelectionOnBlankClick(recommendations_);
 
     auto *emptyStatePage = new QWidget(recommendationContent_);
     auto *emptyStateLayout = new QVBoxLayout(emptyStatePage);
@@ -72,6 +74,14 @@ void DashboardPage::buildInterface()
     recommendationLayout->addWidget(title);
     recommendationLayout->addWidget(description);
     recommendationLayout->addWidget(recommendationContent_, 1);
+
+    connect(recommendations_, &QListWidget::itemDoubleClicked,
+            this, [this](QListWidgetItem *item) {
+                const int taskId = item->data(Qt::UserRole).toInt();
+                if (taskId > 0) {
+                    emit focusTaskRequested(taskId);
+                }
+            });
 
     root->addLayout(metrics);
     root->addWidget(recommendationCard, 1);
@@ -118,6 +128,7 @@ void DashboardPage::refresh()
         }
         auto *item = new QListWidgetItem(
             QStringLiteral("%1\n%2").arg(task.title, detail), recommendations_);
+        item->setData(Qt::UserRole, task.id);
         item->setSizeHint(QSize(0, 54));
     }
 }
@@ -125,6 +136,9 @@ void DashboardPage::refresh()
 QString DashboardPage::formatDuration(int seconds)
 {
     const int minutes = qMax(0, seconds) / 60;
+    if (seconds > 0 && minutes == 0) {
+        return QStringLiteral("不足1分");
+    }
     if (minutes < 60) {
         return QStringLiteral("%1分").arg(minutes);
     }

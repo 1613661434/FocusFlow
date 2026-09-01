@@ -9,7 +9,7 @@
 
 #include <QAction>
 #include <QApplication>
-#include <QEvent>
+#include <QCloseEvent>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -18,7 +18,6 @@
 #include <QStackedWidget>
 #include <QStyle>
 #include <QSystemTrayIcon>
-#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -93,7 +92,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.5"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.6"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -143,6 +142,13 @@ void MainWindow::buildInterface()
             dashboardPage, &DashboardPage::refresh);
     connect(focusPage, &FocusPage::focusDataChanged,
             statisticsPage, &StatisticsPage::refresh);
+    connect(focusPage, &FocusPage::tasksChanged,
+            taskPage, &TaskPage::refresh);
+    connect(dashboardPage, &DashboardPage::focusTaskRequested,
+            this, [this, focusPage](int taskId) {
+                focusPage->selectTask(taskId);
+                navigation_->setCurrentRow(3);
+            });
 }
 
 QWidget *MainWindow::createPlaceholderPage(const QString &title,
@@ -391,7 +397,10 @@ void MainWindow::setupTray()
     auto *showAction = menu->addAction(QStringLiteral("显示 FocusFlow"));
     auto *quitAction = menu->addAction(QStringLiteral("退出"));
     connect(showAction, &QAction::triggered, this, &MainWindow::showFromTray);
-    connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
+    connect(quitAction, &QAction::triggered, this, [this] {
+        quitRequested_ = true;
+        qApp->quit();
+    });
     connect(trayIcon_, &QSystemTrayIcon::activated, this,
             [this](QSystemTrayIcon::ActivationReason reason) {
                 if (reason == QSystemTrayIcon::DoubleClick
@@ -420,16 +429,17 @@ void MainWindow::showNotification(const QString &title, const QString &message)
     }
 }
 
-void MainWindow::changeEvent(QEvent *event)
+void MainWindow::closeEvent(QCloseEvent *event)
 {
-    QMainWindow::changeEvent(event);
-    if (event->type() == QEvent::WindowStateChange
-        && isMinimized()
-        && trayIcon_ != nullptr) {
-        QTimer::singleShot(0, this, &QWidget::hide);
-        trayIcon_->showMessage(QStringLiteral("FocusFlow 仍在运行"),
-                               QStringLiteral("计时和提醒将继续工作。"),
-                               QSystemTrayIcon::Information,
-                               3000);
+    if (!quitRequested_ && trayIcon_ != nullptr && trayIcon_->isVisible()) {
+        hide();
+        event->ignore();
+        trayIcon_->showMessage(
+            QStringLiteral("FocusFlow 已隐藏到托盘"),
+            QStringLiteral("计时会继续运行；右键托盘图标可退出程序。"),
+            QSystemTrayIcon::Information,
+            3000);
+        return;
     }
+    QMainWindow::closeEvent(event);
 }
