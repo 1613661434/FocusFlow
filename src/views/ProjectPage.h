@@ -25,6 +25,7 @@ private slots:
     void addProject();
     void editProject();
     void toggleProjectArchive();
+    void deleteProject();
     void addCategory();
     void editCategory();
     void deleteCategory();

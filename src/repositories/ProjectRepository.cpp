@@ -89,6 +89,18 @@ bool ProjectRepository::setProjectArchived(int id,
     return true;
 }
 
+bool ProjectRepository::deleteProject(int id, QString *errorMessage) const
+{
+    QSqlQuery query(DatabaseManager::instance().database());
+    query.prepare(QStringLiteral("DELETE FROM projects WHERE id = :id"));
+    query.bindValue(QStringLiteral(":id"), id);
+    if (!query.exec()) {
+        assignError(query.lastError().text(), errorMessage);
+        return false;
+    }
+    return true;
+}
+
 bool ProjectRepository::saveCategory(LookupItem &category, QString *errorMessage) const
 {
     QSqlQuery query(DatabaseManager::instance().database());

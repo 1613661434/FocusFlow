@@ -25,6 +25,26 @@
 #include <QStandardPaths>
 #include <QVBoxLayout>
 
+namespace {
+bool sameSettings(const TimerSettings &left, const TimerSettings &right)
+{
+    return left.focusMinutes == right.focusMinutes
+           && left.shortBreakMinutes == right.shortBreakMinutes
+           && left.longBreakMinutes == right.longBreakMinutes
+           && left.cyclesBeforeLongBreak == right.cyclesBeforeLongBreak
+           && left.autoStartBreak == right.autoStartBreak
+           && left.autoStartFocus == right.autoStartFocus
+           && left.soundEnabled == right.soundEnabled
+           && left.focusSoundPath == right.focusSoundPath
+           && left.breakSoundPath == right.breakSoundPath
+           && left.volumePercent == right.volumePercent
+           && left.maxSoundSeconds == right.maxSoundSeconds
+           && left.soundRepeatCount == right.soundRepeatCount
+           && left.suppressCloseToTrayReminder
+                  == right.suppressCloseToTrayReminder;
+}
+}
+
 SettingsPage::SettingsPage(QWidget *parent)
     : QWidget(parent),
       soundPlayer_(new NotificationSoundPlayer(this))
@@ -47,6 +67,7 @@ void SettingsPage::buildInterface()
     root->setSpacing(18);
 
     auto *timerGroup = new QGroupBox(QStringLiteral("专注与休息"), content);
+    timerGroup->setObjectName(QStringLiteral("settingsSection"));
     auto *timerForm = new QFormLayout(timerGroup);
     timerForm->setHorizontalSpacing(20);
     timerForm->setVerticalSpacing(12);
@@ -74,6 +95,7 @@ void SettingsPage::buildInterface()
     timerForm->addRow(QString(), autoStartFocus_);
 
     auto *soundGroup = new QGroupBox(QStringLiteral("声音提醒"), content);
+    soundGroup->setObjectName(QStringLiteral("settingsSection"));
     auto *soundForm = new QFormLayout(soundGroup);
     soundForm->setHorizontalSpacing(20);
     soundForm->setVerticalSpacing(12);
@@ -156,6 +178,7 @@ void SettingsPage::buildInterface()
     soundForm->addRow(QString(), hint);
 
     auto *windowGroup = new QGroupBox(QStringLiteral("窗口行为"), content);
+    windowGroup->setObjectName(QStringLiteral("settingsSection"));
     auto *windowLayout = new QVBoxLayout(windowGroup);
     windowLayout->setSpacing(8);
     suppressCloseToTrayReminder_ = new QCheckBox(
@@ -171,6 +194,7 @@ void SettingsPage::buildInterface()
     windowLayout->addWidget(windowHint);
 
     auto *dataGroup = new QGroupBox(QStringLiteral("数据管理"), content);
+    dataGroup->setObjectName(QStringLiteral("settingsSection"));
     auto *dataLayout = new QVBoxLayout(dataGroup);
     dataLayout->setSpacing(12);
 
@@ -215,7 +239,9 @@ void SettingsPage::buildInterface()
     auto *saveButton = new QPushButton(QStringLiteral("保存设置"), content);
     saveButton->setObjectName(QStringLiteral("primaryButton"));
     saveButton->setMinimumWidth(130);
-    connect(saveButton, &QPushButton::clicked, this, &SettingsPage::saveSettings);
+    connect(saveButton, &QPushButton::clicked, this, [this] {
+        saveSettings(true);
+    });
 
     root->addWidget(timerGroup);
     root->addWidget(soundGroup);
@@ -244,6 +270,12 @@ void SettingsPage::reloadSettings()
     soundRepeatCount_->setValue(settings.soundRepeatCount);
     suppressCloseToTrayReminder_->setChecked(
         settings.suppressCloseToTrayReminder);
+    savedSettings_ = settings;
+}
+
+bool SettingsPage::hasUnsavedChanges() const
+{
+    return !sameSettings(settingsFromForm(), savedSettings_);
 }
 
 TimerSettings SettingsPage::settingsFromForm() const
@@ -266,19 +298,24 @@ TimerSettings SettingsPage::settingsFromForm() const
     return settings;
 }
 
-void SettingsPage::saveSettings()
+bool SettingsPage::saveSettings(bool showConfirmation)
 {
+    const TimerSettings settings = settingsFromForm();
     QString error;
-    if (!SettingsRepository().saveTimerSettings(settingsFromForm(), &error)) {
+    if (!SettingsRepository().saveTimerSettings(settings, &error)) {
         QMessageBox::critical(this,
                               QStringLiteral("保存失败"),
                               QStringLiteral("无法保存设置：\n%1").arg(error));
-        return;
+        return false;
     }
+    savedSettings_ = settings;
     emit settingsSaved();
-    QMessageBox::information(this,
-                             QStringLiteral("设置已保存"),
-                             QStringLiteral("专注、声音和窗口设置已立即生效。"));
+    if (showConfirmation) {
+        QMessageBox::information(this,
+                                 QStringLiteral("设置已保存"),
+                                 QStringLiteral("专注、声音和窗口设置已立即生效。"));
+    }
+    return true;
 }
 
 void SettingsPage::browseFocusSound()

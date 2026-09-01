@@ -78,13 +78,13 @@ void StatisticsPage::refresh()
 void StatisticsPage::updateDailyChart()
 {
     const auto daily = AnalyticsRepository().lastSevenDays();
-    auto *focusSet = new QBarSet(QStringLiteral("专注分钟"));
+    auto *focusSet = new QBarSet(QStringLiteral("专注秒数"));
     QStringList labels;
-    int maximum = 30;
+    int maximum = 60;
     for (const auto &day : daily) {
-        *focusSet << day.focusMinutes;
+        *focusSet << day.focusSeconds;
         labels << day.label;
-        maximum = qMax(maximum, day.focusMinutes + 10);
+        maximum = qMax(maximum, day.focusSeconds + 30);
     }
 
     auto *series = new QBarSeries;
@@ -99,7 +99,7 @@ void StatisticsPage::updateDailyChart()
     axisX->append(labels);
     auto *axisY = new QValueAxis;
     axisY->setRange(0, maximum);
-    axisY->setTitleText(QStringLiteral("分钟"));
+    axisY->setTitleText(QStringLiteral("秒"));
     axisY->setLabelFormat(QStringLiteral("%d"));
     chart->addAxis(axisX, Qt::AlignBottom);
     chart->addAxis(axisY, Qt::AlignLeft);
@@ -113,14 +113,23 @@ void StatisticsPage::updateCategoryChart()
     const auto categories = AnalyticsRepository().focusByCategory();
     auto *series = new QPieSeries;
     for (const auto &category : categories) {
-        series->append(category.name, category.focusMinutes);
+        series->append(category.name, category.focusSeconds);
     }
     if (categories.isEmpty()) {
         series->append(QStringLiteral("暂无数据"), 1);
     }
-    for (auto *slice : series->slices()) {
+    const auto slices = series->slices();
+    for (qsizetype index = 0; index < slices.size(); ++index) {
+        auto *slice = slices.at(index);
         slice->setLabelVisible(true);
-        slice->setLabel(QStringLiteral("%1 %2%").arg(slice->label()).arg(slice->percentage() * 100.0, 0, 'f', 0));
+        if (categories.isEmpty()) {
+            slice->setLabel(QStringLiteral("暂无数据"));
+        } else {
+            slice->setLabel(QStringLiteral("%1 %2% · %3")
+                                .arg(categories.at(index).name)
+                                .arg(slice->percentage() * 100.0, 0, 'f', 0)
+                                .arg(formatDuration(categories.at(index).focusSeconds)));
+        }
     }
 
     auto *chart = new QChart;
@@ -133,11 +142,20 @@ void StatisticsPage::updateCategoryChart()
 
 QString StatisticsPage::formatDuration(int seconds)
 {
-    const int minutes = qMax(0, seconds) / 60;
-    if (seconds > 0 && minutes == 0) {
-        return QStringLiteral("不足 1 分钟");
+    const int safeSeconds = qMax(0, seconds);
+    const int hours = safeSeconds / 3600;
+    const int minutes = (safeSeconds % 3600) / 60;
+    const int remainingSeconds = safeSeconds % 60;
+    if (hours > 0) {
+        return QStringLiteral("%1 小时 %2 分 %3 秒")
+            .arg(hours)
+            .arg(minutes)
+            .arg(remainingSeconds);
     }
-    return minutes < 60
-        ? QStringLiteral("%1 分钟").arg(minutes)
-        : QStringLiteral("%1 小时 %2 分钟").arg(minutes / 60).arg(minutes % 60);
+    if (minutes > 0) {
+        return QStringLiteral("%1 分 %2 秒")
+            .arg(minutes)
+            .arg(remainingSeconds);
+    }
+    return QStringLiteral("%1 秒").arg(remainingSeconds);
 }

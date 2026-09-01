@@ -16,14 +16,14 @@ struct DashboardMetrics
 struct DailyProductivity
 {
     QString label;
-    int focusMinutes = 0;
+    int focusSeconds = 0;
     int completedTasks = 0;
 };
 
 struct CategoryFocus
 {
     QString name;
-    int focusMinutes = 0;
+    int focusSeconds = 0;
 };
 
 class AnalyticsRepository final

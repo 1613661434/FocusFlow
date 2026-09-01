@@ -39,5 +39,7 @@ private:
     QComboBox *importanceCombo_ = nullptr;
     QCheckBox *dueEnabled_ = nullptr;
     QDateTimeEdit *dueEdit_ = nullptr;
+    QSpinBox *dueHour_ = nullptr;
+    QSpinBox *dueMinute_ = nullptr;
     QSpinBox *estimatedMinutes_ = nullptr;
 };

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.9 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.10 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -148,6 +148,23 @@ if(BUILD_TESTING)
     )
     add_test(NAME FocusAwareSpinBoxTests COMMAND FocusAwareSpinBoxTests)
 
+    qt_add_executable(TaskDialogTests
+        tests/tst_TaskDialog.cpp
+        src/views/TaskDialog.cpp
+        src/views/TaskDialog.h
+        src/widgets/ChineseCalendarWidget.cpp
+        src/widgets/ChineseCalendarWidget.h
+        src/widgets/FocusAwareSpinBox.cpp
+        src/widgets/FocusAwareSpinBox.h
+        src/models/Task.h
+    )
+    target_include_directories(TaskDialogTests PRIVATE src)
+    target_link_libraries(TaskDialogTests PRIVATE
+        Qt6::Widgets
+        Qt6::Test
+    )
+    add_test(NAME TaskDialogTests COMMAND TaskDialogTests)
+
     qt_add_executable(DashboardPageTests
         tests/tst_DashboardPage.cpp
         src/views/DashboardPage.cpp
@@ -158,6 +175,8 @@ if(BUILD_TESTING)
         src/repositories/AnalyticsRepository.h
         src/repositories/FocusRepository.cpp
         src/repositories/FocusRepository.h
+        src/repositories/ProjectRepository.cpp
+        src/repositories/ProjectRepository.h
         src/repositories/SettingsRepository.cpp
         src/repositories/SettingsRepository.h
         src/repositories/TaskRepository.cpp
