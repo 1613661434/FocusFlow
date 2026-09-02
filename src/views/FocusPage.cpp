@@ -4,6 +4,8 @@
 #include "repositories/SettingsRepository.h"
 #include "repositories/TaskRepository.h"
 #include "services/NotificationSoundPlayer.h"
+#include "services/PriorityService.h"
+#include "widgets/PriorityColors.h"
 
 #include <QComboBox>
 #include <QFrame>
@@ -12,8 +14,15 @@
 #include <QMessageBox>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QTimer>
 #include <QVBoxLayout>
+
+#include <algorithm>
+
+namespace {
+constexpr int kAllLookups = -2;
+}
 
 FocusPage::FocusPage(QWidget *parent)
     : QWidget(parent),
@@ -105,10 +114,21 @@ void FocusPage::buildInterface()
 
     auto *optionsTitle = new QLabel(QStringLiteral("本次专注"), optionsCard);
     optionsTitle->setObjectName(QStringLiteral("cardTitle"));
+    auto *projectFilterLabel = new QLabel(QStringLiteral("项目筛选"), optionsCard);
+    projectFilter_ = new QComboBox(optionsCard);
+    projectFilter_->setObjectName(QStringLiteral("focusProjectFilter"));
+    projectFilter_->setAccessibleName(QStringLiteral("按项目筛选关联任务"));
+    auto *categoryFilterLabel = new QLabel(QStringLiteral("分类筛选"), optionsCard);
+    categoryFilter_ = new QComboBox(optionsCard);
+    categoryFilter_->setObjectName(QStringLiteral("focusCategoryFilter"));
+    categoryFilter_->setAccessibleName(QStringLiteral("按分类筛选关联任务"));
     auto *taskLabel = new QLabel(QStringLiteral("关联任务"), optionsCard);
     taskCombo_ = new QComboBox(optionsCard);
+    taskCombo_->setObjectName(QStringLiteral("focusTaskCombo"));
+    taskCombo_->setAccessibleName(QStringLiteral("关联任务，按推荐分从高到低排列"));
     auto *phaseSelectLabel = new QLabel(QStringLiteral("计时类型"), optionsCard);
     phaseCombo_ = new QComboBox(optionsCard);
+    phaseCombo_->setObjectName(QStringLiteral("focusPhaseCombo"));
     phaseCombo_->addItem(QStringLiteral("专注"),
                          static_cast<int>(FocusTimer::Phase::Focus));
     phaseCombo_->addItem(QStringLiteral("短休息"),
@@ -125,6 +145,10 @@ void FocusPage::buildInterface()
 
     optionsLayout->addWidget(optionsTitle);
     optionsLayout->addSpacing(8);
+    optionsLayout->addWidget(projectFilterLabel);
+    optionsLayout->addWidget(projectFilter_);
+    optionsLayout->addWidget(categoryFilterLabel);
+    optionsLayout->addWidget(categoryFilter_);
     optionsLayout->addWidget(taskLabel);
     optionsLayout->addWidget(taskCombo_);
     optionsLayout->addWidget(phaseSelectLabel);
@@ -142,6 +166,10 @@ void FocusPage::buildInterface()
             this, &FocusPage::stopEarly);
     connect(phaseCombo_, &QComboBox::currentIndexChanged,
             this, &FocusPage::updateIdleDuration);
+    connect(projectFilter_, &QComboBox::currentIndexChanged,
+            this, &FocusPage::refreshFilteredTasks);
+    connect(categoryFilter_, &QComboBox::currentIndexChanged,
+            this, &FocusPage::refreshFilteredTasks);
 }
 
 void FocusPage::reloadSettings()
@@ -155,15 +183,87 @@ void FocusPage::reloadSettings()
 
 void FocusPage::refreshTasks()
 {
-    const int previousId = taskCombo_->currentData().toInt();
+    reloadTaskFilters();
+    refreshFilteredTasks();
+}
+
+void FocusPage::reloadTaskFilters()
+{
+    const int selectedProject = projectFilter_->currentData().isValid()
+                                    ? projectFilter_->currentData().toInt()
+                                    : kAllLookups;
+    const int selectedCategory = categoryFilter_->currentData().isValid()
+                                     ? categoryFilter_->currentData().toInt()
+                                     : kAllLookups;
+    const QSignalBlocker projectBlocker(projectFilter_);
+    const QSignalBlocker categoryBlocker(categoryFilter_);
+
+    TaskRepository repository;
+    projectFilter_->clear();
+    projectFilter_->addItem(QStringLiteral("全部项目"), kAllLookups);
+    projectFilter_->addItem(QStringLiteral("无项目"), -1);
+    for (const LookupItem &project : repository.projects()) {
+        projectFilter_->addItem(project.name, project.id);
+    }
+
+    categoryFilter_->clear();
+    categoryFilter_->addItem(QStringLiteral("全部分类"), kAllLookups);
+    categoryFilter_->addItem(QStringLiteral("未分类"), -1);
+    for (const LookupItem &category : repository.categories()) {
+        categoryFilter_->addItem(category.name, category.id);
+    }
+
+    const int projectIndex = projectFilter_->findData(selectedProject);
+    const int categoryIndex = categoryFilter_->findData(selectedCategory);
+    projectFilter_->setCurrentIndex(projectIndex >= 0 ? projectIndex : 0);
+    categoryFilter_->setCurrentIndex(categoryIndex >= 0 ? categoryIndex : 0);
+}
+
+void FocusPage::refreshFilteredTasks()
+{
+    const int previousId = taskCombo_->currentData().isValid()
+                               ? taskCombo_->currentData().toInt()
+                               : -1;
+    const int selectedProject = projectFilter_->currentData().toInt();
+    const int selectedCategory = categoryFilter_->currentData().toInt();
+
+    auto tasks = TaskRepository().findAll(TaskRepository::Filter::All);
+    tasks.erase(std::remove_if(tasks.begin(), tasks.end(), [&](const Task &task) {
+        const bool unavailable = task.status == QStringLiteral("completed")
+                                 || task.status == QStringLiteral("cancelled");
+        const bool projectMismatch = selectedProject != kAllLookups
+                                     && task.projectId != selectedProject;
+        const bool categoryMismatch = selectedCategory != kAllLookups
+                                      && task.categoryId != selectedCategory;
+        return unavailable || projectMismatch || categoryMismatch;
+    }), tasks.end());
+    std::stable_sort(tasks.begin(), tasks.end(), [](const Task &left,
+                                                    const Task &right) {
+        return PriorityService::score(left) > PriorityService::score(right);
+    });
+
     taskCombo_->clear();
     taskCombo_->addItem(QStringLiteral("无关联任务"), -1);
-    const auto tasks = TaskRepository().findAll(TaskRepository::Filter::All);
     for (const auto &task : tasks) {
-        if (task.status != QStringLiteral("completed")
-            && task.status != QStringLiteral("cancelled")) {
-            taskCombo_->addItem(task.title, task.id);
-        }
+        const int score = PriorityService::score(task);
+        taskCombo_->addItem(
+            QStringLiteral("%1（推荐分 %2）").arg(task.title).arg(score),
+            task.id);
+        const int itemIndex = taskCombo_->count() - 1;
+        taskCombo_->setItemData(itemIndex,
+                                PriorityColors::recommendation(score),
+                                Qt::ForegroundRole);
+        const QString projectName = task.projectName.isEmpty()
+                                        ? QStringLiteral("无项目")
+                                        : task.projectName;
+        const QString categoryName = task.categoryName.isEmpty()
+                                         ? QStringLiteral("未分类")
+                                         : task.categoryName;
+        taskCombo_->setItemData(
+            itemIndex,
+            QStringLiteral("项目：%1\n分类：%2\n推荐分：%3")
+                .arg(projectName, categoryName, QString::number(score)),
+            Qt::ToolTipRole);
     }
     const int previousIndex = taskCombo_->findData(previousId);
     taskCombo_->setCurrentIndex(previousIndex >= 0 ? previousIndex : 0);
@@ -174,7 +274,23 @@ void FocusPage::selectTask(int taskId)
     if (timer_.state() != FocusTimer::State::Idle) {
         return;
     }
-    refreshTasks();
+    const Task task = TaskRepository().findById(taskId);
+    reloadTaskFilters();
+    if (task.id <= 0 || task.status == QStringLiteral("completed")
+        || task.status == QStringLiteral("cancelled")) {
+        refreshFilteredTasks();
+        return;
+    }
+
+    {
+        const QSignalBlocker projectBlocker(projectFilter_);
+        const QSignalBlocker categoryBlocker(categoryFilter_);
+        const int projectIndex = projectFilter_->findData(task.projectId);
+        const int categoryIndex = categoryFilter_->findData(task.categoryId);
+        projectFilter_->setCurrentIndex(projectIndex >= 0 ? projectIndex : 0);
+        categoryFilter_->setCurrentIndex(categoryIndex >= 0 ? categoryIndex : 0);
+    }
+    refreshFilteredTasks();
     const int taskIndex = taskCombo_->findData(taskId);
     if (taskIndex >= 0) {
         taskCombo_->setCurrentIndex(taskIndex);
@@ -275,6 +391,8 @@ void FocusPage::updateState(FocusTimer::State state)
     const bool idle = state == FocusTimer::State::Idle;
     stopButton_->setEnabled(!idle);
     phaseCombo_->setEnabled(idle);
+    projectFilter_->setEnabled(idle);
+    categoryFilter_->setEnabled(idle);
     taskCombo_->setEnabled(idle);
 
     if (state == FocusTimer::State::Running) {

@@ -4,6 +4,7 @@
 #include "repositories/TaskRepository.h"
 #include "services/PriorityService.h"
 #include "widgets/ClearSelectionOnBlankClick.h"
+#include "widgets/PriorityColors.h"
 
 #include <QFrame>
 #include <QAbstractItemView>
@@ -210,6 +211,7 @@ void DashboardPage::refreshRecommendations()
             : QStringLiteral("当前项目和分类下暂无待办任务。"));
     for (int index = 0; index < count; ++index) {
         const Task &task = tasks.at(index);
+        const int score = PriorityService::score(task);
         const QString projectName = task.projectName.isEmpty()
                                         ? QStringLiteral("无项目")
                                         : task.projectName;
@@ -219,7 +221,7 @@ void DashboardPage::refreshRecommendations()
         QString detail = QStringLiteral("项目：%1  ·  分类：%2  ·  推荐分 %3")
                              .arg(projectName,
                                   categoryName,
-                                  QString::number(PriorityService::score(task)));
+                                  QString::number(score));
         if (task.dueAt.isValid()) {
             detail += QStringLiteral("  ·  截止 %1")
                           .arg(task.dueAt.toString(QStringLiteral("MM-dd HH:mm")));
@@ -229,6 +231,9 @@ void DashboardPage::refreshRecommendations()
         item->setData(Qt::UserRole, task.id);
         item->setData(kProjectRole, task.projectId);
         item->setData(kCategoryRole, task.categoryId);
+        item->setForeground(PriorityColors::recommendation(score));
+        item->setToolTip(
+            QStringLiteral("推荐分：%1；颜色表示推荐程度区间").arg(score));
         item->setSizeHint(QSize(0, 54));
     }
 }

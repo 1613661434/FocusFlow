@@ -46,6 +46,8 @@ private slots:
 
 private:
     void buildInterface();
+    void reloadTaskFilters();
+    void refreshFilteredTasks();
     FocusTimer::Phase selectedPhase() const;
     int durationSeconds(FocusTimer::Phase phase) const;
     void selectPhase(FocusTimer::Phase phase);
@@ -56,6 +58,8 @@ private:
     FocusTimer timer_;
     TimerSettings settings_;
     NotificationSoundPlayer *soundPlayer_ = nullptr;
+    QComboBox *projectFilter_ = nullptr;
+    QComboBox *categoryFilter_ = nullptr;
     QComboBox *taskCombo_ = nullptr;
     QComboBox *phaseCombo_ = nullptr;
     QLabel *timerLabel_ = nullptr;
