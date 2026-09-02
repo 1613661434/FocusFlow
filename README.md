@@ -3,9 +3,7 @@
 FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
 个人任务规划与专注管理工具，当前版本为 **v0.1.24**。
 
-课程自拟题目：
-
-> 基于 C++/Qt 的个人任务规划与专注管理系统设计与实现
+中文定位：**个人任务规划与专注管理系统**
 
 英文名称：**FocusFlow — Personal Task Planning and Focus Management System**
 
@@ -109,8 +107,8 @@ FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
 | 预计耗时为 1～25 分钟 | +5 |
 | 状态为进行中 | +10 |
 
-该算法是确定性的规则模型，不使用网络服务或用户隐私数据，便于解释、测试和
-课程答辩展示。
+该算法是确定性的规则模型，不使用网络服务或用户隐私数据，便于用户理解、
+自动化验证和长期维护。
 
 ## 技术栈
 
@@ -149,7 +147,7 @@ FocusFlow/
 详细资料：
 
 - [用户使用指南](docs/USER_GUIDE.md)
-- [项目计划与验收基线](docs/PROJECT_PLAN.md)
+- [产品路线与发布标准](docs/PROJECT_PLAN.md)
 - [系统架构与详细设计](docs/ARCHITECTURE.md)
 
 ## 开发环境
