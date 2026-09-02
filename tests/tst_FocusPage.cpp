@@ -1,12 +1,16 @@
 #include "data/DatabaseManager.h"
+#include "repositories/TaskRepository.h"
 #include "views/FocusPage.h"
+#include "widgets/PriorityColors.h"
 
 #include <QApplication>
+#include <QComboBox>
 #include <QDir>
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QStandardPaths>
+#include <QSqlQuery>
 #include <QTest>
 #include <QTimer>
 #include <QUuid>
@@ -18,6 +22,7 @@ class FocusPageTests final : public QObject
 private slots:
     void initTestCase();
     void primaryButtonTracksTimerState();
+    void taskFiltersShowScoresAndSortRecommendations();
     void cleanupTestCase();
 
 private:
@@ -84,6 +89,86 @@ void FocusPageTests::primaryButtonTracksTimerState()
     QCOMPARE(primary->text(), QStringLiteral("开始"));
     QVERIFY(primary->isEnabled());
     QVERIFY(!stop->isEnabled());
+}
+
+void FocusPageTests::taskFiltersShowScoresAndSortRecommendations()
+{
+    const QString suffix =
+        QUuid::createUuid().toString(QUuid::WithoutBraces);
+    QSqlQuery projectInsert(DatabaseManager::instance().database());
+    projectInsert.prepare(QStringLiteral(
+        "INSERT INTO projects(name, description, color) VALUES(:name, '', '#4F6EF7')"));
+    projectInsert.bindValue(QStringLiteral(":name"),
+                            QStringLiteral("专注筛选项目-%1").arg(suffix));
+    QVERIFY(projectInsert.exec());
+    const int projectId = projectInsert.lastInsertId().toInt();
+
+    QSqlQuery categoryInsert(DatabaseManager::instance().database());
+    categoryInsert.prepare(QStringLiteral(
+        "INSERT INTO categories(name, color) VALUES(:name, '#C335B4')"));
+    categoryInsert.bindValue(QStringLiteral(":name"),
+                             QStringLiteral("专注筛选分类-%1").arg(suffix));
+    QVERIFY(categoryInsert.exec());
+    const int categoryId = categoryInsert.lastInsertId().toInt();
+
+    Task highScore;
+    highScore.title = QStringLiteral("高推荐任务-%1").arg(suffix);
+    highScore.description = QStringLiteral("");
+    highScore.projectId = projectId;
+    highScore.categoryId = categoryId;
+    highScore.importance = 5;
+    highScore.estimatedMinutes = 30;
+    Task lowScore = highScore;
+    lowScore.id = -1;
+    lowScore.title = QStringLiteral("低推荐任务-%1").arg(suffix);
+    lowScore.importance = 1;
+    Task uncategorized = highScore;
+    uncategorized.id = -1;
+    uncategorized.title = QStringLiteral("无项目任务-%1").arg(suffix);
+    uncategorized.projectId = -1;
+    uncategorized.categoryId = -1;
+    uncategorized.importance = 3;
+
+    QString error;
+    TaskRepository repository;
+    QVERIFY2(repository.save(highScore, &error), qPrintable(error));
+    QVERIFY2(repository.save(lowScore, &error), qPrintable(error));
+    QVERIFY2(repository.save(uncategorized, &error), qPrintable(error));
+
+    FocusPage page;
+    auto *projectFilter = page.findChild<QComboBox *>(
+        QStringLiteral("focusProjectFilter"));
+    auto *categoryFilter = page.findChild<QComboBox *>(
+        QStringLiteral("focusCategoryFilter"));
+    auto *taskCombo = page.findChild<QComboBox *>(
+        QStringLiteral("focusTaskCombo"));
+    QVERIFY(projectFilter != nullptr);
+    QVERIFY(categoryFilter != nullptr);
+    QVERIFY(taskCombo != nullptr);
+
+    projectFilter->setCurrentIndex(projectFilter->findData(projectId));
+    categoryFilter->setCurrentIndex(categoryFilter->findData(categoryId));
+    QCOMPARE(taskCombo->count(), 3);
+    QCOMPARE(taskCombo->itemData(1).toInt(), highScore.id);
+    QCOMPARE(taskCombo->itemData(2).toInt(), lowScore.id);
+    QVERIFY(taskCombo->itemText(1).contains(QStringLiteral("推荐分 100")));
+    QVERIFY(taskCombo->itemText(2).contains(QStringLiteral("推荐分 20")));
+    QCOMPARE(taskCombo->itemData(1, Qt::ForegroundRole).value<QColor>(),
+             PriorityColors::recommendation(100));
+    QCOMPARE(taskCombo->itemData(2, Qt::ForegroundRole).value<QColor>(),
+             PriorityColors::recommendation(20));
+
+    taskCombo->setCurrentIndex(taskCombo->findData(lowScore.id));
+    projectFilter->setCurrentIndex(projectFilter->findData(-1));
+    categoryFilter->setCurrentIndex(categoryFilter->findData(-1));
+    QCOMPARE(taskCombo->count(), 2);
+    QCOMPARE(taskCombo->currentData().toInt(), -1);
+    QCOMPARE(taskCombo->itemData(1).toInt(), uncategorized.id);
+
+    page.selectTask(highScore.id);
+    QCOMPARE(projectFilter->currentData().toInt(), projectId);
+    QCOMPARE(categoryFilter->currentData().toInt(), categoryId);
+    QCOMPARE(taskCombo->currentData().toInt(), highScore.id);
 }
 
 void FocusPageTests::cleanupTestCase()

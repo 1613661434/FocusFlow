@@ -8,23 +8,30 @@
 #include "views/ProjectPage.h"
 #include "views/StatisticsPage.h"
 #include "views/TaskPage.h"
+#include "widgets/PriorityColors.h"
 
+#include <QBarSet>
+#include <QBarSeries>
+#include <QChartView>
 #include <QCoreApplication>
 #include <QComboBox>
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
+#include <QFrame>
 #include <QLabel>
 #include <QHeaderView>
 #include <QListWidget>
 #include <QSignalSpy>
 #include <QScrollArea>
+#include <QSet>
 #include <QSqlQuery>
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTest>
+#include <QToolTip>
 #include <QUuid>
 
 namespace {
@@ -285,9 +292,42 @@ void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
     QVERIFY(hint->text().contains(QStringLiteral("最近 10 条")));
     QVERIFY(page.findChild<QScrollArea *>() == nullptr);
 
+    auto *dailyChartView = page.findChild<QChartView *>(
+        QStringLiteral("dailyFocusChartView"));
+    QVERIFY(dailyChartView != nullptr);
+    QVERIFY(!dailyChartView->chart()->series().isEmpty());
+    auto *dailySeries = qobject_cast<QBarSeries *>(
+        dailyChartView->chart()->series().constFirst());
+    QVERIFY(dailySeries != nullptr);
+    QVERIFY(!dailySeries->barSets().isEmpty());
+    auto *dailyFocusSet = dailySeries->barSets().constFirst();
+    QVERIFY(dailyFocusSet != nullptr);
+    QVERIFY(QMetaObject::invokeMethod(dailyFocusSet, "hovered",
+                                      Q_ARG(bool, true), Q_ARG(int, 6)));
+    QCoreApplication::processEvents();
+    QVERIFY(QToolTip::text().contains(QStringLiteral("秒")));
+    QVERIFY(QMetaObject::invokeMethod(dailyFocusSet, "hovered",
+                                      Q_ARG(bool, false), Q_ARG(int, 6)));
+
     const QRect lastRow = table->visualItemRect(table->item(9, 0));
     QVERIFY(lastRow.isValid());
     QVERIFY(table->viewport()->rect().contains(lastRow.bottomLeft()));
+
+    table->selectRow(0);
+    QVERIFY(!table->selectedItems().isEmpty());
+    QFrame *recentCard = nullptr;
+    for (QFrame *frame : page.findChildren<QFrame *>()) {
+        if (frame->property("statisticsSection").toString()
+            == QStringLiteral("recentFocusCard")) {
+            recentCard = frame;
+            break;
+        }
+    }
+    QVERIFY(recentCard != nullptr);
+    QTest::mouseClick(recentCard, Qt::LeftButton, Qt::NoModifier,
+                      QPoint(5, 5));
+    QVERIFY(table->selectedItems().isEmpty());
+    QVERIFY(!table->currentIndex().isValid());
 }
 
 void DashboardPageTests::recommendationSupportsFocusShortcutAndBlankDeselection()
@@ -554,6 +594,38 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
         }
     }
     QVERIFY(foundCenteredEmptyProject);
+
+    QSet<QString> importanceColors;
+    for (int level = 1; level <= 5; ++level) {
+        importanceColors.insert(PriorityColors::importance(level).name());
+    }
+    QCOMPARE(importanceColors.size(), 5);
+    QSet<QString> recommendationColors;
+    for (const int score : {20, 50, 80, 110, 140}) {
+        recommendationColors.insert(
+            PriorityColors::recommendation(score).name());
+    }
+    QCOMPARE(recommendationColors.size(), 5);
+
+    QColor lowImportanceColor;
+    QColor highImportanceColor;
+    QColor lowScoreColor;
+    QColor highScoreColor;
+    for (int row = 0; row < taskTable->rowCount(); ++row) {
+        const QString title = taskTable->item(row, 0)->text();
+        if (title == lowImportance.title) {
+            lowImportanceColor = taskTable->item(row, 5)->foreground().color();
+            lowScoreColor = taskTable->item(row, 7)->foreground().color();
+        } else if (title == highImportance.title) {
+            highImportanceColor = taskTable->item(row, 5)->foreground().color();
+            highScoreColor = taskTable->item(row, 7)->foreground().color();
+        }
+    }
+    QVERIFY(lowImportanceColor.isValid());
+    QVERIFY(highImportanceColor.isValid());
+    QCOMPARE(lowImportanceColor, PriorityColors::importance(1));
+    QCOMPARE(highImportanceColor, PriorityColors::importance(5));
+    QVERIFY(lowScoreColor != highScoreColor);
 
     taskTable->sortItems(6, Qt::AscendingOrder);
     for (int row = 1; row < taskTable->rowCount(); ++row) {

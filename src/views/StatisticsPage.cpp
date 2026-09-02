@@ -1,6 +1,7 @@
 #include "views/StatisticsPage.h"
 
 #include "repositories/AnalyticsRepository.h"
+#include "widgets/ClearSelectionOnBlankClick.h"
 
 #include <QAbstractItemView>
 #include <QBarCategoryAxis>
@@ -8,6 +9,7 @@
 #include <QBarSet>
 #include <QChart>
 #include <QChartView>
+#include <QCursor>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -18,6 +20,7 @@
 #include <QHeaderView>
 #include <QTabWidget>
 #include <QTableWidget>
+#include <QToolTip>
 #include <QValueAxis>
 #include <QVBoxLayout>
 
@@ -61,6 +64,7 @@ void StatisticsPage::buildInterface()
     charts->setContentsMargins(0, 12, 0, 0);
     charts->setSpacing(16);
     dailyChartView_ = new QChartView(chartsPage);
+    dailyChartView_->setObjectName(QStringLiteral("dailyFocusChartView"));
     dailyChartView_->setRenderHint(QPainter::Antialiasing);
     dailyChartView_->setMinimumHeight(230);
     categoryChartView_ = new QChartView(chartsPage);
@@ -80,6 +84,7 @@ void StatisticsPage::buildInterface()
     recordsPageLayout->setContentsMargins(0, 12, 0, 0);
     auto *recentCard = new QFrame(recordsPage);
     recentCard->setObjectName(QStringLiteral("card"));
+    recentCard->setProperty("statisticsSection", QStringLiteral("recentFocusCard"));
     auto *recentLayout = new QVBoxLayout(recentCard);
     recentLayout->setContentsMargins(18, 16, 18, 16);
     recentLayout->setSpacing(12);
@@ -99,6 +104,7 @@ void StatisticsPage::buildInterface()
          QStringLiteral("时长"), QStringLiteral("结果")});
     recentSessions_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     recentSessions_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    recentSessions_->setSelectionMode(QAbstractItemView::SingleSelection);
     recentSessions_->setAlternatingRowColors(true);
     recentSessions_->verticalHeader()->setVisible(false);
     recentSessions_->verticalHeader()->setMinimumSectionSize(36);
@@ -112,6 +118,11 @@ void StatisticsPage::buildInterface()
         0, QHeaderView::ResizeToContents);
     recentSessions_->setSizePolicy(QSizePolicy::Expanding,
                                    QSizePolicy::Expanding);
+    enableClearSelectionOnBlankClick(recentSessions_);
+    enableClearSelectionOnClick(recordsPage, recentSessions_);
+    enableClearSelectionOnClick(recentCard, recentSessions_);
+    enableClearSelectionOnClick(recentTitle, recentSessions_);
+    enableClearSelectionOnClick(recentHint, recentSessions_);
     recentLayout->addWidget(recentTitle);
     recentLayout->addWidget(recentHint);
     recentLayout->addWidget(recentSessions_, 1);
@@ -140,6 +151,7 @@ void StatisticsPage::updateDailyChart()
 {
     const auto daily = AnalyticsRepository().lastSevenDays();
     auto *focusSet = new QBarSet(QStringLiteral("专注秒数"));
+    focusSet->setObjectName(QStringLiteral("dailyFocusBarSet"));
     QStringList labels;
     int maximum = 60;
     for (const auto &day : daily) {
@@ -147,6 +159,19 @@ void StatisticsPage::updateDailyChart()
         labels << day.label;
         maximum = qMax(maximum, day.focusSeconds + 30);
     }
+    connect(focusSet, &QBarSet::hovered, focusSet,
+            [daily](bool hovered, int index) {
+                if (!hovered || index < 0 || index >= daily.size()) {
+                    QToolTip::hideText();
+                    return;
+                }
+                const DailyProductivity &day = daily.at(index);
+                QToolTip::showText(
+                    QCursor::pos(),
+                    QStringLiteral("%1：%2 秒")
+                        .arg(day.label)
+                        .arg(day.focusSeconds));
+            });
 
     auto *series = new QBarSeries;
     series->append(focusSet);

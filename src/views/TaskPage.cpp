@@ -3,6 +3,7 @@
 #include "views/TaskDialog.h"
 #include "services/PriorityService.h"
 #include "widgets/ClearSelectionOnBlankClick.h"
+#include "widgets/PriorityColors.h"
 #include "widgets/SortKeyTableWidgetItem.h"
 
 #include <QAbstractItemView>
@@ -224,16 +225,22 @@ void TaskPage::refresh()
                                       : std::numeric_limits<qint64>::max();
         table_->setItem(row, DueColumn,
                         new SortKeyTableWidgetItem(dueText, dueSortKey));
-        table_->setItem(row, ImportanceColumn,
-                        new SortKeyTableWidgetItem(
-                            importanceText(task.importance), task.importance));
+        auto *importanceItem = new SortKeyTableWidgetItem(
+            importanceText(task.importance), task.importance);
+        importanceItem->setForeground(PriorityColors::importance(task.importance));
+        importanceItem->setToolTip(
+            QStringLiteral("重要程度：%1 / 5").arg(task.importance));
+        table_->setItem(row, ImportanceColumn, importanceItem);
         table_->setItem(row, EstimateColumn,
                         new SortKeyTableWidgetItem(
                             QStringLiteral("%1 分钟").arg(task.estimatedMinutes),
                             task.estimatedMinutes));
         const int score = PriorityService::score(task);
-        table_->setItem(row, ScoreColumn,
-                        new SortKeyTableWidgetItem(QString::number(score), score));
+        auto *scoreItem = new SortKeyTableWidgetItem(QString::number(score), score);
+        scoreItem->setForeground(PriorityColors::recommendation(score));
+        scoreItem->setToolTip(
+            QStringLiteral("推荐分：%1；颜色表示推荐程度区间").arg(score));
+        table_->setItem(row, ScoreColumn, scoreItem);
         int statusSortKey = 0;
         if (task.status == QStringLiteral("in_progress")) {
             statusSortKey = 1;
