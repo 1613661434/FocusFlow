@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.15 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.16 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -68,6 +68,8 @@ qt_add_executable(FocusFlow WIN32
     src/widgets/ChineseCalendarWidget.h
     src/widgets/FocusAwareSpinBox.cpp
     src/widgets/FocusAwareSpinBox.h
+    src/widgets/FocusAwareSlider.cpp
+    src/widgets/FocusAwareSlider.h
     src/widgets/ClearSelectionOnBlankClick.cpp
     src/widgets/ClearSelectionOnBlankClick.h
     src/widgets/SortKeyTableWidgetItem.h
@@ -182,6 +184,8 @@ if(BUILD_TESTING)
         tests/tst_FocusAwareSpinBox.cpp
         src/widgets/FocusAwareSpinBox.cpp
         src/widgets/FocusAwareSpinBox.h
+        src/widgets/FocusAwareSlider.cpp
+        src/widgets/FocusAwareSlider.h
     )
     target_include_directories(FocusAwareSpinBoxTests PRIVATE src)
     target_link_libraries(FocusAwareSpinBoxTests PRIVATE
