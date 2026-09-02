@@ -13,4 +13,5 @@ struct TimerPreset
     bool autoStartBreak = false;
     bool autoStartFocus = false;
     bool isDefault = false;
+    bool isBuiltIn = false;
 };

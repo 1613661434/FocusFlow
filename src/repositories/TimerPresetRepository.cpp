@@ -8,7 +8,8 @@
 namespace {
 const QString kPresetColumns = QStringLiteral(R"(
     id, name, focus_minutes, short_break_minutes, long_break_minutes,
-    cycles_before_long_break, auto_start_break, auto_start_focus, is_default
+    cycles_before_long_break, auto_start_break, auto_start_focus, is_default,
+    is_builtin
 )");
 }
 
@@ -63,6 +64,20 @@ bool TimerPresetRepository::save(TimerPreset &preset,
 {
     if (!isValid(preset, errorMessage)) {
         return false;
+    }
+
+    if (preset.id > 0) {
+        const TimerPreset existing = findById(preset.id);
+        if (existing.id <= 0) {
+            assignError(QStringLiteral("所选专注方案不存在。"), errorMessage);
+            return false;
+        }
+        if (existing.isBuiltIn) {
+            assignError(QStringLiteral(
+                "内置预设方案不能修改，可以先复制一份再自定义。"),
+                errorMessage);
+            return false;
+        }
     }
 
     auto database = DatabaseManager::instance().database();
@@ -146,6 +161,7 @@ bool TimerPresetRepository::save(TimerPreset &preset,
 
     if (preset.id <= 0) {
         preset.id = query.lastInsertId().toInt();
+        preset.isBuiltIn = false;
     }
     preset.name = preset.name.trimmed();
 
@@ -203,18 +219,36 @@ bool TimerPresetRepository::setDefault(int id,
 bool TimerPresetRepository::remove(int id,
                                    QString *errorMessage) const
 {
+    const TimerPreset preset = findById(id);
+    if (preset.id <= 0) {
+        assignError(QStringLiteral("所选专注方案不存在。"), errorMessage);
+        return false;
+    }
+    if (preset.isBuiltIn) {
+        assignError(QStringLiteral(
+            "内置预设方案不能删除，可以复制后创建自己的方案。"),
+            errorMessage);
+        return false;
+    }
+    if (preset.isDefault) {
+        assignError(QStringLiteral(
+            "默认方案不能删除，请先把其他方案设为默认。"),
+            errorMessage);
+        return false;
+    }
+
     QSqlQuery query(DatabaseManager::instance().database());
     query.prepare(QStringLiteral(
-        "DELETE FROM timer_presets WHERE id = :id AND is_default = 0"));
+        "DELETE FROM timer_presets WHERE id = :id "
+        "AND is_default = 0 AND is_builtin = 0"));
     query.bindValue(QStringLiteral(":id"), id);
     if (!query.exec()) {
         assignError(query.lastError().text(), errorMessage);
         return false;
     }
     if (query.numRowsAffected() != 1) {
-        assignError(QStringLiteral(
-            "默认方案不能删除，请先把其他方案设为默认。"),
-            errorMessage);
+        assignError(QStringLiteral("专注方案未能删除，请刷新后重试。"),
+                    errorMessage);
         return false;
     }
     return true;
@@ -238,6 +272,8 @@ TimerPreset TimerPresetRepository::fromQuery(const QSqlQuery &query)
         query.value(QStringLiteral("auto_start_focus")).toInt() != 0;
     preset.isDefault =
         query.value(QStringLiteral("is_default")).toInt() != 0;
+    preset.isBuiltIn =
+        query.value(QStringLiteral("is_builtin")).toInt() != 0;
     return preset;
 }
 

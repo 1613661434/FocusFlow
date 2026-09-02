@@ -4,6 +4,7 @@
 #include "repositories/ProjectRepository.h"
 #include "repositories/SettingsRepository.h"
 #include "repositories/TaskRepository.h"
+#include "repositories/TimerPresetRepository.h"
 #include "views/DashboardPage.h"
 #include "views/ProjectPage.h"
 #include "views/StatisticsPage.h"
@@ -671,6 +672,13 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     highImportance.importance = 5;
     highImportance.estimatedMinutes = 5;
     highImportance.dueAt = QDateTime::currentDateTime().addDays(-1);
+    const QVector<TimerPreset> presets = TimerPresetRepository().findAll();
+    const auto deepWorkIt = std::find_if(
+        presets.cbegin(), presets.cend(), [](const TimerPreset &preset) {
+            return preset.name == QStringLiteral("深度工作");
+        });
+    QVERIFY(deepWorkIt != presets.cend());
+    highImportance.timerPresetId = deepWorkIt->id;
     Task completedTask;
     completedTask.title = QStringLiteral("排序测试-已完成");
     completedTask.description = QStringLiteral("");
@@ -703,6 +711,8 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
 
     QCOMPARE(taskTable->horizontalHeaderItem(1)->text(),
              QStringLiteral("详细描述"));
+    QCOMPARE(taskTable->horizontalHeaderItem(7)->text(),
+             QStringLiteral("专注方案"));
     bool foundCenteredEmptyProject = false;
     for (int row = 0; row < taskTable->rowCount(); ++row) {
         for (int column = 0; column < taskTable->columnCount(); ++column) {
@@ -741,18 +751,22 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
         const QString title = taskTable->item(row, 0)->text();
         if (title == lowImportance.title) {
             lowImportanceColor = taskTable->item(row, 5)->foreground().color();
-            lowScoreColor = taskTable->item(row, 7)->foreground().color();
-            pendingStatusColor = taskTable->item(row, 8)->foreground().color();
+            lowScoreColor = taskTable->item(row, 8)->foreground().color();
+            pendingStatusColor = taskTable->item(row, 9)->foreground().color();
+            QVERIFY(taskTable->item(row, 7)->text().contains(
+                QStringLiteral("经典番茄钟")));
         } else if (title == highImportance.title) {
             highImportanceColor = taskTable->item(row, 5)->foreground().color();
-            highScoreColor = taskTable->item(row, 7)->foreground().color();
+            highScoreColor = taskTable->item(row, 8)->foreground().color();
             overdueColor = taskTable->item(row, 4)->foreground().color();
             overdueText = taskTable->item(row, 4)->text();
+            QCOMPARE(taskTable->item(row, 7)->text(),
+                     QStringLiteral("深度工作"));
         } else if (title == completedTask.title) {
-            QCOMPARE(taskTable->item(row, 8)->text(),
+            QCOMPARE(taskTable->item(row, 9)->text(),
                      QStringLiteral("已完成"));
             completedStatusColor =
-                taskTable->item(row, 8)->foreground().color();
+                taskTable->item(row, 9)->foreground().color();
         }
     }
     QVERIFY(lowImportanceColor.isValid());

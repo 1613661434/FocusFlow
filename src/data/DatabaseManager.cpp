@@ -165,7 +165,8 @@ bool DatabaseManager::createSchema()
                 cycles_before_long_break INTEGER NOT NULL DEFAULT 4,
                 auto_start_break INTEGER NOT NULL DEFAULT 0,
                 auto_start_focus INTEGER NOT NULL DEFAULT 0,
-                is_default INTEGER NOT NULL DEFAULT 0
+                is_default INTEGER NOT NULL DEFAULT 0,
+                is_builtin INTEGER NOT NULL DEFAULT 0
             )
         )"),
         QStringLiteral(R"(
@@ -210,6 +211,29 @@ bool DatabaseManager::createSchema()
         && !executeStatement(QStringLiteral(
             "ALTER TABLE tasks ADD COLUMN timer_preset_id INTEGER "
             "REFERENCES timer_presets(id) ON DELETE SET NULL"))) {
+        db.rollback();
+        return false;
+    }
+
+    bool hasBuiltInPresetColumn = false;
+    QSqlQuery presetColumns(db);
+    if (!presetColumns.exec(QStringLiteral(
+            "PRAGMA table_info(timer_presets)"))) {
+        lastError_ = presetColumns.lastError().text();
+        db.rollback();
+        return false;
+    }
+    while (presetColumns.next()) {
+        if (presetColumns.value(QStringLiteral("name")).toString()
+            == QStringLiteral("is_builtin")) {
+            hasBuiltInPresetColumn = true;
+            break;
+        }
+    }
+    if (!hasBuiltInPresetColumn
+        && !executeStatement(QStringLiteral(
+            "ALTER TABLE timer_presets ADD COLUMN is_builtin INTEGER "
+            "NOT NULL DEFAULT 0"))) {
         db.rollback();
         return false;
     }
@@ -287,8 +311,9 @@ bool DatabaseManager::seedDefaults()
     preset.prepare(QStringLiteral(R"(
         INSERT OR IGNORE INTO timer_presets(
             name, focus_minutes, short_break_minutes,
-            long_break_minutes, cycles_before_long_break, is_default
-        ) VALUES(?, ?, ?, ?, ?, ?)
+            long_break_minutes, cycles_before_long_break, is_default,
+            is_builtin
+        ) VALUES(?, ?, ?, ?, ?, ?, 1)
     )"));
     for (const auto &item : presets) {
         preset.addBindValue(item.name);
@@ -302,6 +327,16 @@ bool DatabaseManager::seedDefaults()
             db.rollback();
             return false;
         }
+    }
+
+    QSqlQuery markBuiltIn(db);
+    if (!markBuiltIn.exec(QStringLiteral(R"(
+        UPDATE timer_presets SET is_builtin = 1
+        WHERE name IN ('经典番茄钟', '快速处理', '深度工作', '长时专注')
+    )"))) {
+        lastError_ = markBuiltIn.lastError().text();
+        db.rollback();
+        return false;
     }
 
     QSqlQuery ensureDefault(db);

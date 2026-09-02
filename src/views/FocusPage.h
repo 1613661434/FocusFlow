@@ -4,6 +4,7 @@
 #include "models/TimerSettings.h"
 #include "services/FocusTimer.h"
 
+#include <QTimer>
 #include <QVector>
 #include <QWidget>
 
@@ -14,6 +15,7 @@ class QLabel;
 class QProgressBar;
 class QPushButton;
 class QSpinBox;
+class QEvent;
 
 class FocusPage final : public QWidget
 {
@@ -50,6 +52,8 @@ private slots:
     void handlePresetChanged();
     void applyTaskPreset();
     void setSelectedPresetAsTaskDefault();
+    void confirmCustomMinutes();
+    void restoreIdleStatus();
 
 private:
     void buildInterface();
@@ -59,6 +63,7 @@ private:
     TimerPreset selectedPreset() const;
     void updatePresetControls();
     void updateTrayStatus();
+    void showTemporaryStatus(const QString &message);
     FocusTimer::Phase selectedPhase() const;
     int durationSeconds(FocusTimer::Phase phase) const;
     void selectPhase(FocusTimer::Phase phase);
@@ -66,7 +71,12 @@ private:
     static QString formatSeconds(int totalSeconds);
     static QString phaseText(FocusTimer::Phase phase);
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
+private:
     FocusTimer timer_;
+    QTimer statusResetTimer_;
     TimerSettings settings_;
     NotificationSoundPlayer *soundPlayer_ = nullptr;
     QComboBox *projectFilter_ = nullptr;
@@ -75,7 +85,9 @@ private:
     QComboBox *presetCombo_ = nullptr;
     QComboBox *phaseCombo_ = nullptr;
     QLabel *customMinutesLabel_ = nullptr;
+    QWidget *customMinutesRow_ = nullptr;
     QSpinBox *customMinutes_ = nullptr;
+    QPushButton *confirmCustomMinutesButton_ = nullptr;
     QLabel *timerLabel_ = nullptr;
     QLabel *phaseLabel_ = nullptr;
     QLabel *cycleLabel_ = nullptr;
@@ -90,6 +102,7 @@ private:
     int completedFocusCycles_ = 0;
     int currentTaskId_ = -1;
     int currentRemainingSeconds_ = 0;
+    int confirmedCustomFocusMinutes_ = 25;
     QString currentTaskTitle_;
     bool completeTaskWhenSessionEnds_ = false;
 };

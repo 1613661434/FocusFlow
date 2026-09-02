@@ -8,6 +8,7 @@
 #include <QComboBox>
 #include <QDir>
 #include <QFileInfo>
+#include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSignalSpy>
@@ -29,6 +30,7 @@ private slots:
     void primaryButtonTracksTimerState();
     void taskFiltersShowScoresAndSortRecommendations();
     void taskSchemeAndTrayStatusFollowTheRunningTimer();
+    void taskDefaultFeedbackResetsAndCustomDurationRequiresConfirmation();
     void cleanupTestCase();
 
 private:
@@ -211,9 +213,12 @@ void FocusPageTests::taskSchemeAndTrayStatusFollowTheRunningTimer()
     auto *customMinutes = page.findChild<QSpinBox *>(
         QStringLiteral("focusCustomMinutes"));
     auto *primary = buttonForRole(page, QStringLiteral("primary"));
+    auto *confirmCustom = page.findChild<QPushButton *>(
+        QStringLiteral("confirmCustomMinutesButton"));
     QVERIFY(presetCombo != nullptr);
     QVERIFY(customMinutes != nullptr);
     QVERIFY(primary != nullptr);
+    QVERIFY(confirmCustom != nullptr);
 
     page.selectTask(task.id);
     QCOMPARE(presetCombo->currentData().toInt(), deepWork->id);
@@ -222,6 +227,10 @@ void FocusPageTests::taskSchemeAndTrayStatusFollowTheRunningTimer()
     presetCombo->setCurrentIndex(customIndex);
     QVERIFY(!customMinutes->isHidden());
     customMinutes->setValue(1);
+    QVERIFY(!primary->isEnabled());
+    QVERIFY(confirmCustom->isEnabled());
+    confirmCustom->click();
+    QVERIFY(primary->isEnabled());
 
     QSignalSpy traySpy(&page, &FocusPage::trayStatusChanged);
     primary->click();
@@ -234,6 +243,69 @@ void FocusPageTests::taskSchemeAndTrayStatusFollowTheRunningTimer()
     primary->click();
     status = traySpy.constLast().at(0).toString();
     QVERIFY(status.contains(QStringLiteral("专注已暂停")));
+}
+
+void FocusPageTests::taskDefaultFeedbackResetsAndCustomDurationRequiresConfirmation()
+{
+    Task task;
+    task.title = QStringLiteral("方案反馈测试任务");
+    QString error;
+    QVERIFY2(TaskRepository().save(task, &error), qPrintable(error));
+
+    FocusPage page;
+    page.resize(1000, 700);
+    page.show();
+    QCoreApplication::processEvents();
+    auto *taskCombo = page.findChild<QComboBox *>(
+        QStringLiteral("focusTaskCombo"));
+    auto *presetCombo = page.findChild<QComboBox *>(
+        QStringLiteral("focusPresetCombo"));
+    auto *customMinutes = page.findChild<QSpinBox *>(
+        QStringLiteral("focusCustomMinutes"));
+    auto *setTaskPreset = page.findChild<QPushButton *>(
+        QStringLiteral("taskPresetButton"));
+    auto *confirmCustom = page.findChild<QPushButton *>(
+        QStringLiteral("confirmCustomMinutesButton"));
+    auto *statusLabel = page.findChild<QLabel *>(
+        QStringLiteral("focusStatusLabel"));
+    auto *primary = buttonForRole(page, QStringLiteral("primary"));
+    QVERIFY(taskCombo != nullptr);
+    QVERIFY(presetCombo != nullptr);
+    QVERIFY(customMinutes != nullptr);
+    QVERIFY(setTaskPreset != nullptr);
+    QVERIFY(confirmCustom != nullptr);
+    QVERIFY(statusLabel != nullptr);
+    QVERIFY(primary != nullptr);
+
+    QCOMPARE(taskCombo->currentData().toInt(), -1);
+    QVERIFY(!setTaskPreset->isEnabled());
+    QVERIFY(setTaskPreset->toolTip().contains(QStringLiteral("关联任务")));
+
+    page.selectTask(task.id);
+    QVERIFY(setTaskPreset->isEnabled());
+    setTaskPreset->click();
+    QVERIFY(statusLabel->text().contains(QStringLiteral("默认专注方案")));
+    QTRY_COMPARE_WITH_TIMEOUT(statusLabel->text(),
+                              QStringLiteral("准备开始专注"), 3200);
+
+    const int customIndex = presetCombo->findData(-2);
+    QVERIFY(customIndex >= 0);
+    presetCombo->setCurrentIndex(customIndex);
+    customMinutes->setValue(7);
+    QVERIFY(confirmCustom->isEnabled());
+    QVERIFY(!primary->isEnabled());
+    customMinutes->setFocus();
+    QCoreApplication::processEvents();
+    QTest::mouseClick(&page, Qt::LeftButton, Qt::NoModifier,
+                      QPoint(4, 4));
+    QVERIFY(!customMinutes->hasFocus());
+    confirmCustom->click();
+    QVERIFY(primary->isEnabled());
+    QVERIFY(!confirmCustom->isEnabled());
+
+    taskCombo->setCurrentIndex(taskCombo->findData(-1));
+    QVERIFY(!setTaskPreset->isEnabled());
+    QVERIFY(setTaskPreset->toolTip().contains(QStringLiteral("关联任务")));
 }
 
 void FocusPageTests::cleanupTestCase()

@@ -47,11 +47,31 @@ void TimerPresetRepositoryTests::seedsUsefulSchemesAndMaintainsOneDefault()
                                return preset.isDefault;
                            }),
              1);
+    QCOMPARE(std::count_if(presets.cbegin(), presets.cend(),
+                           [](const TimerPreset &preset) {
+                               return preset.isBuiltIn;
+                           }),
+             4);
     QVERIFY(std::any_of(presets.cbegin(), presets.cend(),
                         [](const TimerPreset &preset) {
                             return preset.name == QStringLiteral("深度工作")
-                                   && preset.focusMinutes == 50;
+                                   && preset.focusMinutes == 50
+                                   && preset.isBuiltIn;
                         }));
+
+    const auto classicIt = std::find_if(
+        presets.cbegin(), presets.cend(), [](const TimerPreset &preset) {
+            return preset.name == QStringLiteral("经典番茄钟");
+        });
+    QVERIFY(classicIt != presets.cend());
+    TimerPreset changedBuiltIn = *classicIt;
+    changedBuiltIn.focusMinutes = 30;
+    QString error;
+    QVERIFY(!repository.save(changedBuiltIn, &error));
+    QVERIFY(error.contains(QStringLiteral("内置预设")));
+    error.clear();
+    QVERIFY(!repository.remove(classicIt->id, &error));
+    QVERIFY(error.contains(QStringLiteral("内置预设")));
 
     TimerPreset custom;
     custom.id = -1;
@@ -60,9 +80,10 @@ void TimerPresetRepositoryTests::seedsUsefulSchemesAndMaintainsOneDefault()
     custom.shortBreakMinutes = 8;
     custom.longBreakMinutes = 20;
     custom.cyclesBeforeLongBreak = 3;
-    QString error;
+    error.clear();
     QVERIFY2(repository.save(custom, &error), qPrintable(error));
     QVERIFY(custom.id > 0);
+    QVERIFY(!custom.isBuiltIn);
     QVERIFY2(repository.setDefault(custom.id, &error), qPrintable(error));
     QCOMPARE(repository.defaultPreset().id, custom.id);
 }
