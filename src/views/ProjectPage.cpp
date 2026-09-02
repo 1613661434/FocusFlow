@@ -241,6 +241,9 @@ void ProjectPage::refresh()
         const auto &project = projects_.at(row);
         auto *name = new SortKeyTableWidgetItem(project.name);
         name->setData(Qt::UserRole, project.id);
+        if (QColor(project.color).isValid()) {
+            name->setForeground(QColor(project.color));
+        }
         projectTable_->setItem(row, 0, name);
         projectTable_->setItem(
             row, 1, new SortKeyTableWidgetItem(project.description));
@@ -274,6 +277,9 @@ void ProjectPage::refresh()
         const auto &category = categories_.at(row);
         auto *name = new SortKeyTableWidgetItem(category.name);
         name->setData(Qt::UserRole, category.id);
+        if (QColor(category.color).isValid()) {
+            name->setForeground(QColor(category.color));
+        }
         categoryTable_->setItem(row, 0, name);
         auto *color = new SortKeyTableWidgetItem({}, category.color);
         color->setData(kColorRole, category.color);
