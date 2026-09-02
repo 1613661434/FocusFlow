@@ -15,8 +15,8 @@
 #include <QLegend>
 #include <QPieSeries>
 #include <QPieSlice>
-#include <QScrollArea>
 #include <QHeaderView>
+#include <QTabWidget>
 #include <QTableWidget>
 #include <QValueAxis>
 #include <QVBoxLayout>
@@ -30,14 +30,8 @@ StatisticsPage::StatisticsPage(QWidget *parent)
 
 void StatisticsPage::buildInterface()
 {
-    auto *outer = new QVBoxLayout(this);
-    outer->setContentsMargins(0, 0, 0, 0);
-    auto *scrollArea = new QScrollArea(this);
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setFrameShape(QFrame::NoFrame);
-    auto *content = new QWidget(scrollArea);
-    auto *root = new QVBoxLayout(content);
-    root->setContentsMargins(0, 0, 16, 16);
+    auto *root = new QVBoxLayout(this);
+    root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(16);
 
     auto createSummary = [this](const QString &title, QLabel **value) {
@@ -59,23 +53,32 @@ void StatisticsPage::buildInterface()
     summary->addWidget(createSummary(QStringLiteral("近7天专注"), &weekFocusValue_));
     summary->addWidget(createSummary(QStringLiteral("今日完成任务"), &completedValue_));
 
-    dailyChartView_ = new QChartView(this);
-    dailyChartView_->setRenderHint(QPainter::Antialiasing);
-    dailyChartView_->setMinimumHeight(320);
-    categoryChartView_ = new QChartView(this);
-    categoryChartView_->setRenderHint(QPainter::Antialiasing);
-    categoryChartView_->setMinimumHeight(320);
-    projectChartView_ = new QChartView(this);
-    projectChartView_->setRenderHint(QPainter::Antialiasing);
-    projectChartView_->setMinimumHeight(320);
+    auto *tabs = new QTabWidget(this);
+    tabs->setObjectName(QStringLiteral("statisticsTabs"));
 
-    auto *charts = new QGridLayout;
+    auto *chartsPage = new QWidget(tabs);
+    auto *charts = new QGridLayout(chartsPage);
+    charts->setContentsMargins(0, 12, 0, 0);
     charts->setSpacing(16);
+    dailyChartView_ = new QChartView(chartsPage);
+    dailyChartView_->setRenderHint(QPainter::Antialiasing);
+    dailyChartView_->setMinimumHeight(230);
+    categoryChartView_ = new QChartView(chartsPage);
+    categoryChartView_->setRenderHint(QPainter::Antialiasing);
+    categoryChartView_->setMinimumHeight(230);
+    projectChartView_ = new QChartView(chartsPage);
+    projectChartView_->setRenderHint(QPainter::Antialiasing);
+    projectChartView_->setMinimumHeight(230);
     charts->addWidget(dailyChartView_, 0, 0, 1, 2);
     charts->addWidget(categoryChartView_, 1, 0);
     charts->addWidget(projectChartView_, 1, 1);
+    charts->setRowStretch(0, 1);
+    charts->setRowStretch(1, 1);
 
-    auto *recentCard = new QFrame(content);
+    auto *recordsPage = new QWidget(tabs);
+    auto *recordsPageLayout = new QVBoxLayout(recordsPage);
+    recordsPageLayout->setContentsMargins(0, 12, 0, 0);
+    auto *recentCard = new QFrame(recordsPage);
     recentCard->setObjectName(QStringLiteral("card"));
     auto *recentLayout = new QVBoxLayout(recentCard);
     recentLayout->setContentsMargins(18, 16, 18, 16);
@@ -98,8 +101,8 @@ void StatisticsPage::buildInterface()
     recentSessions_->setSelectionBehavior(QAbstractItemView::SelectRows);
     recentSessions_->setAlternatingRowColors(true);
     recentSessions_->verticalHeader()->setVisible(false);
-    recentSessions_->verticalHeader()->setMinimumSectionSize(40);
-    recentSessions_->verticalHeader()->setDefaultSectionSize(40);
+    recentSessions_->verticalHeader()->setMinimumSectionSize(36);
+    recentSessions_->verticalHeader()->setDefaultSectionSize(36);
     recentSessions_->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
     recentSessions_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     recentSessions_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -111,12 +114,14 @@ void StatisticsPage::buildInterface()
     recentLayout->addWidget(recentTitle);
     recentLayout->addWidget(recentHint);
     recentLayout->addWidget(recentSessions_);
+    recordsPageLayout->addWidget(recentCard);
+    recordsPageLayout->addStretch();
+
+    tabs->addTab(chartsPage, QStringLiteral("图表分析"));
+    tabs->addTab(recordsPage, QStringLiteral("最近记录"));
 
     root->addLayout(summary);
-    root->addLayout(charts, 1);
-    root->addWidget(recentCard);
-    scrollArea->setWidget(content);
-    outer->addWidget(scrollArea);
+    root->addWidget(tabs, 1);
 }
 
 void StatisticsPage::refresh()

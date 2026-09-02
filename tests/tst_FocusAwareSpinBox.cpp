@@ -1,4 +1,5 @@
 #include "widgets/FocusAwareSpinBox.h"
+#include "widgets/FocusAwareSlider.h"
 
 #include <QApplication>
 #include <QLineEdit>
@@ -13,6 +14,7 @@ class FocusAwareSpinBoxTests final : public QObject
 
 private slots:
     void ignoresWheelUntilFocused();
+    void sliderIgnoresWheelUntilFocused();
     void keepsCursorOutOfSuffix();
 };
 
@@ -84,6 +86,34 @@ void FocusAwareSpinBoxTests::keepsCursorOutOfSuffix()
     QTest::keyClick(editor, Qt::Key_End);
     QCoreApplication::processEvents();
     QCOMPARE(editor->cursorPosition(), numericEnd);
+}
+
+void FocusAwareSpinBoxTests::sliderIgnoresWheelUntilFocused()
+{
+    QWidget window;
+    auto *layout = new QVBoxLayout(&window);
+    auto *otherInput = new QLineEdit(&window);
+    auto *slider = new FocusAwareSlider(Qt::Horizontal, &window);
+    slider->setRange(0, 100);
+    slider->setValue(10);
+    layout->addWidget(otherInput);
+    layout->addWidget(slider);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    otherInput->setFocus();
+    QTRY_VERIFY(otherInput->hasFocus());
+    auto ignoredWheel = upwardWheelEvent();
+    QApplication::sendEvent(slider, &ignoredWheel);
+    QCOMPARE(slider->value(), 10);
+    QVERIFY(!ignoredWheel.isAccepted());
+
+    slider->setFocus(Qt::MouseFocusReason);
+    QTRY_VERIFY(slider->hasFocus());
+    auto acceptedWheel = upwardWheelEvent();
+    QApplication::sendEvent(slider, &acceptedWheel);
+    QVERIFY(slider->value() > 10);
+    QVERIFY(acceptedWheel.isAccepted());
 }
 
 QTEST_MAIN(FocusAwareSpinBoxTests)

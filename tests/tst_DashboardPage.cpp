@@ -18,9 +18,11 @@
 #include <QHeaderView>
 #include <QListWidget>
 #include <QSignalSpy>
+#include <QScrollArea>
 #include <QSqlQuery>
 #include <QStackedWidget>
 #include <QStandardPaths>
+#include <QTabWidget>
 #include <QTableWidget>
 #include <QTest>
 #include <QUuid>
@@ -258,6 +260,14 @@ void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
     page.show();
     QCoreApplication::processEvents();
 
+    auto *tabs = page.findChild<QTabWidget *>(QStringLiteral("statisticsTabs"));
+    QVERIFY(tabs != nullptr);
+    QCOMPARE(tabs->count(), 2);
+    QCOMPARE(tabs->tabText(0), QStringLiteral("图表分析"));
+    QCOMPARE(tabs->tabText(1), QStringLiteral("最近记录"));
+    tabs->setCurrentIndex(1);
+    QCoreApplication::processEvents();
+
     auto *table = page.findChild<QTableWidget *>(
         QStringLiteral("recentFocusSessions"));
     auto *hint = page.findChild<QLabel *>(QStringLiteral("recentFocusHint"));
@@ -271,6 +281,7 @@ void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
     QCOMPARE(table->verticalScrollBarPolicy(), Qt::ScrollBarAlwaysOff);
     QCOMPARE(table->horizontalScrollBarPolicy(), Qt::ScrollBarAlwaysOff);
     QVERIFY(hint->text().contains(QStringLiteral("最近 10 条")));
+    QVERIFY(page.findChild<QScrollArea *>() == nullptr);
 
     const QRect lastRow = table->visualItemRect(table->item(9, 0));
     QVERIFY(lastRow.isValid());

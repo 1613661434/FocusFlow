@@ -5,6 +5,7 @@
 #include "services/DataManagementService.h"
 #include "services/NotificationSoundPlayer.h"
 #include "services/SoundStorageService.h"
+#include "widgets/FocusAwareSlider.h"
 #include "widgets/FocusAwareSpinBox.h"
 
 #include <QCheckBox>
@@ -136,7 +137,7 @@ void SettingsPage::buildInterface()
         return widget;
     };
 
-    volume_ = new QSlider(Qt::Horizontal, soundGroup);
+    volume_ = new FocusAwareSlider(Qt::Horizontal, soundGroup);
     volume_->setRange(0, 100);
     volumeLabel_ = new QLabel(soundGroup);
     auto *volumeWidget = new QWidget(soundGroup);
