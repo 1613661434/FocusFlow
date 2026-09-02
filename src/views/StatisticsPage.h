@@ -27,6 +27,7 @@ private:
     QLabel *weekFocusValue_ = nullptr;
     QLabel *todayFocusValue_ = nullptr;
     QLabel *completedValue_ = nullptr;
+    QLabel *dailyValueLabel_ = nullptr;
     QChartView *dailyChartView_ = nullptr;
     QChartView *categoryChartView_ = nullptr;
     QChartView *projectChartView_ = nullptr;

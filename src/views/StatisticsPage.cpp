@@ -23,7 +23,6 @@
 #include <QTabWidget>
 #include <QTabBar>
 #include <QTableWidget>
-#include <QToolTip>
 #include <QValueAxis>
 #include <QVBoxLayout>
 
@@ -105,6 +104,21 @@ void StatisticsPage::buildInterface()
     dailyChartView_->setObjectName(QStringLiteral("dailyFocusChartView"));
     dailyChartView_->setRenderHint(QPainter::Antialiasing);
     dailyChartView_->setMinimumHeight(230);
+    dailyValueLabel_ = new QLabel(dailyChartView_->viewport());
+    dailyValueLabel_->setObjectName(QStringLiteral("dailyFocusValueLabel"));
+    dailyValueLabel_->setAlignment(Qt::AlignCenter);
+    dailyValueLabel_->setAttribute(Qt::WA_TransparentForMouseEvents);
+    dailyValueLabel_->setAutoFillBackground(false);
+    dailyValueLabel_->setFrameStyle(QFrame::NoFrame);
+    dailyValueLabel_->setStyleSheet(QStringLiteral(
+        "QLabel#dailyFocusValueLabel {"
+        " color: #182230;"
+        " background: transparent;"
+        " border: none;"
+        " padding: 0px;"
+        " font-weight: 700;"
+        "}"));
+    dailyValueLabel_->hide();
     categoryChartView_ = new QChartView(chartsPage);
     categoryChartView_->setRenderHint(QPainter::Antialiasing);
     categoryChartView_->setMinimumHeight(230);
@@ -193,6 +207,7 @@ void StatisticsPage::refresh()
 
 void StatisticsPage::updateDailyChart()
 {
+    dailyValueLabel_->hide();
     const auto daily = AnalyticsRepository().lastSevenDays();
     auto *focusSet = new QBarSet(QStringLiteral("专注秒数"));
     focusSet->setObjectName(QStringLiteral("dailyFocusBarSet"));
@@ -224,8 +239,8 @@ void StatisticsPage::updateDailyChart()
     connect(focusSet, &QBarSet::hovered, focusSet,
             [this, chart, daily, maximum](bool hovered, int index) {
                 if (!hovered || index < 0 || index >= daily.size()) {
-                    QToolTip::hideText();
-                    dailyChartView_->setProperty("focusTooltipAnchor", QVariant());
+                    dailyValueLabel_->hide();
+                    dailyChartView_->setProperty("focusValueAnchor", QVariant());
                     return;
                 }
 
@@ -237,18 +252,25 @@ void StatisticsPage::updateDailyChart()
                 const qreal ratio = static_cast<qreal>(day.focusSeconds)
                                     / qMax(1, maximum);
                 const qreal y = plot.bottom() - plot.height() * ratio;
-                const QPoint chartPoint = dailyChartView_->mapFromScene(
-                    chart->mapToScene(QPointF(x, qMax(plot.top(), y - 8.0))));
-                const QPoint globalAnchor =
-                    dailyChartView_->viewport()->mapToGlobal(chartPoint);
-                dailyChartView_->setProperty("focusTooltipAnchor", globalAnchor);
-                dailyChartView_->setProperty("focusTooltipIndex", index);
-                QToolTip::showText(
-                    globalAnchor,
-                    QStringLiteral("%1：%2 秒")
-                        .arg(day.label)
-                        .arg(day.focusSeconds),
-                    dailyChartView_);
+                const QPoint barTop = dailyChartView_->mapFromScene(
+                    chart->mapToScene(QPointF(x, qMax(plot.top(), y))));
+
+                dailyValueLabel_->setText(QString::number(day.focusSeconds));
+                dailyValueLabel_->adjustSize();
+                const QSize labelSize = dailyValueLabel_->size();
+                const QRect viewportRect = dailyChartView_->viewport()->rect();
+                const int left = qBound(
+                    viewportRect.left(),
+                    qRound(barTop.x() - labelSize.width() / 2.0),
+                    qMax(viewportRect.left(),
+                         viewportRect.right() - labelSize.width() + 1));
+                const int top = qMax(viewportRect.top(),
+                                     barTop.y() - labelSize.height() - 6);
+                dailyValueLabel_->move(left, top);
+                dailyValueLabel_->show();
+                dailyValueLabel_->raise();
+                dailyChartView_->setProperty("focusValueAnchor", barTop);
+                dailyChartView_->setProperty("focusValueIndex", index);
             });
 }
 
