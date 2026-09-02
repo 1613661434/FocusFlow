@@ -16,9 +16,11 @@ class MainWindow final : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
 
+public slots:
+    void restoreAndActivate();
+
 private slots:
     void showPage(int index);
-    void showFromTray();
     void showNotification(const QString &title, const QString &message);
 
 protected:
