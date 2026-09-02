@@ -234,6 +234,30 @@ void DashboardPageTests::interruptedFocusIsIncludedInStatistics()
              QColor(QStringLiteral("#4F6EF7")));
     QCOMPARE(recentSessions.constFirst().focusSeconds, 59);
     QVERIFY(!recentSessions.constFirst().completed);
+
+    const QColor updatedCategoryColor(QStringLiteral("#B42318"));
+    QSqlQuery updateCategory(database);
+    updateCategory.prepare(QStringLiteral(
+        "UPDATE categories SET color = :color WHERE id = :id"));
+    updateCategory.bindValue(QStringLiteral(":color"),
+                             updatedCategoryColor.name());
+    updateCategory.bindValue(QStringLiteral(":id"), categoryId);
+    QVERIFY(updateCategory.exec());
+
+    StatisticsPage refreshedStatistics;
+    auto *recentTable = refreshedStatistics.findChild<QTableWidget *>(
+        QStringLiteral("recentFocusSessions"));
+    QVERIFY(recentTable != nullptr);
+    bool foundUpdatedColor = false;
+    for (int row = 0; row < recentTable->rowCount(); ++row) {
+        if (recentTable->item(row, 4)->text() == categoryName) {
+            QCOMPARE(recentTable->item(row, 4)->foreground().color(),
+                     updatedCategoryColor);
+            foundUpdatedColor = true;
+            break;
+        }
+    }
+    QVERIFY(foundUpdatedColor);
 }
 
 void DashboardPageTests::todayFocusMetricShowsSeconds()
@@ -413,6 +437,7 @@ void DashboardPageTests::recommendationFiltersByProjectAndCategory()
     task.projectId = project.id;
     task.categoryId = category.id;
     task.importance = 5;
+    task.dueAt = QDateTime::currentDateTime().addDays(1);
     QVERIFY2(TaskRepository().save(task, &error), qPrintable(error));
 
     DashboardPage page;
@@ -448,6 +473,8 @@ void DashboardPageTests::recommendationFiltersByProjectAndCategory()
     QVERIFY(scoreLine != nullptr);
     QVERIFY(scoreLine->text().toLower().contains(project.color.toLower()));
     QVERIFY(scoreLine->text().toLower().contains(category.color.toLower()));
+    QVERIFY(scoreLine->text().contains(
+        task.dueAt.toString(QStringLiteral("yyyy-MM-dd HH:mm"))));
     const QString accessibleText =
         item->data(Qt::AccessibleTextRole).toString();
     QVERIFY(accessibleText.contains(QStringLiteral("项目：%1").arg(project.name)));
@@ -597,6 +624,9 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     QVERIFY2(taskRepository.save(highImportance, &error), qPrintable(error));
 
     TaskPage taskPage;
+    taskPage.resize(1800, 800);
+    taskPage.show();
+    QCoreApplication::processEvents();
     auto *taskTable =
         taskPage.findChild<QTableWidget *>(QStringLiteral("taskTable"));
     QVERIFY(taskTable != nullptr);
@@ -665,7 +695,15 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     QCOMPARE(overdueColor, QColor(QStringLiteral("#B42318")));
     QVERIFY(overdueText.contains(QStringLiteral("已逾期")));
     QVERIFY(overdueText.contains(QString::number(QDate::currentDate().year())));
-    QVERIFY(taskTable->columnWidth(1) <= 240);
+    QCOMPARE(taskTable->horizontalHeader()->sectionResizeMode(0),
+             QHeaderView::Stretch);
+    QCOMPARE(taskTable->horizontalHeader()->sectionResizeMode(1),
+             QHeaderView::Stretch);
+    int occupiedWidth = 0;
+    for (int column = 0; column < taskTable->columnCount(); ++column) {
+        occupiedWidth += taskTable->columnWidth(column);
+    }
+    QVERIFY(occupiedWidth >= taskTable->viewport()->width() - 2);
 
     taskTable->sortItems(6, Qt::AscendingOrder);
     for (int row = 1; row < taskTable->rowCount(); ++row) {
@@ -688,6 +726,11 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     ProjectRepository projectRepository;
     QVERIFY2(projectRepository.saveProject(activeProject, &error), qPrintable(error));
     QVERIFY2(projectRepository.saveProject(archivedProject, &error), qPrintable(error));
+    LookupItem coloredCategory;
+    coloredCategory.name = QStringLiteral("排序测试-彩色分类");
+    coloredCategory.color = QStringLiteral("#175CD3");
+    QVERIFY2(projectRepository.saveCategory(coloredCategory, &error),
+             qPrintable(error));
 
     ProjectPage projectPage;
     auto *projectTable =
@@ -711,11 +754,23 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
             QCOMPARE(projectTable->item(row, column)->textAlignment(),
                      static_cast<int>(Qt::AlignCenter));
         }
+        const QString projectName = projectTable->item(row, 0)->text();
+        if (projectName == activeProject.name) {
+            QCOMPARE(projectTable->item(row, 0)->foreground().color(),
+                     QColor(activeProject.color));
+        } else if (projectName == archivedProject.name) {
+            QCOMPARE(projectTable->item(row, 0)->foreground().color(),
+                     QColor(archivedProject.color));
+        }
     }
     for (int row = 0; row < categoryTable->rowCount(); ++row) {
         for (int column = 0; column < categoryTable->columnCount(); ++column) {
             QCOMPARE(categoryTable->item(row, column)->textAlignment(),
                      static_cast<int>(Qt::AlignCenter));
+        }
+        if (categoryTable->item(row, 0)->text() == coloredCategory.name) {
+            QCOMPARE(categoryTable->item(row, 0)->foreground().color(),
+                     QColor(coloredCategory.color));
         }
     }
 

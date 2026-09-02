@@ -230,9 +230,15 @@ void DashboardPage::refreshRecommendations()
                              .arg(projectName,
                                   categoryName,
                                   QString::number(score));
+        const bool overdue = task.dueAt.isValid()
+                             && task.status != QStringLiteral("completed")
+                             && task.dueAt < QDateTime::currentDateTime();
         if (task.dueAt.isValid()) {
-            detail += QStringLiteral("  ·  截止 %1")
-                          .arg(task.dueAt.toString(QStringLiteral("MM-dd HH:mm")));
+            detail += QStringLiteral("  ·  %1 %2")
+                          .arg(overdue ? QStringLiteral("已逾期")
+                                       : QStringLiteral("截止"),
+                               task.dueAt.toString(
+                                   QStringLiteral("yyyy-MM-dd HH:mm")));
         }
         auto *item = new QListWidgetItem(recommendations_);
         item->setData(Qt::UserRole, task.id);
@@ -275,10 +281,17 @@ void DashboardPage::refreshRecommendations()
                 .arg(projectColor.name(), projectName.toHtmlEscaped(),
                      categoryColor.name(), categoryName.toHtmlEscaped());
         if (task.dueAt.isValid()) {
-            context += QStringLiteral("<span style=\"color:#667085;\">"
-                                      "&nbsp;&nbsp;·&nbsp;&nbsp;截止 %1</span>")
-                           .arg(task.dueAt.toString(
-                               QStringLiteral("MM-dd HH:mm")));
+            context += QStringLiteral(
+                           "<span style=\"color:%1;%2\">"
+                           "&nbsp;&nbsp;·&nbsp;&nbsp;%3 %4</span>")
+                           .arg(overdue ? QStringLiteral("#B42318")
+                                        : QStringLiteral("#667085"),
+                                overdue ? QStringLiteral("font-weight:600;")
+                                        : QString(),
+                                overdue ? QStringLiteral("已逾期")
+                                        : QStringLiteral("截止"),
+                                task.dueAt.toString(
+                                    QStringLiteral("yyyy-MM-dd HH:mm")));
         }
         detailLabel->setText(
             QStringLiteral("<span style=\"color:%1;font-weight:600;\">"

@@ -109,9 +109,8 @@ void TaskPage::buildInterface()
     table_->verticalHeader()->setVisible(false);
     table_->verticalHeader()->setDefaultSectionSize(44);
     table_->horizontalHeader()->setStretchLastSection(false);
-    table_->horizontalHeader()->setSectionResizeMode(TitleColumn, QHeaderView::ResizeToContents);
-    table_->horizontalHeader()->setSectionResizeMode(DescriptionColumn, QHeaderView::Interactive);
-    table_->horizontalHeader()->resizeSection(DescriptionColumn, 220);
+    table_->horizontalHeader()->setSectionResizeMode(TitleColumn, QHeaderView::Stretch);
+    table_->horizontalHeader()->setSectionResizeMode(DescriptionColumn, QHeaderView::Stretch);
     table_->horizontalHeader()->setSectionResizeMode(ProjectColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(CategoryColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(DueColumn, QHeaderView::ResizeToContents);
