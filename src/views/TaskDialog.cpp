@@ -1,7 +1,9 @@
 #include "views/TaskDialog.h"
 
 #include "widgets/ChineseCalendarWidget.h"
+#include "widgets/ColoredComboBox.h"
 #include "widgets/FocusAwareSpinBox.h"
+#include "widgets/PriorityColors.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -49,24 +51,41 @@ void TaskDialog::buildInterface(const QVector<LookupItem> &projects,
     descriptionEdit_->setMaximumHeight(110);
 
     projectCombo_ = new QComboBox(this);
+    projectCombo_->setObjectName(QStringLiteral("taskProjectCombo"));
     projectCombo_->addItem(QStringLiteral("无项目"), -1);
     for (const auto &project : projects) {
-        projectCombo_->addItem(project.name, project.id);
+        ColoredComboBox::addColoredItem(
+            projectCombo_, project.name, project.id, QColor(project.color));
     }
+    ColoredComboBox::enableCurrentItemColor(projectCombo_);
 
     categoryCombo_ = new QComboBox(this);
+    categoryCombo_->setObjectName(QStringLiteral("taskCategoryCombo"));
     categoryCombo_->addItem(QStringLiteral("未分类"), -1);
     for (const auto &category : categories) {
-        categoryCombo_->addItem(category.name, category.id);
+        ColoredComboBox::addColoredItem(
+            categoryCombo_, category.name, category.id, QColor(category.color));
     }
+    ColoredComboBox::enableCurrentItemColor(categoryCombo_);
 
     importanceCombo_ = new QComboBox(this);
-    importanceCombo_->addItem(QStringLiteral("1 - 很低"), 1);
-    importanceCombo_->addItem(QStringLiteral("2 - 较低"), 2);
-    importanceCombo_->addItem(QStringLiteral("3 - 普通"), 3);
-    importanceCombo_->addItem(QStringLiteral("4 - 重要"), 4);
-    importanceCombo_->addItem(QStringLiteral("5 - 紧急且重要"), 5);
+    importanceCombo_->setObjectName(QStringLiteral("taskImportanceCombo"));
+    const QStringList importanceNames{
+        QStringLiteral("很低"), QStringLiteral("较低"),
+        QStringLiteral("普通"), QStringLiteral("重要"),
+        QStringLiteral("紧急且重要")};
+    for (int level = 1; level <= 5; ++level) {
+        ColoredComboBox::addColoredItem(
+            importanceCombo_,
+            QStringLiteral("%1  %2（%3级）")
+                .arg(QString(level, QChar(0x2605)),
+                     importanceNames.at(level - 1),
+                     QString::number(level)),
+            level,
+            PriorityColors::importance(level));
+    }
     importanceCombo_->setCurrentIndex(2);
+    ColoredComboBox::enableCurrentItemColor(importanceCombo_);
 
     const QDateTime defaultDue(QDate::currentDate(), QTime(23, 59));
     dueEnabled_ = new QCheckBox(QStringLiteral("设置截止时间"), this);
@@ -192,4 +211,5 @@ void TaskDialog::selectId(QComboBox *comboBox, int id)
 {
     const int index = comboBox->findData(id);
     comboBox->setCurrentIndex(index >= 0 ? index : 0);
+    ColoredComboBox::applyCurrentItemColor(comboBox);
 }

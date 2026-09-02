@@ -2,6 +2,7 @@
 
 #include "repositories/AnalyticsRepository.h"
 #include "widgets/ClearSelectionOnBlankClick.h"
+#include "widgets/SortKeyTableWidgetItem.h"
 
 #include <QAbstractItemView>
 #include <QBarCategoryAxis>
@@ -9,7 +10,7 @@
 #include <QBarSet>
 #include <QChart>
 #include <QChartView>
-#include <QCursor>
+#include <QColor>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -116,6 +117,12 @@ void StatisticsPage::buildInterface()
         QHeaderView::Stretch);
     recentSessions_->horizontalHeader()->setSectionResizeMode(
         0, QHeaderView::ResizeToContents);
+    recentSessions_->horizontalHeader()->setSectionsClickable(true);
+    recentSessions_->horizontalHeader()->setSortIndicatorShown(true);
+    recentSessions_->horizontalHeader()->setSortIndicator(1, Qt::DescendingOrder);
+    recentSessions_->horizontalHeader()->setToolTip(
+        QStringLiteral("点击任意列标题排序，再次点击可切换升序或降序"));
+    recentSessions_->setSortingEnabled(true);
     recentSessions_->setSizePolicy(QSizePolicy::Expanding,
                                    QSizePolicy::Expanding);
     enableClearSelectionOnBlankClick(recentSessions_);
@@ -159,20 +166,6 @@ void StatisticsPage::updateDailyChart()
         labels << day.label;
         maximum = qMax(maximum, day.focusSeconds + 30);
     }
-    connect(focusSet, &QBarSet::hovered, focusSet,
-            [daily](bool hovered, int index) {
-                if (!hovered || index < 0 || index >= daily.size()) {
-                    QToolTip::hideText();
-                    return;
-                }
-                const DailyProductivity &day = daily.at(index);
-                QToolTip::showText(
-                    QCursor::pos(),
-                    QStringLiteral("%1：%2 秒")
-                        .arg(day.label)
-                        .arg(day.focusSeconds));
-            });
-
     auto *series = new QBarSeries;
     series->append(focusSet);
     auto *chart = new QChart;
@@ -191,6 +184,35 @@ void StatisticsPage::updateDailyChart()
     series->attachAxis(axisX);
     series->attachAxis(axisY);
     dailyChartView_->setChart(chart);
+    connect(focusSet, &QBarSet::hovered, focusSet,
+            [this, chart, daily, maximum](bool hovered, int index) {
+                if (!hovered || index < 0 || index >= daily.size()) {
+                    QToolTip::hideText();
+                    dailyChartView_->setProperty("focusTooltipAnchor", QVariant());
+                    return;
+                }
+
+                const DailyProductivity &day = daily.at(index);
+                const QRectF plot = chart->plotArea();
+                const qreal x = plot.left()
+                    + plot.width() * (static_cast<qreal>(index) + 0.5)
+                          / qMax(1, daily.size());
+                const qreal ratio = static_cast<qreal>(day.focusSeconds)
+                                    / qMax(1, maximum);
+                const qreal y = plot.bottom() - plot.height() * ratio;
+                const QPoint chartPoint = dailyChartView_->mapFromScene(
+                    chart->mapToScene(QPointF(x, qMax(plot.top(), y - 8.0))));
+                const QPoint globalAnchor =
+                    dailyChartView_->viewport()->mapToGlobal(chartPoint);
+                dailyChartView_->setProperty("focusTooltipAnchor", globalAnchor);
+                dailyChartView_->setProperty("focusTooltipIndex", index);
+                QToolTip::showText(
+                    globalAnchor,
+                    QStringLiteral("%1：%2 秒")
+                        .arg(day.label)
+                        .arg(day.focusSeconds),
+                    dailyChartView_);
+            });
 }
 
 void StatisticsPage::updateCategoryChart()
@@ -209,7 +231,9 @@ void StatisticsPage::updateCategoryChart()
         slice->setLabelVisible(true);
         if (categories.isEmpty()) {
             slice->setLabel(QStringLiteral("暂无数据"));
+            slice->setBrush(QColor(QStringLiteral("#D0D5DD")));
         } else {
+            slice->setBrush(QColor(categories.at(index).color));
             slice->setLabel(QStringLiteral("%1 %2% · %3")
                                 .arg(categories.at(index).name)
                                 .arg(slice->percentage() * 100.0, 0, 'f', 0)
@@ -241,7 +265,9 @@ void StatisticsPage::updateProjectChart()
         slice->setLabelVisible(true);
         if (projects.isEmpty()) {
             slice->setLabel(QStringLiteral("暂无数据"));
+            slice->setBrush(QColor(QStringLiteral("#D0D5DD")));
         } else {
+            slice->setBrush(QColor(projects.at(index).color));
             slice->setLabel(QStringLiteral("%1 %2% · %3")
                                 .arg(projects.at(index).name)
                                 .arg(slice->percentage() * 100.0, 0, 'f', 0)
@@ -260,27 +286,47 @@ void StatisticsPage::updateProjectChart()
 void StatisticsPage::updateRecentSessions()
 {
     const auto sessions = AnalyticsRepository().recentFocusSessions();
+    const int sortColumn =
+        recentSessions_->horizontalHeader()->sortIndicatorSection();
+    const Qt::SortOrder sortOrder =
+        recentSessions_->horizontalHeader()->sortIndicatorOrder();
+    recentSessions_->setSortingEnabled(false);
     recentSessions_->setRowCount(sessions.size());
     recentSessions_->verticalHeader()->setSectionResizeMode(
         sessions.size() == 10 ? QHeaderView::Stretch : QHeaderView::Fixed);
     for (qsizetype row = 0; row < sessions.size(); ++row) {
         const auto &session = sessions.at(row);
+        const QString result = session.completed ? QStringLiteral("已完成")
+                                                 : QStringLiteral("已终止");
         const QStringList values{
-            QString::number(row + 1),
+            QString::number(row + 1), session.startedAt, session.taskName,
+            session.projectName, session.categoryName,
+            formatDuration(session.focusSeconds), result,
+        };
+        const QVariantList sortKeys{
+            QVariant::fromValue(static_cast<int>(row + 1)),
             session.startedAt,
-            session.taskName,
-            session.projectName,
-            session.categoryName,
-            formatDuration(session.focusSeconds),
-            session.completed ? QStringLiteral("已完成")
-                              : QStringLiteral("已终止"),
+            session.taskName.toCaseFolded(),
+            session.projectName.toCaseFolded(),
+            session.categoryName.toCaseFolded(),
+            session.focusSeconds,
+            session.completed ? 1 : 0,
         };
         for (int column = 0; column < values.size(); ++column) {
-            auto *item = new QTableWidgetItem(values.at(column));
+            auto *item = new SortKeyTableWidgetItem(values.at(column),
+                                                    sortKeys.at(column));
             item->setTextAlignment(Qt::AlignCenter);
+            if (column == 3 && QColor(session.projectColor).isValid()) {
+                item->setForeground(QColor(session.projectColor));
+            } else if (column == 4
+                       && QColor(session.categoryColor).isValid()) {
+                item->setForeground(QColor(session.categoryColor));
+            }
             recentSessions_->setItem(row, column, item);
         }
     }
+    recentSessions_->setSortingEnabled(true);
+    recentSessions_->sortItems(sortColumn >= 0 ? sortColumn : 1, sortOrder);
 }
 
 QString StatisticsPage::formatDuration(int seconds)

@@ -23,12 +23,14 @@ struct DailyProductivity
 struct CategoryFocus
 {
     QString name;
+    QString color;
     int focusSeconds = 0;
 };
 
 struct ProjectFocus
 {
     QString name;
+    QString color;
     int focusSeconds = 0;
 };
 
@@ -37,7 +39,9 @@ struct RecentFocusSession
     QString startedAt;
     QString taskName;
     QString projectName;
+    QString projectColor;
     QString categoryName;
+    QString categoryColor;
     int focusSeconds = 0;
     bool completed = false;
 };

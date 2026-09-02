@@ -6,6 +6,7 @@
 #include "services/NotificationSoundPlayer.h"
 #include "services/PriorityService.h"
 #include "widgets/PriorityColors.h"
+#include "widgets/ColoredComboBox.h"
 
 #include <QComboBox>
 #include <QFrame>
@@ -126,6 +127,9 @@ void FocusPage::buildInterface()
     taskCombo_ = new QComboBox(optionsCard);
     taskCombo_->setObjectName(QStringLiteral("focusTaskCombo"));
     taskCombo_->setAccessibleName(QStringLiteral("关联任务，按推荐分从高到低排列"));
+    ColoredComboBox::enableCurrentItemColor(projectFilter_);
+    ColoredComboBox::enableCurrentItemColor(categoryFilter_);
+    ColoredComboBox::enableCurrentItemColor(taskCombo_);
     auto *phaseSelectLabel = new QLabel(QStringLiteral("计时类型"), optionsCard);
     phaseCombo_ = new QComboBox(optionsCard);
     phaseCombo_->setObjectName(QStringLiteral("focusPhaseCombo"));
@@ -203,20 +207,24 @@ void FocusPage::reloadTaskFilters()
     projectFilter_->addItem(QStringLiteral("全部项目"), kAllLookups);
     projectFilter_->addItem(QStringLiteral("无项目"), -1);
     for (const LookupItem &project : repository.projects()) {
-        projectFilter_->addItem(project.name, project.id);
+        ColoredComboBox::addColoredItem(
+            projectFilter_, project.name, project.id, QColor(project.color));
     }
 
     categoryFilter_->clear();
     categoryFilter_->addItem(QStringLiteral("全部分类"), kAllLookups);
     categoryFilter_->addItem(QStringLiteral("未分类"), -1);
     for (const LookupItem &category : repository.categories()) {
-        categoryFilter_->addItem(category.name, category.id);
+        ColoredComboBox::addColoredItem(
+            categoryFilter_, category.name, category.id, QColor(category.color));
     }
 
     const int projectIndex = projectFilter_->findData(selectedProject);
     const int categoryIndex = categoryFilter_->findData(selectedCategory);
     projectFilter_->setCurrentIndex(projectIndex >= 0 ? projectIndex : 0);
     categoryFilter_->setCurrentIndex(categoryIndex >= 0 ? categoryIndex : 0);
+    ColoredComboBox::applyCurrentItemColor(projectFilter_);
+    ColoredComboBox::applyCurrentItemColor(categoryFilter_);
 }
 
 void FocusPage::refreshFilteredTasks()
@@ -267,6 +275,7 @@ void FocusPage::refreshFilteredTasks()
     }
     const int previousIndex = taskCombo_->findData(previousId);
     taskCombo_->setCurrentIndex(previousIndex >= 0 ? previousIndex : 0);
+    ColoredComboBox::applyCurrentItemColor(taskCombo_);
 }
 
 void FocusPage::selectTask(int taskId)
@@ -289,6 +298,8 @@ void FocusPage::selectTask(int taskId)
         const int categoryIndex = categoryFilter_->findData(task.categoryId);
         projectFilter_->setCurrentIndex(projectIndex >= 0 ? projectIndex : 0);
         categoryFilter_->setCurrentIndex(categoryIndex >= 0 ? categoryIndex : 0);
+        ColoredComboBox::applyCurrentItemColor(projectFilter_);
+        ColoredComboBox::applyCurrentItemColor(categoryFilter_);
     }
     refreshFilteredTasks();
     const int taskIndex = taskCombo_->findData(taskId);

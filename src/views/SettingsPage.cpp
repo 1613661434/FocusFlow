@@ -1,5 +1,7 @@
 #include "views/SettingsPage.h"
 
+#include "views/AboutDialog.h"
+
 #include "data/DatabaseManager.h"
 #include "repositories/SettingsRepository.h"
 #include "services/DataManagementService.h"
@@ -9,6 +11,7 @@
 #include "widgets/FocusAwareSpinBox.h"
 
 #include <QCheckBox>
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -255,6 +258,36 @@ void SettingsPage::buildInterface()
     connect(clearStatisticsButton, &QPushButton::clicked,
             this, &SettingsPage::clearStatistics);
 
+    auto *aboutGroup = new QGroupBox(QStringLiteral("关于与版权"), content);
+    aboutGroup->setObjectName(QStringLiteral("settingsSection"));
+    auto *aboutLayout = new QHBoxLayout(aboutGroup);
+    aboutLayout->setSpacing(16);
+    auto *aboutTextLayout = new QVBoxLayout;
+    aboutTextLayout->setSpacing(5);
+    auto *aboutTitle = new QLabel(
+        QStringLiteral("FocusFlow v%1")
+            .arg(QCoreApplication::applicationVersion()),
+        aboutGroup);
+    aboutTitle->setObjectName(QStringLiteral("aboutSettingsTitle"));
+    auto *aboutSummary = new QLabel(
+        QStringLiteral("作者：ol木子李lo（简称 OL） · 查看版权声明与作者博客"),
+        aboutGroup);
+    aboutSummary->setObjectName(QStringLiteral("mutedLabel"));
+    aboutSummary->setWordWrap(true);
+    aboutTextLayout->addWidget(aboutTitle);
+    aboutTextLayout->addWidget(aboutSummary);
+    auto *showAboutButton = new QPushButton(
+        QStringLiteral("查看版权信息"), aboutGroup);
+    showAboutButton->setObjectName(QStringLiteral("showCopyrightButton"));
+    showAboutButton->setAccessibleName(QStringLiteral("打开版权与作者信息"));
+    showAboutButton->setMinimumHeight(40);
+    aboutLayout->addLayout(aboutTextLayout, 1);
+    aboutLayout->addWidget(showAboutButton, 0, Qt::AlignVCenter);
+    connect(showAboutButton, &QPushButton::clicked, this, [this] {
+        AboutDialog dialog(this);
+        dialog.exec();
+    });
+
     auto *saveButton = new QPushButton(QStringLiteral("保存设置"), content);
     saveButton->setObjectName(QStringLiteral("primaryButton"));
     saveButton->setMinimumWidth(130);
@@ -266,6 +299,7 @@ void SettingsPage::buildInterface()
     root->addWidget(soundGroup);
     root->addWidget(windowGroup);
     root->addWidget(dataGroup);
+    root->addWidget(aboutGroup);
     root->addWidget(saveButton, 0, Qt::AlignRight);
     root->addStretch();
     scrollArea->setWidget(content);

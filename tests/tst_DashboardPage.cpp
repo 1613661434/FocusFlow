@@ -209,6 +209,8 @@ void DashboardPageTests::interruptedFocusIsIncludedInStatistics()
     for (const CategoryFocus &categoryFocus : analytics.focusByCategory()) {
         if (categoryFocus.name == categoryName) {
             QCOMPARE(categoryFocus.focusSeconds, 59);
+            QCOMPARE(QColor(categoryFocus.color),
+                     QColor(QStringLiteral("#4F6EF7")));
             foundCategory = true;
         }
     }
@@ -218,6 +220,8 @@ void DashboardPageTests::interruptedFocusIsIncludedInStatistics()
     QVERIFY(!projectFocus.isEmpty());
     QCOMPARE(projectFocus.constFirst().name, QStringLiteral("无项目"));
     QCOMPARE(projectFocus.constFirst().focusSeconds, 59);
+    QCOMPARE(QColor(projectFocus.constFirst().color),
+             QColor(QStringLiteral("#667085")));
 
     const auto recentSessions = analytics.recentFocusSessions();
     QVERIFY(!recentSessions.isEmpty());
@@ -226,6 +230,8 @@ void DashboardPageTests::interruptedFocusIsIncludedInStatistics()
     QCOMPARE(recentSessions.constFirst().projectName,
              QStringLiteral("无项目"));
     QCOMPARE(recentSessions.constFirst().categoryName, categoryName);
+    QCOMPARE(QColor(recentSessions.constFirst().categoryColor),
+             QColor(QStringLiteral("#4F6EF7")));
     QCOMPARE(recentSessions.constFirst().focusSeconds, 59);
     QVERIFY(!recentSessions.constFirst().completed);
 }
@@ -289,6 +295,8 @@ void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
     QCOMPARE(table->horizontalScrollBarPolicy(), Qt::ScrollBarAlwaysOff);
     QCOMPARE(table->verticalHeader()->sectionResizeMode(0),
              QHeaderView::Stretch);
+    QVERIFY(table->isSortingEnabled());
+    QVERIFY(table->horizontalHeader()->sectionsClickable());
     QVERIFY(hint->text().contains(QStringLiteral("最近 10 条")));
     QVERIFY(page.findChild<QScrollArea *>() == nullptr);
 
@@ -306,6 +314,9 @@ void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
                                       Q_ARG(bool, true), Q_ARG(int, 6)));
     QCoreApplication::processEvents();
     QVERIFY(QToolTip::text().contains(QStringLiteral("秒")));
+    QVERIFY(dailyChartView->property("focusTooltipAnchor").toPoint()
+                != QPoint());
+    QCOMPARE(dailyChartView->property("focusTooltipIndex").toInt(), 6);
     QVERIFY(QMetaObject::invokeMethod(dailyFocusSet, "hovered",
                                       Q_ARG(bool, false), Q_ARG(int, 6)));
 
@@ -346,6 +357,11 @@ void DashboardPageTests::recommendationSupportsFocusShortcutAndBlankDeselection(
     QListWidgetItem *item = list->item(0);
     const int taskId = item->data(Qt::UserRole).toInt();
     QVERIFY(taskId > 0);
+    auto *scoreLine = list->itemWidget(item)->findChild<QLabel *>(
+        QStringLiteral("recommendationScoreLine"));
+    QVERIFY(scoreLine != nullptr);
+    QVERIFY(scoreLine->text().contains(QStringLiteral("推荐分")));
+    QVERIFY(scoreLine->text().contains(QStringLiteral("color:")));
     QSignalSpy focusRequestSpy(&page, &DashboardPage::focusTaskRequested);
 
     const QRect itemRect = list->visualItemRect(item);
@@ -419,6 +435,15 @@ void DashboardPageTests::recommendationFiltersByProjectAndCategory()
     QCOMPARE(item->data(Qt::UserRole).toInt(), task.id);
     QCOMPARE(item->data(Qt::UserRole + 1).toInt(), project.id);
     QCOMPARE(item->data(Qt::UserRole + 2).toInt(), category.id);
+    QCOMPARE(projectFilter->palette().color(QPalette::Text),
+             QColor(project.color));
+    QCOMPARE(categoryFilter->palette().color(QPalette::Text),
+             QColor(category.color));
+    auto *scoreLine = list->itemWidget(item)->findChild<QLabel *>(
+        QStringLiteral("recommendationScoreLine"));
+    QVERIFY(scoreLine != nullptr);
+    QVERIFY(scoreLine->text().toLower().contains(project.color.toLower()));
+    QVERIFY(scoreLine->text().toLower().contains(category.color.toLower()));
     QVERIFY(item->text().contains(QStringLiteral("项目：%1").arg(project.name)));
     QVERIFY(item->text().contains(QStringLiteral("分类：%1").arg(category.name)));
 }
@@ -559,6 +584,7 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     highImportance.description = QStringLiteral("");
     highImportance.importance = 5;
     highImportance.estimatedMinutes = 5;
+    highImportance.dueAt = QDateTime::currentDateTime().addDays(-1);
     QString error;
     TaskRepository taskRepository;
     QVERIFY2(taskRepository.save(lowImportance, &error), qPrintable(error));
@@ -611,6 +637,8 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     QColor highImportanceColor;
     QColor lowScoreColor;
     QColor highScoreColor;
+    QColor overdueColor;
+    QString overdueText;
     for (int row = 0; row < taskTable->rowCount(); ++row) {
         const QString title = taskTable->item(row, 0)->text();
         if (title == lowImportance.title) {
@@ -619,6 +647,8 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
         } else if (title == highImportance.title) {
             highImportanceColor = taskTable->item(row, 5)->foreground().color();
             highScoreColor = taskTable->item(row, 7)->foreground().color();
+            overdueColor = taskTable->item(row, 4)->foreground().color();
+            overdueText = taskTable->item(row, 4)->text();
         }
     }
     QVERIFY(lowImportanceColor.isValid());
@@ -626,6 +656,10 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     QCOMPARE(lowImportanceColor, PriorityColors::importance(1));
     QCOMPARE(highImportanceColor, PriorityColors::importance(5));
     QVERIFY(lowScoreColor != highScoreColor);
+    QCOMPARE(overdueColor, QColor(QStringLiteral("#B42318")));
+    QVERIFY(overdueText.contains(QStringLiteral("已逾期")));
+    QVERIFY(overdueText.contains(QString::number(QDate::currentDate().year())));
+    QVERIFY(taskTable->columnWidth(1) <= 240);
 
     taskTable->sortItems(6, Qt::AscendingOrder);
     for (int row = 1; row < taskTable->rowCount(); ++row) {
