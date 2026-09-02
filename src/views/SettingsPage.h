@@ -28,6 +28,7 @@ signals:
 
 public slots:
     void reloadSettings();
+    void reloadPresets();
 
 private slots:
     void browseFocusSound();
@@ -52,7 +53,6 @@ private:
     TimerSettings settingsFromForm() const;
     void browseSound(QLineEdit *destination);
     void previewSound(const QString &path);
-    void reloadPresets();
     void updatePresetButtons();
     int selectedPresetId() const;
 

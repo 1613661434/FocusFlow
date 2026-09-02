@@ -6,8 +6,10 @@
 
 #include <QApplication>
 #include <QComboBox>
+#include <QCheckBox>
 #include <QDir>
 #include <QFileInfo>
+#include <QInputDialog>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
@@ -30,7 +32,7 @@ private slots:
     void primaryButtonTracksTimerState();
     void taskFiltersShowScoresAndSortRecommendations();
     void taskSchemeAndTrayStatusFollowTheRunningTimer();
-    void taskDefaultFeedbackResetsAndCustomDurationRequiresConfirmation();
+    void customSchemeRequiresConfirmationAndCanBeSaved();
     void cleanupTestCase();
 
 private:
@@ -68,8 +70,11 @@ void FocusPageTests::primaryButtonTracksTimerState()
     FocusPage page;
     auto *primary = buttonForRole(page, QStringLiteral("primary"));
     auto *stop = buttonForRole(page, QStringLiteral("stop"));
+    auto *statusLabel = page.findChild<QLabel *>(
+        QStringLiteral("focusStatusLabel"));
     QVERIFY(primary);
     QVERIFY(stop);
+    QVERIFY(statusLabel);
     QCOMPARE(primary->text(), QStringLiteral("开始"));
     QVERIFY(primary->isEnabled());
     QVERIFY(!stop->isEnabled());
@@ -97,6 +102,10 @@ void FocusPageTests::primaryButtonTracksTimerState()
     QCOMPARE(primary->text(), QStringLiteral("开始"));
     QVERIFY(primary->isEnabled());
     QVERIFY(!stop->isEnabled());
+    QTRY_VERIFY_WITH_TIMEOUT(
+        statusLabel->text().contains(QStringLiteral("已终止")), 500);
+    QTRY_COMPARE_WITH_TIMEOUT(statusLabel->text(),
+                              QStringLiteral("准备开始专注"), 4700);
 }
 
 void FocusPageTests::taskFiltersShowScoresAndSortRecommendations()
@@ -245,7 +254,7 @@ void FocusPageTests::taskSchemeAndTrayStatusFollowTheRunningTimer()
     QVERIFY(status.contains(QStringLiteral("专注已暂停")));
 }
 
-void FocusPageTests::taskDefaultFeedbackResetsAndCustomDurationRequiresConfirmation()
+void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
 {
     Task task;
     task.title = QStringLiteral("方案反馈测试任务");
@@ -262,18 +271,36 @@ void FocusPageTests::taskDefaultFeedbackResetsAndCustomDurationRequiresConfirmat
         QStringLiteral("focusPresetCombo"));
     auto *customMinutes = page.findChild<QSpinBox *>(
         QStringLiteral("focusCustomMinutes"));
+    auto *shortBreakMinutes = page.findChild<QSpinBox *>(
+        QStringLiteral("focusCustomShortBreakMinutes"));
+    auto *longBreakMinutes = page.findChild<QSpinBox *>(
+        QStringLiteral("focusCustomLongBreakMinutes"));
+    auto *cycles = page.findChild<QSpinBox *>(
+        QStringLiteral("focusCustomCycles"));
+    auto *autoStartBreak = page.findChild<QCheckBox *>(
+        QStringLiteral("focusCustomAutoStartBreak"));
+    auto *autoStartFocus = page.findChild<QCheckBox *>(
+        QStringLiteral("focusCustomAutoStartFocus"));
     auto *setTaskPreset = page.findChild<QPushButton *>(
         QStringLiteral("taskPresetButton"));
     auto *confirmCustom = page.findChild<QPushButton *>(
         QStringLiteral("confirmCustomMinutesButton"));
+    auto *saveCustom = page.findChild<QPushButton *>(
+        QStringLiteral("saveCustomPresetButton"));
     auto *statusLabel = page.findChild<QLabel *>(
         QStringLiteral("focusStatusLabel"));
     auto *primary = buttonForRole(page, QStringLiteral("primary"));
     QVERIFY(taskCombo != nullptr);
     QVERIFY(presetCombo != nullptr);
     QVERIFY(customMinutes != nullptr);
+    QVERIFY(shortBreakMinutes != nullptr);
+    QVERIFY(longBreakMinutes != nullptr);
+    QVERIFY(cycles != nullptr);
+    QVERIFY(autoStartBreak != nullptr);
+    QVERIFY(autoStartFocus != nullptr);
     QVERIFY(setTaskPreset != nullptr);
     QVERIFY(confirmCustom != nullptr);
+    QVERIFY(saveCustom != nullptr);
     QVERIFY(statusLabel != nullptr);
     QVERIFY(primary != nullptr);
 
@@ -292,7 +319,13 @@ void FocusPageTests::taskDefaultFeedbackResetsAndCustomDurationRequiresConfirmat
     QVERIFY(customIndex >= 0);
     presetCombo->setCurrentIndex(customIndex);
     customMinutes->setValue(7);
+    shortBreakMinutes->setValue(2);
+    longBreakMinutes->setValue(11);
+    cycles->setValue(3);
+    autoStartBreak->setChecked(true);
+    autoStartFocus->setChecked(true);
     QVERIFY(confirmCustom->isEnabled());
+    QVERIFY(!saveCustom->isEnabled());
     QVERIFY(!primary->isEnabled());
     customMinutes->setFocus();
     QCoreApplication::processEvents();
@@ -302,6 +335,34 @@ void FocusPageTests::taskDefaultFeedbackResetsAndCustomDurationRequiresConfirmat
     confirmCustom->click();
     QVERIFY(primary->isEnabled());
     QVERIFY(!confirmCustom->isEnabled());
+    QVERIFY(saveCustom->isEnabled());
+
+    const QString savedName = QStringLiteral("界面保存方案-%1")
+                                  .arg(QUuid::createUuid().toString(
+                                      QUuid::WithoutBraces));
+    QSignalSpy presetsChangedSpy(&page, &FocusPage::presetsChanged);
+    QTimer::singleShot(0, [savedName] {
+        if (auto *dialog = qobject_cast<QInputDialog *>(
+                QApplication::activeModalWidget())) {
+            dialog->setTextValue(savedName);
+            dialog->accept();
+        }
+    });
+    saveCustom->click();
+    QCOMPARE(presetsChangedSpy.count(), 1);
+    const QVector<TimerPreset> presets = TimerPresetRepository().findAll();
+    const auto saved = std::find_if(
+        presets.cbegin(), presets.cend(), [&savedName](const TimerPreset &preset) {
+            return preset.name == savedName;
+        });
+    QVERIFY(saved != presets.cend());
+    QCOMPARE(saved->focusMinutes, 7);
+    QCOMPARE(saved->shortBreakMinutes, 2);
+    QCOMPARE(saved->longBreakMinutes, 11);
+    QCOMPARE(saved->cyclesBeforeLongBreak, 3);
+    QVERIFY(saved->autoStartBreak);
+    QVERIFY(saved->autoStartFocus);
+    QVERIFY(!saved->isBuiltIn);
 
     taskCombo->setCurrentIndex(taskCombo->findData(-1));
     QVERIFY(!setTaskPreset->isEnabled());
