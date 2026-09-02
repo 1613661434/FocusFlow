@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.24 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.25 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -33,6 +33,7 @@ qt_add_executable(FocusFlow WIN32
     src/models/Task.h
     src/models/Project.h
     src/models/TimerSettings.h
+    src/models/TimerPreset.h
     src/repositories/FocusRepository.cpp
     src/repositories/FocusRepository.h
     src/repositories/AnalyticsRepository.cpp
@@ -43,6 +44,8 @@ qt_add_executable(FocusFlow WIN32
     src/repositories/ProjectRepository.h
     src/repositories/TaskRepository.cpp
     src/repositories/TaskRepository.h
+    src/repositories/TimerPresetRepository.cpp
+    src/repositories/TimerPresetRepository.h
     src/services/FocusTimer.cpp
     src/services/FocusTimer.h
     src/services/DataManagementService.cpp
@@ -55,6 +58,8 @@ qt_add_executable(FocusFlow WIN32
     src/services/PriorityService.h
     src/views/TaskDialog.cpp
     src/views/TaskDialog.h
+    src/views/TimerPresetDialog.cpp
+    src/views/TimerPresetDialog.h
     src/views/AboutDialog.cpp
     src/views/AboutDialog.h
     src/views/TaskPage.cpp
@@ -138,6 +143,8 @@ if(BUILD_TESTING)
         src/repositories/SettingsRepository.h
         src/repositories/TaskRepository.cpp
         src/repositories/TaskRepository.h
+        src/repositories/TimerPresetRepository.cpp
+        src/repositories/TimerPresetRepository.h
         src/services/FocusTimer.cpp
         src/services/FocusTimer.h
         src/services/NotificationSoundPlayer.cpp
@@ -147,8 +154,11 @@ if(BUILD_TESTING)
         src/widgets/PriorityColors.h
         src/widgets/StatusColors.h
         src/widgets/ColoredComboBox.h
+        src/widgets/FocusAwareSpinBox.cpp
+        src/widgets/FocusAwareSpinBox.h
         src/models/Task.h
         src/models/TimerSettings.h
+        src/models/TimerPreset.h
     )
     target_include_directories(FocusPageTests PRIVATE src)
     target_link_libraries(FocusPageTests PRIVATE
@@ -168,6 +178,25 @@ if(BUILD_TESTING)
     target_include_directories(PriorityServiceTests PRIVATE src)
     target_link_libraries(PriorityServiceTests PRIVATE Qt6::Core Qt6::Test)
     add_test(NAME PriorityServiceTests COMMAND PriorityServiceTests)
+
+    qt_add_executable(TimerPresetRepositoryTests
+        tests/tst_TimerPresetRepository.cpp
+        src/data/DatabaseManager.cpp
+        src/data/DatabaseManager.h
+        src/repositories/TaskRepository.cpp
+        src/repositories/TaskRepository.h
+        src/repositories/TimerPresetRepository.cpp
+        src/repositories/TimerPresetRepository.h
+        src/models/Task.h
+        src/models/TimerPreset.h
+    )
+    target_include_directories(TimerPresetRepositoryTests PRIVATE src)
+    target_link_libraries(TimerPresetRepositoryTests PRIVATE
+        Qt6::Core
+        Qt6::Sql
+        Qt6::Test
+    )
+    add_test(NAME TimerPresetRepositoryTests COMMAND TimerPresetRepositoryTests)
 
     qt_add_executable(DataManagementServiceTests
         tests/tst_DataManagementService.cpp
@@ -231,6 +260,7 @@ if(BUILD_TESTING)
         src/widgets/FocusAwareSpinBox.cpp
         src/widgets/FocusAwareSpinBox.h
         src/models/Task.h
+        src/models/TimerPreset.h
     )
     target_include_directories(TaskDialogTests PRIVATE src)
     target_link_libraries(TaskDialogTests PRIVATE
@@ -276,6 +306,8 @@ if(BUILD_TESTING)
         src/repositories/SettingsRepository.h
         src/repositories/TaskRepository.cpp
         src/repositories/TaskRepository.h
+        src/repositories/TimerPresetRepository.cpp
+        src/repositories/TimerPresetRepository.h
         src/services/PriorityService.cpp
         src/services/PriorityService.h
         src/widgets/ClearSelectionOnBlankClick.cpp
@@ -289,6 +321,7 @@ if(BUILD_TESTING)
         src/widgets/ColoredComboBox.h
         src/widgets/SortKeyTableWidgetItem.h
         src/models/Task.h
+        src/models/TimerPreset.h
     )
     target_include_directories(DashboardPageTests PRIVATE src)
     target_link_libraries(DashboardPageTests PRIVATE

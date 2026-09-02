@@ -14,6 +14,8 @@
 
 namespace {
 const QUrl kAuthorBlog(QStringLiteral("https://1613661434.github.io/"));
+const QUrl kProjectRepository(
+    QStringLiteral("https://github.com/1613661434/FocusFlow"));
 }
 
 AboutDialog::AboutDialog(QWidget *parent)
@@ -23,8 +25,8 @@ AboutDialog::AboutDialog(QWidget *parent)
     setWindowTitle(QStringLiteral("关于 FocusFlow"));
     setWindowIcon(QIcon(QStringLiteral(":/icons/focusflow.svg")));
     setModal(true);
-    setMinimumSize(560, 470);
-    resize(600, 500);
+    setMinimumSize(560, 500);
+    resize(620, 530);
 
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(28, 28, 28, 24);
@@ -94,9 +96,20 @@ AboutDialog::AboutDialog(QWidget *parent)
     blog->setTextInteractionFlags(Qt::LinksAccessibleByMouse
                                   | Qt::LinksAccessibleByKeyboard);
     blog->setFocusPolicy(Qt::StrongFocus);
+    auto *repository = new QLabel(
+        QStringLiteral("<a href=\"%1\">%1</a>")
+            .arg(kProjectRepository.toString()), card);
+    repository->setObjectName(QStringLiteral("aboutProjectRepository"));
+    repository->setProperty(
+        "projectRepositoryUrl", kProjectRepository.toString());
+    repository->setOpenExternalLinks(true);
+    repository->setTextInteractionFlags(Qt::LinksAccessibleByMouse
+                                        | Qt::LinksAccessibleByKeyboard);
+    repository->setFocusPolicy(Qt::StrongFocus);
     addDetail(0, QStringLiteral("作者"), author);
     addDetail(1, QStringLiteral("简称"), shortName);
     addDetail(2, QStringLiteral("作者博客"), blog);
+    addDetail(3, QStringLiteral("项目 GitHub"), repository);
     details->setColumnStretch(1, 1);
     cardLayout->addLayout(details);
 
@@ -128,16 +141,27 @@ AboutDialog::AboutDialog(QWidget *parent)
     blogButton->setProperty("authorBlogUrl", kAuthorBlog.toString());
     blogButton->setAccessibleName(QStringLiteral("在浏览器中访问作者博客"));
     blogButton->setMinimumHeight(40);
+    auto *repositoryButton = new QPushButton(
+        QStringLiteral("访问项目 GitHub"), this);
+    repositoryButton->setObjectName(QStringLiteral("aboutRepositoryButton"));
+    repositoryButton->setProperty(
+        "projectRepositoryUrl", kProjectRepository.toString());
+    repositoryButton->setAccessibleName(QStringLiteral("在浏览器中访问项目 GitHub"));
+    repositoryButton->setMinimumHeight(40);
     auto *closeButton = new QPushButton(QStringLiteral("关闭"), this);
     closeButton->setObjectName(QStringLiteral("primaryButton"));
     closeButton->setMinimumSize(96, 40);
     closeButton->setDefault(true);
     buttons->addWidget(blogButton);
+    buttons->addWidget(repositoryButton);
     buttons->addWidget(closeButton);
     root->addLayout(buttons);
 
     connect(blogButton, &QPushButton::clicked, this, [] {
         QDesktopServices::openUrl(kAuthorBlog);
+    });
+    connect(repositoryButton, &QPushButton::clicked, this, [] {
+        QDesktopServices::openUrl(kProjectRepository);
     });
     connect(closeButton, &QPushButton::clicked, this, &QDialog::accept);
 
@@ -179,7 +203,7 @@ AboutDialog::AboutDialog(QWidget *parent)
             color: #172033;
             font-weight: 600;
         }
-        QLabel#aboutAuthorBlog {
+        QLabel#aboutAuthorBlog, QLabel#aboutProjectRepository {
             color: #405dde;
         }
         QLabel#aboutCopyright {

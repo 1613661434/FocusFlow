@@ -147,7 +147,7 @@ QVector<RecentFocusSession> AnalyticsRepository::recentFocusSessions(int limit) 
 {
     QSqlQuery query(DatabaseManager::instance().database());
     query.prepare(QStringLiteral(R"(
-        SELECT strftime('%Y-%m-%d %H:%M:%S', fs.start_time, 'localtime'),
+        SELECT strftime('%Y-%m-%d %H:%M:%S', fs.start_time),
                COALESCE(t.title, '无关联任务'),
                COALESCE(p.name, '无项目'),
                COALESCE(p.color, '#667085'),

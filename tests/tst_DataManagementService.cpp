@@ -76,6 +76,7 @@ void DataManagementServiceTests::backupAndCsvExports()
     QVERIFY(tasksCsv.contains("FocusFlow") == false);
     QVERIFY(tasksCsv.contains("\"\""));
     QVERIFY(tasksCsv.contains("\xe6\x95\xb4\xe7\x90\x86\xe8\xb5\x84\xe6\x96\x99"));
+    QVERIFY(tasksCsv.contains("\xe9\xbb\x98\xe8\xae\xa4\xe4\xb8\x93\xe6\xb3\xa8\xe6\x96\xb9\xe6\xa1\x88"));
 
     const QString focusPath = output.filePath(QStringLiteral("focus.csv"));
     QVERIFY2(service.exportFocusSessionsCsv(focusPath, &error), qPrintable(error));

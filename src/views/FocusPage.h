@@ -1,8 +1,10 @@
 #pragma once
 
+#include "models/TimerPreset.h"
 #include "models/TimerSettings.h"
 #include "services/FocusTimer.h"
 
+#include <QVector>
 #include <QWidget>
 
 class FocusRepository;
@@ -11,6 +13,7 @@ class QComboBox;
 class QLabel;
 class QProgressBar;
 class QPushButton;
+class QSpinBox;
 
 class FocusPage final : public QWidget
 {
@@ -23,6 +26,7 @@ signals:
     void notificationRequested(const QString &title, const QString &message);
     void focusDataChanged();
     void tasksChanged();
+    void trayStatusChanged(const QString &status);
 
 public slots:
     void reloadSettings();
@@ -43,11 +47,18 @@ private slots:
                             int plannedSeconds,
                             int actualSeconds);
     void updateIdleDuration();
+    void handlePresetChanged();
+    void applyTaskPreset();
+    void setSelectedPresetAsTaskDefault();
 
 private:
     void buildInterface();
     void reloadTaskFilters();
+    void reloadPresets();
     void refreshFilteredTasks();
+    TimerPreset selectedPreset() const;
+    void updatePresetControls();
+    void updateTrayStatus();
     FocusTimer::Phase selectedPhase() const;
     int durationSeconds(FocusTimer::Phase phase) const;
     void selectPhase(FocusTimer::Phase phase);
@@ -61,7 +72,10 @@ private:
     QComboBox *projectFilter_ = nullptr;
     QComboBox *categoryFilter_ = nullptr;
     QComboBox *taskCombo_ = nullptr;
+    QComboBox *presetCombo_ = nullptr;
     QComboBox *phaseCombo_ = nullptr;
+    QLabel *customMinutesLabel_ = nullptr;
+    QSpinBox *customMinutes_ = nullptr;
     QLabel *timerLabel_ = nullptr;
     QLabel *phaseLabel_ = nullptr;
     QLabel *cycleLabel_ = nullptr;
@@ -69,7 +83,13 @@ private:
     QProgressBar *progress_ = nullptr;
     QPushButton *primaryActionButton_ = nullptr;
     QPushButton *stopButton_ = nullptr;
+    QPushButton *setTaskPresetButton_ = nullptr;
+    QVector<TimerPreset> presets_;
+    TimerPreset defaultPreset_;
+    TimerPreset customBasePreset_;
     int completedFocusCycles_ = 0;
     int currentTaskId_ = -1;
+    int currentRemainingSeconds_ = 0;
+    QString currentTaskTitle_;
     bool completeTaskWhenSessionEnds_ = false;
 };

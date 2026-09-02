@@ -17,11 +17,12 @@ private slots:
     void savesSeparateDateHourAndMinuteControls();
     void canCreateTaskWithoutDueTime();
     void lookupAndImportanceChoicesKeepTheirColors();
+    void savesTaskDefaultTimerPreset();
 };
 
 void TaskDialogTests::newTaskDefaultsToTodayAtEndOfDay()
 {
-    TaskDialog dialog({}, {});
+    TaskDialog dialog({}, {}, {});
 
     auto *enabled = dialog.findChild<QCheckBox *>(QStringLiteral("dueEnabled"));
     auto *dateEdit = dialog.findChild<QDateTimeEdit *>(QStringLiteral("dueDateEdit"));
@@ -45,7 +46,7 @@ void TaskDialogTests::newTaskDefaultsToTodayAtEndOfDay()
 
 void TaskDialogTests::savesSeparateDateHourAndMinuteControls()
 {
-    TaskDialog dialog({}, {});
+    TaskDialog dialog({}, {}, {});
     auto *dateEdit = dialog.findChild<QDateTimeEdit *>(QStringLiteral("dueDateEdit"));
     auto *hour = dialog.findChild<QSpinBox *>(QStringLiteral("dueHourSpin"));
     auto *minute = dialog.findChild<QSpinBox *>(QStringLiteral("dueMinuteSpin"));
@@ -64,7 +65,7 @@ void TaskDialogTests::savesSeparateDateHourAndMinuteControls()
 
 void TaskDialogTests::canCreateTaskWithoutDueTime()
 {
-    TaskDialog dialog({}, {});
+    TaskDialog dialog({}, {}, {});
     auto *enabled = dialog.findChild<QCheckBox *>(QStringLiteral("dueEnabled"));
     auto *dateEdit = dialog.findChild<QDateTimeEdit *>(QStringLiteral("dueDateEdit"));
     auto *hour = dialog.findChild<QSpinBox *>(QStringLiteral("dueHourSpin"));
@@ -88,7 +89,7 @@ void TaskDialogTests::lookupAndImportanceChoicesKeepTheirColors()
                              QStringLiteral("#175CD3")};
     const LookupItem category{8, QStringLiteral("紫色分类"),
                               QStringLiteral("#6941C6")};
-    TaskDialog dialog({project}, {category});
+    TaskDialog dialog({project}, {category}, {});
 
     auto *projectCombo = dialog.findChild<QComboBox *>(
         QStringLiteral("taskProjectCombo"));
@@ -119,6 +120,28 @@ void TaskDialogTests::lookupAndImportanceChoicesKeepTheirColors()
              QColor(category.color));
     QCOMPARE(importanceCombo->palette().color(QPalette::Text),
              PriorityColors::importance(5));
+}
+
+void TaskDialogTests::savesTaskDefaultTimerPreset()
+{
+    TimerPreset defaultPreset;
+    defaultPreset.id = 3;
+    defaultPreset.name = QStringLiteral("经典番茄钟");
+    defaultPreset.isDefault = true;
+    TimerPreset deepWork;
+    deepWork.id = 7;
+    deepWork.name = QStringLiteral("深度工作");
+    deepWork.focusMinutes = 50;
+    deepWork.shortBreakMinutes = 10;
+
+    TaskDialog dialog({}, {}, {defaultPreset, deepWork});
+    auto *combo = dialog.findChild<QComboBox *>(
+        QStringLiteral("taskTimerPresetCombo"));
+    QVERIFY(combo != nullptr);
+    QCOMPARE(combo->itemData(0).toInt(), -1);
+    QVERIFY(combo->itemText(0).contains(QStringLiteral("跟随系统默认")));
+    combo->setCurrentIndex(combo->findData(deepWork.id));
+    QCOMPARE(dialog.task().timerPresetId, deepWork.id);
 }
 
 QTEST_MAIN(TaskDialogTests)

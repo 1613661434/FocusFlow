@@ -122,10 +122,13 @@ bool DataManagementService::exportTasksCsv(const QString &destinationPath,
     QSqlQuery query(DatabaseManager::instance().database());
     if (!query.exec(QStringLiteral(R"(
         SELECT t.id, t.title, t.description, p.name, c.name, t.importance,
-               t.due_at, t.estimated_minutes, t.status, t.created_at, t.completed_at
+               t.due_at, t.estimated_minutes,
+               COALESCE(tp.name, '跟随默认方案'),
+               t.status, t.created_at, t.completed_at
         FROM tasks t
         LEFT JOIN projects p ON p.id = t.project_id
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN timer_presets tp ON tp.id = t.timer_preset_id
         WHERE t.is_deleted = 0
         ORDER BY t.id
     )"))) {
@@ -141,11 +144,11 @@ bool DataManagementService::exportTasksCsv(const QString &destinationPath,
     QTextStream stream(&file);
     stream.setEncoding(QStringConverter::Utf8);
     stream << QChar(0xFEFF)
-           << QStringLiteral("编号,标题,描述,项目,分类,重要程度,截止时间,预计分钟,状态,创建时间,完成时间\n");
+           << QStringLiteral("编号,标题,描述,项目,分类,重要程度,截止时间,预计分钟,默认专注方案,状态,创建时间,完成时间\n");
     while (query.next()) {
         QStringList cells;
-        for (int column = 0; column < 11; ++column) {
-            const QString value = column == 8
+        for (int column = 0; column < 12; ++column) {
+            const QString value = column == 9
                 ? statusLabel(query.value(column).toString())
                 : query.value(column).toString();
             cells << csvCell(value);
