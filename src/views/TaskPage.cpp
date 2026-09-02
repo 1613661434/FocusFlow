@@ -5,6 +5,7 @@
 #include "widgets/ClearSelectionOnBlankClick.h"
 #include "widgets/PriorityColors.h"
 #include "widgets/SortKeyTableWidgetItem.h"
+#include "widgets/StatusColors.h"
 
 #include <QAbstractItemView>
 #include <QComboBox>
@@ -264,9 +265,12 @@ void TaskPage::refresh()
         } else if (task.status == QStringLiteral("cancelled")) {
             statusSortKey = 3;
         }
-        table_->setItem(row, StatusColumn,
-                        new SortKeyTableWidgetItem(
-                            statusText(task.status), statusSortKey));
+        const QString displayedStatus = statusText(task.status);
+        auto *statusItem =
+            new SortKeyTableWidgetItem(displayedStatus, statusSortKey);
+        statusItem->setForeground(StatusColors::taskStatus(task.status));
+        statusItem->setToolTip(QStringLiteral("任务状态：%1").arg(displayedStatus));
+        table_->setItem(row, StatusColumn, statusItem);
         for (int column = 0; column < ColumnCount; ++column) {
             if (auto *item = table_->item(row, column)) {
                 item->setTextAlignment(Qt::AlignCenter);
