@@ -1,8 +1,11 @@
 #include "widgets/FocusAwareSpinBox.h"
 #include "widgets/FocusAwareSlider.h"
+#include "widgets/FocusAwareTableWidget.h"
 
 #include <QApplication>
 #include <QLineEdit>
+#include <QScrollBar>
+#include <QTableWidgetItem>
 #include <QTest>
 #include <QVBoxLayout>
 #include <QWheelEvent>
@@ -15,6 +18,7 @@ class FocusAwareSpinBoxTests final : public QObject
 private slots:
     void ignoresWheelUntilFocused();
     void sliderIgnoresWheelUntilFocused();
+    void tableIgnoresWheelUntilClicked();
     void keepsCursorOutOfSuffix();
 };
 
@@ -25,6 +29,18 @@ QWheelEvent upwardWheelEvent()
                        QPointF(10, 10),
                        QPoint(),
                        QPoint(0, 120),
+                       Qt::NoButton,
+                       Qt::NoModifier,
+                       Qt::NoScrollPhase,
+                       false);
+}
+
+QWheelEvent downwardWheelEvent()
+{
+    return QWheelEvent(QPointF(10, 10),
+                       QPointF(10, 10),
+                       QPoint(),
+                       QPoint(0, -120),
                        Qt::NoButton,
                        Qt::NoModifier,
                        Qt::NoScrollPhase,
@@ -113,6 +129,43 @@ void FocusAwareSpinBoxTests::sliderIgnoresWheelUntilFocused()
     auto acceptedWheel = upwardWheelEvent();
     QApplication::sendEvent(slider, &acceptedWheel);
     QVERIFY(slider->value() > 10);
+    QVERIFY(acceptedWheel.isAccepted());
+}
+
+void FocusAwareSpinBoxTests::tableIgnoresWheelUntilClicked()
+{
+    QWidget window;
+    auto *layout = new QVBoxLayout(&window);
+    auto *otherInput = new QLineEdit(&window);
+    auto *table = new FocusAwareTableWidget(&window);
+    table->setColumnCount(1);
+    table->setRowCount(10);
+    table->setVerticalScrollMode(QAbstractItemView::ScrollPerItem);
+    table->setFixedHeight(150);
+    for (int row = 0; row < table->rowCount(); ++row) {
+        table->setItem(row, 0,
+                       new QTableWidgetItem(QString::number(row + 1)));
+    }
+    layout->addWidget(otherInput);
+    layout->addWidget(table);
+    window.resize(320, 260);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    QVERIFY(table->verticalScrollBar()->maximum() > 0);
+
+    otherInput->setFocus();
+    QTRY_VERIFY(otherInput->hasFocus());
+    auto ignoredWheel = downwardWheelEvent();
+    QApplication::sendEvent(table->viewport(), &ignoredWheel);
+    QCOMPARE(table->verticalScrollBar()->value(), 0);
+    QVERIFY(!ignoredWheel.isAccepted());
+
+    QTest::mouseClick(table->viewport(), Qt::LeftButton,
+                      Qt::NoModifier, QPoint(20, 20));
+    QTRY_VERIFY(table->hasFocus());
+    auto acceptedWheel = downwardWheelEvent();
+    QApplication::sendEvent(table->viewport(), &acceptedWheel);
+    QVERIFY(table->verticalScrollBar()->value() > 0);
     QVERIFY(acceptedWheel.isAccepted());
 }
 

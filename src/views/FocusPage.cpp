@@ -123,7 +123,7 @@ void FocusPage::buildInterface()
 
     auto *optionsCard = new QFrame(this);
     optionsCard->setObjectName(QStringLiteral("card"));
-    optionsCard->setFixedWidth(330);
+    optionsCard->setFixedWidth(390);
     auto *optionsLayout = new QVBoxLayout(optionsCard);
     optionsLayout->setContentsMargins(26, 26, 26, 26);
     optionsLayout->setSpacing(12);
@@ -156,6 +156,7 @@ void FocusPage::buildInterface()
     customForm->setContentsMargins(0, 0, 0, 0);
     customForm->setHorizontalSpacing(10);
     customForm->setVerticalSpacing(8);
+    customForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
 
     customMinutes_ = new FocusAwareSpinBox(customMinutesRow_);
     customMinutes_->setObjectName(QStringLiteral("focusCustomMinutes"));
@@ -192,8 +193,8 @@ void FocusPage::buildInterface()
     customForm->addRow(QStringLiteral("短休息："), customShortBreakMinutes_);
     customForm->addRow(QStringLiteral("长休息："), customLongBreakMinutes_);
     customForm->addRow(QStringLiteral("长休息间隔："), customCycles_);
-    customForm->addRow(QString(), customAutoStartBreak_);
-    customForm->addRow(QString(), customAutoStartFocus_);
+    customForm->addRow(customAutoStartBreak_);
+    customForm->addRow(customAutoStartFocus_);
 
     auto *customButtons = new QWidget(customMinutesRow_);
     auto *customButtonsLayout = new QHBoxLayout(customButtons);
@@ -205,15 +206,17 @@ void FocusPage::buildInterface()
         QStringLiteral("confirmCustomMinutesButton"));
     confirmCustomMinutesButton_->setAccessibleName(
         QStringLiteral("确认并应用自定义本次方案"));
+    confirmCustomMinutesButton_->setMinimumSize(96, 40);
     saveCustomPresetButton_ = new QPushButton(
-        QStringLiteral("保存为方案…"), customButtons);
+        QStringLiteral("保存为方案"), customButtons);
     saveCustomPresetButton_->setObjectName(
         QStringLiteral("saveCustomPresetButton"));
     saveCustomPresetButton_->setAccessibleName(
         QStringLiteral("为当前自定义方案设置名称并保存"));
-    customButtonsLayout->addWidget(confirmCustomMinutesButton_);
-    customButtonsLayout->addWidget(saveCustomPresetButton_);
-    customForm->addRow(QString(), customButtons);
+    saveCustomPresetButton_->setMinimumSize(138, 40);
+    customButtonsLayout->addWidget(confirmCustomMinutesButton_, 2);
+    customButtonsLayout->addWidget(saveCustomPresetButton_, 3);
+    customForm->addRow(customButtons);
     customMinutesLabel_->setVisible(false);
     customMinutesRow_->setVisible(false);
     setTaskPresetButton_ = new QPushButton(
