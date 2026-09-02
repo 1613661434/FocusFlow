@@ -893,8 +893,35 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     taskTable->selectRow(highImportanceRow);
     QCoreApplication::processEvents();
     QVERIFY(taskStatusButton->isEnabled());
+    QCOMPARE(taskStatusButton->text(), QStringLiteral("恢复"));
+    QVERIFY(taskStatusButton->toolTip().contains(QStringLiteral("恢复")));
+    taskStatusButton->click();
+    QCoreApplication::processEvents();
+    QCOMPARE(taskRepository.findById(highImportance.id).status,
+             QStringLiteral("pending"));
+    QVERIFY(taskTable->selectedItems().isEmpty());
+    QVERIFY(!taskStatusButton->isEnabled());
     QCOMPARE(taskStatusButton->text(), QStringLiteral("完成"));
-    QVERIFY(taskStatusButton->toolTip().contains(QStringLiteral("重新打开")));
+
+    taskPage.setActiveFocusTask(highImportance.id);
+    highImportanceRow = -1;
+    for (int row = 0; row < taskTable->rowCount(); ++row) {
+        if (taskTable->item(row, 0)->text() == highImportance.title) {
+            highImportanceRow = row;
+            QCOMPARE(taskTable->item(row, 9)->text(),
+                     QStringLiteral("进行中"));
+            QCOMPARE(taskTable->item(row, 9)->foreground().color(),
+                     StatusColors::inProgress());
+            break;
+        }
+    }
+    QVERIFY(highImportanceRow >= 0);
+    taskTable->selectRow(highImportanceRow);
+    QCoreApplication::processEvents();
+    QVERIFY(!taskStatusButton->isEnabled());
+    QCOMPARE(taskStatusButton->text(), QStringLiteral("完成"));
+    QVERIFY(taskStatusButton->toolTip().contains(QStringLiteral("专注计时")));
+    taskPage.setActiveFocusTask(-1);
 
     taskTable->sortItems(6, Qt::AscendingOrder);
     for (int row = 1; row < taskTable->rowCount(); ++row) {

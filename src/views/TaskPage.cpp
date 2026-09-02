@@ -157,19 +157,31 @@ void TaskPage::buildInterface()
     connect(table_, &QTableWidget::itemSelectionChanged, this, [this] {
         const int index = selectedTaskIndex();
         if (index < 0) {
+            completeButton_->setText(QStringLiteral("完成"));
             completeButton_->setEnabled(false);
             completeButton_->setToolTip(QStringLiteral("请先选择一项任务"));
             completeButton_->setAccessibleName(QStringLiteral("完成任务"));
             return;
         }
-        completeButton_->setEnabled(true);
+        if (tasks_.at(index).id == activeFocusTaskId_) {
+            completeButton_->setText(QStringLiteral("完成"));
+            completeButton_->setEnabled(false);
+            completeButton_->setToolTip(
+                QStringLiteral("该任务正在专注计时，暂时不能完成"));
+            completeButton_->setAccessibleName(
+                QStringLiteral("完成任务，专注计时期间不可用"));
+            return;
+        }
         const bool completed =
             tasks_.at(index).status == QStringLiteral("completed");
+        completeButton_->setEnabled(true);
+        completeButton_->setText(
+            completed ? QStringLiteral("恢复") : QStringLiteral("完成"));
         completeButton_->setToolTip(
-            completed ? QStringLiteral("再次点击会重新打开所选任务")
+            completed ? QStringLiteral("将所选任务恢复为待处理")
                       : QStringLiteral("将所选任务标记为已完成"));
         completeButton_->setAccessibleName(
-            completed ? QStringLiteral("重新打开任务")
+            completed ? QStringLiteral("恢复任务")
                       : QStringLiteral("完成任务"));
     });
 }
@@ -193,9 +205,12 @@ void TaskPage::refresh()
     const TimerPreset defaultPreset = TimerPresetRepository().defaultPreset();
     for (qsizetype row = 0; row < tasks_.size(); ++row) {
         const auto &task = tasks_.at(row);
+        const QString effectiveStatus = task.id == activeFocusTaskId_
+                                            ? QStringLiteral("in_progress")
+                                            : task.status;
         auto *title = new SortKeyTableWidgetItem(task.title);
         title->setData(Qt::UserRole, task.id);
-        if (task.status == QStringLiteral("completed")) {
+        if (effectiveStatus == QStringLiteral("completed")) {
             QFont font = title->font();
             font.setStrikeOut(true);
             title->setFont(font);
@@ -287,17 +302,17 @@ void TaskPage::refresh()
             QStringLiteral("推荐分：%1；颜色表示推荐程度区间").arg(score));
         table_->setItem(row, ScoreColumn, scoreItem);
         int statusSortKey = 0;
-        if (task.status == QStringLiteral("in_progress")) {
+        if (effectiveStatus == QStringLiteral("in_progress")) {
             statusSortKey = 1;
-        } else if (task.status == QStringLiteral("completed")) {
+        } else if (effectiveStatus == QStringLiteral("completed")) {
             statusSortKey = 2;
-        } else if (task.status == QStringLiteral("cancelled")) {
+        } else if (effectiveStatus == QStringLiteral("cancelled")) {
             statusSortKey = 3;
         }
-        const QString displayedStatus = statusText(task.status);
+        const QString displayedStatus = statusText(effectiveStatus);
         auto *statusItem =
             new SortKeyTableWidgetItem(displayedStatus, statusSortKey);
-        statusItem->setForeground(StatusColors::taskStatus(task.status));
+        statusItem->setForeground(StatusColors::taskStatus(effectiveStatus));
         statusItem->setToolTip(QStringLiteral("任务状态：%1").arg(displayedStatus));
         table_->setItem(row, StatusColumn, statusItem);
         for (int column = 0; column < ColumnCount; ++column) {
@@ -316,6 +331,16 @@ void TaskPage::refresh()
     completeButton_->setEnabled(false);
     completeButton_->setToolTip(QStringLiteral("请先选择一项任务"));
     completeButton_->setAccessibleName(QStringLiteral("完成任务"));
+}
+
+void TaskPage::setActiveFocusTask(int taskId)
+{
+    const int normalizedTaskId = taskId > 0 ? taskId : -1;
+    if (activeFocusTaskId_ == normalizedTaskId) {
+        return;
+    }
+    activeFocusTaskId_ = normalizedTaskId;
+    refresh();
 }
 
 void TaskPage::addTask()
@@ -381,6 +406,9 @@ void TaskPage::toggleSelectedTask()
     }
 
     const Task task = tasks_.at(index);
+    if (task.id == activeFocusTaskId_) {
+        return;
+    }
     const bool completed = task.status != QStringLiteral("completed");
     QString error;
     if (!repository_.setCompleted(task.id, completed, &error)) {

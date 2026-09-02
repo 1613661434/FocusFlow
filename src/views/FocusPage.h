@@ -31,6 +31,7 @@ signals:
     void tasksChanged();
     void presetsChanged();
     void trayStatusChanged(const QString &status);
+    void activeFocusTaskChanged(int taskId);
 
 public slots:
     void reloadSettings();
