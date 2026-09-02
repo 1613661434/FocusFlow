@@ -234,12 +234,12 @@ void DashboardPage::refreshRecommendations()
             detail += QStringLiteral("  ·  截止 %1")
                           .arg(task.dueAt.toString(QStringLiteral("MM-dd HH:mm")));
         }
-        auto *item = new QListWidgetItem(
-            QStringLiteral("%1\n%2").arg(task.title, detail), recommendations_);
+        auto *item = new QListWidgetItem(recommendations_);
         item->setData(Qt::UserRole, task.id);
         item->setData(kProjectRole, task.projectId);
         item->setData(kCategoryRole, task.categoryId);
-        item->setForeground(PriorityColors::recommendation(score));
+        item->setData(Qt::AccessibleTextRole,
+                      QStringLiteral("%1，%2").arg(task.title, detail));
         item->setToolTip(
             QStringLiteral("推荐分：%1；颜色表示推荐程度区间").arg(score));
         item->setSizeHint(QSize(0, 60));
