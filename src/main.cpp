@@ -1,4 +1,5 @@
 #include "app/MainWindow.h"
+#include "app/SingleInstanceGuard.h"
 #include "data/DatabaseManager.h"
 
 #include <QApplication>
@@ -8,13 +9,14 @@
 #include <QLibraryInfo>
 #include <QLocale>
 #include <QMessageBox>
+#include <QStandardPaths>
 #include <QTranslator>
 
 int main(int argc, char *argv[])
 {
     QApplication application(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("FocusFlow"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.23"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.24"));
     // AppDataLocation 只使用应用名，避免生成 FocusFlow/FocusFlow 双层目录。
     QCoreApplication::setOrganizationName(QString());
     QLocale::setDefault(QLocale(QLocale::Chinese, QLocale::China));
@@ -40,6 +42,20 @@ int main(int argc, char *argv[])
 
     application.setWindowIcon(QIcon(QStringLiteral(":/icons/focusflow.svg")));
 
+    SingleInstanceGuard instanceGuard(
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
+    QString instanceError;
+    const auto instanceResult = instanceGuard.start(&instanceError);
+    if (instanceResult == SingleInstanceGuard::StartResult::Secondary) {
+        return 0;
+    }
+    if (instanceResult == SingleInstanceGuard::StartResult::Error) {
+        QMessageBox::critical(nullptr,
+                              QStringLiteral("无法启动 FocusFlow"),
+                              instanceError);
+        return 1;
+    }
+
     auto &databaseManager = DatabaseManager::instance();
     if (!databaseManager.initialize()) {
         QMessageBox::critical(nullptr,
@@ -50,6 +66,10 @@ int main(int argc, char *argv[])
     }
 
     MainWindow window;
+    QObject::connect(&instanceGuard,
+                     &SingleInstanceGuard::activationRequested,
+                     &window,
+                     &MainWindow::restoreAndActivate);
     window.show();
 
     return application.exec();
