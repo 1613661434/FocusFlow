@@ -110,12 +110,12 @@ void StatisticsPage::buildInterface()
         QHeaderView::Stretch);
     recentSessions_->horizontalHeader()->setSectionResizeMode(
         0, QHeaderView::ResizeToContents);
-    recentSessions_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    recentSessions_->setSizePolicy(QSizePolicy::Expanding,
+                                   QSizePolicy::Expanding);
     recentLayout->addWidget(recentTitle);
     recentLayout->addWidget(recentHint);
-    recentLayout->addWidget(recentSessions_);
-    recordsPageLayout->addWidget(recentCard);
-    recordsPageLayout->addStretch();
+    recentLayout->addWidget(recentSessions_, 1);
+    recordsPageLayout->addWidget(recentCard, 1);
 
     tabs->addTab(chartsPage, QStringLiteral("图表分析"));
     tabs->addTab(recordsPage, QStringLiteral("最近记录"));
@@ -236,6 +236,8 @@ void StatisticsPage::updateRecentSessions()
 {
     const auto sessions = AnalyticsRepository().recentFocusSessions();
     recentSessions_->setRowCount(sessions.size());
+    recentSessions_->verticalHeader()->setSectionResizeMode(
+        sessions.size() == 10 ? QHeaderView::Stretch : QHeaderView::Fixed);
     for (qsizetype row = 0; row < sessions.size(); ++row) {
         const auto &session = sessions.at(row);
         const QStringList values{
@@ -254,14 +256,6 @@ void StatisticsPage::updateRecentSessions()
             recentSessions_->setItem(row, column, item);
         }
     }
-
-    const int visibleRows = qMax(1, recentSessions_->rowCount());
-    const int tableHeight = recentSessions_->horizontalHeader()->sizeHint().height()
-                            + visibleRows
-                                  * recentSessions_->verticalHeader()
-                                        ->defaultSectionSize()
-                            + recentSessions_->frameWidth() * 2 + 2;
-    recentSessions_->setFixedHeight(tableHeight);
 }
 
 QString StatisticsPage::formatDuration(int seconds)
