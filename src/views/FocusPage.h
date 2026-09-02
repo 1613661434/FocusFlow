@@ -91,7 +91,6 @@ private:
     QComboBox *taskCombo_ = nullptr;
     QComboBox *presetCombo_ = nullptr;
     QComboBox *phaseCombo_ = nullptr;
-    QLabel *customMinutesLabel_ = nullptr;
     QWidget *customMinutesRow_ = nullptr;
     QSpinBox *customMinutes_ = nullptr;
     QSpinBox *customShortBreakMinutes_ = nullptr;

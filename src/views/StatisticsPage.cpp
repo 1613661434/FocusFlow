@@ -24,7 +24,65 @@
 #include <QTabBar>
 #include <QTableWidget>
 #include <QValueAxis>
+#include <QVector>
 #include <QVBoxLayout>
+
+namespace {
+qreal angleDistance(qreal first, qreal second)
+{
+    qreal distance = qAbs(first - second);
+    while (distance >= 360.0) {
+        distance -= 360.0;
+    }
+    return qMin(distance, 360.0 - distance);
+}
+
+void arrangePieLabels(QPieSeries *series, bool hasData)
+{
+    if (series == nullptr) {
+        return;
+    }
+
+    // 给外侧标签和引导线留出空间；相邻的小扇区使用不同长度的引导线，
+    // 防止它们都挤在饼图同一位置。
+    series->setPieSize(hasData ? 0.60 : 0.68);
+    const auto slices = series->slices();
+    if (slices.isEmpty()) {
+        return;
+    }
+
+    QVector<qreal> middleAngles;
+    middleAngles.reserve(slices.size());
+    qreal span = series->pieEndAngle() - series->pieStartAngle();
+    if (span <= 0.0) {
+        span = 360.0;
+    }
+    qreal angle = series->pieStartAngle();
+    for (QPieSlice *slice : slices) {
+        const qreal sliceSpan = slice->percentage() * span;
+        middleAngles.push_back(angle + sliceSpan / 2.0);
+        angle += sliceSpan;
+    }
+
+    int smallSliceTier = 0;
+    for (qsizetype index = 0; index < slices.size(); ++index) {
+        QPieSlice *slice = slices.at(index);
+        slice->setLabelPosition(QPieSlice::LabelOutside);
+        const bool smallSlice = slice->percentage() <= 0.12;
+        const bool nearPrevious =
+            index > 0 && smallSlice
+            && slices.at(index - 1)->percentage() <= 0.12
+            && angleDistance(middleAngles.at(index),
+                             middleAngles.at(index - 1)) < 24.0;
+        smallSliceTier = nearPrevious ? smallSliceTier + 1 : 0;
+        const qreal armLength = smallSlice
+                                    ? qMin(0.62,
+                                           0.20 + smallSliceTier * 0.16)
+                                    : 0.15;
+        slice->setLabelArmLengthFactor(armLength);
+    }
+}
+}
 
 StatisticsPage::StatisticsPage(QWidget *parent)
     : QWidget(parent)
@@ -120,9 +178,13 @@ void StatisticsPage::buildInterface()
         "}"));
     dailyValueLabel_->hide();
     categoryChartView_ = new QChartView(chartsPage);
+    categoryChartView_->setObjectName(
+        QStringLiteral("categoryFocusChartView"));
     categoryChartView_->setRenderHint(QPainter::Antialiasing);
     categoryChartView_->setMinimumHeight(230);
     projectChartView_ = new QChartView(chartsPage);
+    projectChartView_->setObjectName(
+        QStringLiteral("projectFocusChartView"));
     projectChartView_->setRenderHint(QPainter::Antialiasing);
     projectChartView_->setMinimumHeight(230);
     charts->addWidget(dailyChartView_, 0, 0, 1, 2);
@@ -299,6 +361,7 @@ void StatisticsPage::updateCategoryChart()
                                 .arg(formatDuration(categories.at(index).focusSeconds)));
         }
     }
+    arrangePieLabels(series, !categories.isEmpty());
 
     auto *chart = new QChart;
     chart->addSeries(series);
@@ -333,6 +396,7 @@ void StatisticsPage::updateProjectChart()
                                 .arg(formatDuration(projects.at(index).focusSeconds)));
         }
     }
+    arrangePieLabels(series, !projects.isEmpty());
 
     auto *chart = new QChart;
     chart->addSeries(series);
