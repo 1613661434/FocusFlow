@@ -11,6 +11,7 @@
 class FocusRepository;
 class NotificationSoundPlayer;
 class QComboBox;
+class QCheckBox;
 class QLabel;
 class QProgressBar;
 class QPushButton;
@@ -28,6 +29,7 @@ signals:
     void notificationRequested(const QString &title, const QString &message);
     void focusDataChanged();
     void tasksChanged();
+    void presetsChanged();
     void trayStatusChanged(const QString &status);
 
 public slots:
@@ -53,6 +55,7 @@ private slots:
     void applyTaskPreset();
     void setSelectedPresetAsTaskDefault();
     void confirmCustomMinutes();
+    void saveCustomPreset();
     void restoreIdleStatus();
 
 private:
@@ -63,7 +66,11 @@ private:
     TimerPreset selectedPreset() const;
     void updatePresetControls();
     void updateTrayStatus();
-    void showTemporaryStatus(const QString &message);
+    TimerPreset customEditorPreset() const;
+    void loadCustomEditor(const TimerPreset &preset);
+    bool customEditorDirty() const;
+    void clearCustomEditorFocus();
+    void showTemporaryStatus(const QString &message, int durationMs = 2500);
     FocusTimer::Phase selectedPhase() const;
     int durationSeconds(FocusTimer::Phase phase) const;
     void selectPhase(FocusTimer::Phase phase);
@@ -87,7 +94,13 @@ private:
     QLabel *customMinutesLabel_ = nullptr;
     QWidget *customMinutesRow_ = nullptr;
     QSpinBox *customMinutes_ = nullptr;
+    QSpinBox *customShortBreakMinutes_ = nullptr;
+    QSpinBox *customLongBreakMinutes_ = nullptr;
+    QSpinBox *customCycles_ = nullptr;
+    QCheckBox *customAutoStartBreak_ = nullptr;
+    QCheckBox *customAutoStartFocus_ = nullptr;
     QPushButton *confirmCustomMinutesButton_ = nullptr;
+    QPushButton *saveCustomPresetButton_ = nullptr;
     QLabel *timerLabel_ = nullptr;
     QLabel *phaseLabel_ = nullptr;
     QLabel *cycleLabel_ = nullptr;
@@ -98,11 +111,10 @@ private:
     QPushButton *setTaskPresetButton_ = nullptr;
     QVector<TimerPreset> presets_;
     TimerPreset defaultPreset_;
-    TimerPreset customBasePreset_;
+    TimerPreset confirmedCustomPreset_;
     int completedFocusCycles_ = 0;
     int currentTaskId_ = -1;
     int currentRemainingSeconds_ = 0;
-    int confirmedCustomFocusMinutes_ = 25;
     QString currentTaskTitle_;
     bool completeTaskWhenSessionEnds_ = false;
 };

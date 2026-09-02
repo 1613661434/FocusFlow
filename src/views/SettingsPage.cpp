@@ -12,6 +12,7 @@
 #include "widgets/FocusAwareSlider.h"
 #include "widgets/FocusAwareSpinBox.h"
 #include "widgets/ClearSelectionOnBlankClick.h"
+#include "widgets/SortKeyTableWidgetItem.h"
 
 #include <QAbstractItemView>
 #include <QCheckBox>
@@ -39,6 +40,49 @@
 #include <QVBoxLayout>
 
 namespace {
+enum PresetColumn {
+    PresetNameColumn = 0,
+    FocusMinutesColumn,
+    ShortBreakMinutesColumn,
+    LongBreakMinutesColumn,
+    CyclesColumn,
+    AutoLinkColumn,
+    PresetStatusColumn,
+    PresetColumnCount
+};
+
+constexpr int kPresetDefaultRole = Qt::UserRole + 2;
+constexpr int kPresetBuiltInRole = Qt::UserRole + 3;
+
+int presetStatusPriority(const TimerPreset &preset)
+{
+    if (preset.isDefault) {
+        return 0;
+    }
+    if (preset.isBuiltIn
+        && preset.name == QStringLiteral("经典番茄钟")) {
+        return 1;
+    }
+    return preset.isBuiltIn ? 2 : 3;
+}
+
+QString presetStatusText(const TimerPreset &preset)
+{
+    if (preset.isDefault) {
+        if (preset.isBuiltIn
+            && preset.name == QStringLiteral("经典番茄钟")) {
+            return QStringLiteral("默认 · 系统默认");
+        }
+        return QStringLiteral("默认");
+    }
+    if (preset.isBuiltIn
+        && preset.name == QStringLiteral("经典番茄钟")) {
+        return QStringLiteral("系统默认");
+    }
+    return preset.isBuiltIn ? QStringLiteral("系统预设")
+                            : QStringLiteral("用户自定义");
+}
+
 bool sameSettings(const TimerSettings &left, const TimerSettings &right)
 {
     return left.focusMinutes == right.focusMinutes
@@ -85,7 +129,9 @@ void SettingsPage::buildInterface()
     timerLayout->setSpacing(10);
 
     auto *presetHint = new QLabel(
-        QStringLiteral("为不同类型的任务保存不同节奏。任务可绑定默认方案，"
+        QStringLiteral("为不同类型的任务保存不同节奏。点击任意列标题可排序，"
+                       "默认依次显示默认、系统默认、系统预设和用户自定义。"
+                       "任务可绑定默认方案，"
                        "计时开始前也可临时切换。内置预设不可修改或删除，"
                        "需要调整时可先复制；下列操作会立即保存。"),
         timerGroup);
@@ -94,7 +140,7 @@ void SettingsPage::buildInterface()
 
     presetTable_ = new QTableWidget(timerGroup);
     presetTable_->setObjectName(QStringLiteral("timerPresetTable"));
-    presetTable_->setColumnCount(7);
+    presetTable_->setColumnCount(PresetColumnCount);
     presetTable_->setHorizontalHeaderLabels({
         QStringLiteral("方案"), QStringLiteral("专注"),
         QStringLiteral("短休息"), QStringLiteral("长休息"),
@@ -107,13 +153,20 @@ void SettingsPage::buildInterface()
     presetTable_->setShowGrid(false);
     presetTable_->verticalHeader()->setVisible(false);
     presetTable_->verticalHeader()->setDefaultSectionSize(42);
+    presetTable_->horizontalHeader()->setSectionsClickable(true);
+    presetTable_->horizontalHeader()->setSortIndicatorShown(true);
+    presetTable_->horizontalHeader()->setSortIndicator(
+        PresetStatusColumn, Qt::AscendingOrder);
     presetTable_->horizontalHeader()->setSectionResizeMode(
         0, QHeaderView::Stretch);
-    for (int column = 1; column < 7; ++column) {
+    for (int column = 1; column < PresetColumnCount; ++column) {
         presetTable_->horizontalHeader()->setSectionResizeMode(
             column, QHeaderView::ResizeToContents);
     }
     presetTable_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    presetTable_->setSortingEnabled(true);
+    presetTable_->setToolTip(
+        QStringLiteral("点击任意列标题排序；默认按方案状态排序"));
     enableClearSelectionOnBlankClick(presetTable_);
 
     auto *presetButtons = new QHBoxLayout;
@@ -374,9 +427,14 @@ void SettingsPage::reloadSettings()
 void SettingsPage::reloadPresets()
 {
     const int previousId = selectedPresetId();
+    const int sortColumn = presetTable_->horizontalHeader()
+                               ->sortIndicatorSection();
+    const Qt::SortOrder sortOrder = presetTable_->horizontalHeader()
+                                        ->sortIndicatorOrder();
     const QVector<TimerPreset> presets = TimerPresetRepository().findAll();
+    presetTable_->setSortingEnabled(false);
+    presetTable_->clearContents();
     presetTable_->setRowCount(presets.size());
-    int selectedRow = -1;
     for (qsizetype row = 0; row < presets.size(); ++row) {
         const TimerPreset &preset = presets.at(row);
         const QString autoLink = preset.autoStartBreak && preset.autoStartFocus
@@ -384,6 +442,7 @@ void SettingsPage::reloadPresets()
             : preset.autoStartBreak ? QStringLiteral("自动休息")
             : preset.autoStartFocus ? QStringLiteral("自动专注")
                                     : QStringLiteral("手动");
+        const QString status = presetStatusText(preset);
         const QStringList texts{
             preset.name,
             QStringLiteral("%1 分钟").arg(preset.focusMinutes),
@@ -391,35 +450,55 @@ void SettingsPage::reloadPresets()
             QStringLiteral("%1 分钟").arg(preset.longBreakMinutes),
             QStringLiteral("%1 次").arg(preset.cyclesBeforeLongBreak),
             autoLink,
-            preset.isBuiltIn
-                ? (preset.isDefault ? QStringLiteral("内置 · 默认")
-                                    : QStringLiteral("内置预设"))
-                : (preset.isDefault ? QStringLiteral("用户 · 默认")
-                                    : QStringLiteral("用户方案"))};
-        for (int column = 0; column < texts.size(); ++column) {
-            auto *item = new QTableWidgetItem(texts.at(column));
+            status};
+        const QVariantList sortKeys{
+            preset.name.toCaseFolded(),
+            preset.focusMinutes,
+            preset.shortBreakMinutes,
+            preset.longBreakMinutes,
+            preset.cyclesBeforeLongBreak,
+            autoLink.toCaseFolded(),
+            presetStatusPriority(preset)};
+        for (int column = 0; column < PresetColumnCount; ++column) {
+            auto *item = new SortKeyTableWidgetItem(
+                texts.at(column), sortKeys.at(column));
             item->setTextAlignment(Qt::AlignCenter);
-            if (column == 0) {
+            if (column == PresetNameColumn) {
                 item->setData(Qt::UserRole, preset.id);
-                item->setData(Qt::UserRole + 1, preset.isDefault);
-                item->setData(Qt::UserRole + 2, preset.isBuiltIn);
+                item->setData(kPresetDefaultRole, preset.isDefault);
+                item->setData(kPresetBuiltInRole, preset.isBuiltIn);
             }
             if (preset.isBuiltIn) {
                 item->setToolTip(QStringLiteral(
                     "内置预设保持固定；可使用“复制”创建可编辑方案。"));
+            } else if (column == PresetStatusColumn) {
+                item->setToolTip(QStringLiteral(
+                    "用户自定义方案可以编辑、复制或删除。"));
             }
             presetTable_->setItem(row, column, item);
         }
-        if (preset.id == previousId) {
-            selectedRow = static_cast<int>(row);
-        }
     }
+    presetTable_->setSortingEnabled(true);
+    presetTable_->sortItems(
+        sortColumn >= 0 ? sortColumn : PresetStatusColumn,
+        sortColumn >= 0 ? sortOrder : Qt::AscendingOrder);
+
     const int tableHeight = presetTable_->horizontalHeader()->height()
                             + presetTable_->rowCount()
                                   * presetTable_->verticalHeader()
                                         ->defaultSectionSize()
                             + presetTable_->frameWidth() * 2 + 2;
     presetTable_->setFixedHeight(qMax(110, tableHeight));
+    int selectedRow = -1;
+    for (int row = 0; row < presetTable_->rowCount(); ++row) {
+        const QTableWidgetItem *titleItem =
+            presetTable_->item(row, PresetNameColumn);
+        if (titleItem != nullptr
+            && titleItem->data(Qt::UserRole).toInt() == previousId) {
+            selectedRow = row;
+            break;
+        }
+    }
     if (selectedRow >= 0) {
         presetTable_->selectRow(selectedRow);
     } else {
@@ -432,17 +511,21 @@ void SettingsPage::reloadPresets()
 int SettingsPage::selectedPresetId() const
 {
     const int row = presetTable_ != nullptr ? presetTable_->currentRow() : -1;
-    const QTableWidgetItem *item = row >= 0 ? presetTable_->item(row, 0) : nullptr;
+    const QTableWidgetItem *item = row >= 0
+                                       ? presetTable_->item(row, PresetNameColumn)
+                                       : nullptr;
     return item != nullptr ? item->data(Qt::UserRole).toInt() : -1;
 }
 
 void SettingsPage::updatePresetButtons()
 {
     const int row = presetTable_->currentRow();
-    const QTableWidgetItem *item = row >= 0 ? presetTable_->item(row, 0) : nullptr;
+    const QTableWidgetItem *item = row >= 0
+                                       ? presetTable_->item(row, PresetNameColumn)
+                                       : nullptr;
     const bool selected = item != nullptr;
-    const bool isDefault = selected && item->data(Qt::UserRole + 1).toBool();
-    const bool isBuiltIn = selected && item->data(Qt::UserRole + 2).toBool();
+    const bool isDefault = selected && item->data(kPresetDefaultRole).toBool();
+    const bool isBuiltIn = selected && item->data(kPresetBuiltInRole).toBool();
     editPresetButton_->setEnabled(selected && !isBuiltIn);
     copyPresetButton_->setEnabled(selected);
     defaultPresetButton_->setEnabled(selected && !isDefault);
@@ -544,7 +627,9 @@ void SettingsPage::makePresetDefault()
 void SettingsPage::deletePreset()
 {
     const int row = presetTable_->currentRow();
-    const QTableWidgetItem *item = row >= 0 ? presetTable_->item(row, 0) : nullptr;
+    const QTableWidgetItem *item = row >= 0
+                                       ? presetTable_->item(row, PresetNameColumn)
+                                       : nullptr;
     if (item == nullptr) {
         return;
     }
