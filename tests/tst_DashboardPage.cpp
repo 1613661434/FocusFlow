@@ -854,8 +854,16 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
 
     auto *taskStatusButton = taskPage.findChild<QPushButton *>(
         QStringLiteral("taskStatusButton"));
+    auto *taskEditButton = taskPage.findChild<QPushButton *>(
+        QStringLiteral("taskEditButton"));
+    auto *taskDeleteButton = taskPage.findChild<QPushButton *>(
+        QStringLiteral("dangerButton"));
     QVERIFY(taskStatusButton != nullptr);
+    QVERIFY(taskEditButton != nullptr);
+    QVERIFY(taskDeleteButton != nullptr);
+    QVERIFY(!taskEditButton->isEnabled());
     QVERIFY(!taskStatusButton->isEnabled());
+    QVERIFY(!taskDeleteButton->isEnabled());
     int highImportanceRow = -1;
     for (int row = 0; row < taskTable->rowCount(); ++row) {
         if (taskTable->item(row, 0)->text() == highImportance.title) {
@@ -866,13 +874,17 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     QVERIFY(highImportanceRow >= 0);
     taskTable->selectRow(highImportanceRow);
     QCoreApplication::processEvents();
+    QVERIFY(taskEditButton->isEnabled());
     QVERIFY(taskStatusButton->isEnabled());
+    QVERIFY(taskDeleteButton->isEnabled());
     QCOMPARE(taskStatusButton->text(), QStringLiteral("完成"));
     taskStatusButton->click();
     QCoreApplication::processEvents();
     QVERIFY(taskTable->selectedItems().isEmpty());
     QVERIFY(!taskTable->currentIndex().isValid());
+    QVERIFY(!taskEditButton->isEnabled());
     QVERIFY(!taskStatusButton->isEnabled());
+    QVERIFY(!taskDeleteButton->isEnabled());
     QCOMPARE(taskStatusButton->text(), QStringLiteral("完成"));
     QCOMPARE(taskRepository.findById(highImportance.id).status,
              QStringLiteral("completed"));
@@ -892,9 +904,33 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     QVERIFY(highImportanceRow >= 0);
     taskTable->selectRow(highImportanceRow);
     QCoreApplication::processEvents();
+    QVERIFY(taskEditButton->isEnabled());
     QVERIFY(taskStatusButton->isEnabled());
+    QVERIFY(taskDeleteButton->isEnabled());
     QCOMPARE(taskStatusButton->text(), QStringLiteral("恢复"));
     QVERIFY(taskStatusButton->toolTip().contains(QStringLiteral("恢复")));
+
+    const QPoint blankPoint(taskTable->viewport()->width() / 2,
+                            taskTable->viewport()->height() - 4);
+    QVERIFY(!taskTable->indexAt(blankPoint).isValid());
+    QTest::mouseClick(taskTable->viewport(), Qt::LeftButton,
+                      Qt::NoModifier, blankPoint);
+    QCoreApplication::processEvents();
+    QVERIFY(taskTable->selectedItems().isEmpty());
+    QVERIFY(!taskTable->currentIndex().isValid());
+    QVERIFY(!taskEditButton->isEnabled());
+    QVERIFY(!taskStatusButton->isEnabled());
+    QVERIFY(!taskDeleteButton->isEnabled());
+    QCOMPARE(taskStatusButton->text(), QStringLiteral("完成"));
+
+    for (int row = 0; row < taskTable->rowCount(); ++row) {
+        if (taskTable->item(row, 0)->text() == highImportance.title) {
+            highImportanceRow = row;
+            break;
+        }
+    }
+    taskTable->selectRow(highImportanceRow);
+    QCoreApplication::processEvents();
     taskStatusButton->click();
     QCoreApplication::processEvents();
     QCOMPARE(taskRepository.findById(highImportance.id).status,
@@ -918,7 +954,9 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     QVERIFY(highImportanceRow >= 0);
     taskTable->selectRow(highImportanceRow);
     QCoreApplication::processEvents();
+    QVERIFY(!taskEditButton->isEnabled());
     QVERIFY(!taskStatusButton->isEnabled());
+    QVERIFY(!taskDeleteButton->isEnabled());
     QCOMPARE(taskStatusButton->text(), QStringLiteral("完成"));
     QVERIFY(taskStatusButton->toolTip().contains(QStringLiteral("专注计时")));
     taskPage.setActiveFocusTask(-1);

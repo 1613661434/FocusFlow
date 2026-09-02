@@ -106,7 +106,7 @@ void FocusPage::buildInterface()
     cycleLabel_->setAlignment(Qt::AlignCenter);
     cycleLabel_->setObjectName(QStringLiteral("mutedLabel"));
 
-    statusLabel_ = new QLabel(QStringLiteral("准备开始专注"), timerCard);
+    statusLabel_ = new QLabel(QStringLiteral("准备开始"), timerCard);
     statusLabel_->setAlignment(Qt::AlignCenter);
     statusLabel_->setObjectName(QStringLiteral("focusStatusLabel"));
     statusLabel_->setProperty("muted", true);
@@ -1038,8 +1038,7 @@ void FocusPage::showTemporaryStatus(const QString &message, int durationMs)
 void FocusPage::restoreIdleStatus()
 {
     if (timer_.state() == FocusTimer::State::Idle) {
-        statusLabel_->setText(
-            QStringLiteral("准备开始%1").arg(phaseText(selectedPhase())));
+        statusLabel_->setText(QStringLiteral("准备开始"));
     }
 }
 
