@@ -170,6 +170,9 @@ void SettingsPage::buildInterface()
     presetTable_->setToolTip(
         QStringLiteral("点击任意列标题排序；先点击表格，再用滚轮浏览更多方案"));
     enableClearSelectionOnBlankClick(presetTable_);
+    enableClearSelectionOnClick(timerGroup, presetTable_);
+    enableClearSelectionOnClick(presetHint, presetTable_);
+    enableClearSelectionOnClick(content, presetTable_);
 
     auto *presetButtons = new QHBoxLayout;
     auto *addPresetButton = new QPushButton(QStringLiteral("新建方案"), timerGroup);

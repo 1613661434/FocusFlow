@@ -26,6 +26,7 @@
 #include <QListWidget>
 #include <QPieSeries>
 #include <QPieSlice>
+#include <QPushButton>
 #include <QSignalSpy>
 #include <QScrollArea>
 #include <QSet>
@@ -850,6 +851,50 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
         occupiedWidth += taskTable->columnWidth(column);
     }
     QVERIFY(occupiedWidth >= taskTable->viewport()->width() - 2);
+
+    auto *taskStatusButton = taskPage.findChild<QPushButton *>(
+        QStringLiteral("taskStatusButton"));
+    QVERIFY(taskStatusButton != nullptr);
+    QVERIFY(!taskStatusButton->isEnabled());
+    int highImportanceRow = -1;
+    for (int row = 0; row < taskTable->rowCount(); ++row) {
+        if (taskTable->item(row, 0)->text() == highImportance.title) {
+            highImportanceRow = row;
+            break;
+        }
+    }
+    QVERIFY(highImportanceRow >= 0);
+    taskTable->selectRow(highImportanceRow);
+    QCoreApplication::processEvents();
+    QVERIFY(taskStatusButton->isEnabled());
+    QCOMPARE(taskStatusButton->text(), QStringLiteral("完成"));
+    taskStatusButton->click();
+    QCoreApplication::processEvents();
+    QVERIFY(taskTable->selectedItems().isEmpty());
+    QVERIFY(!taskTable->currentIndex().isValid());
+    QVERIFY(!taskStatusButton->isEnabled());
+    QCOMPARE(taskStatusButton->text(), QStringLiteral("完成"));
+    QCOMPARE(taskRepository.findById(highImportance.id).status,
+             QStringLiteral("completed"));
+
+    taskStatusButton->click();
+    QCOMPARE(taskRepository.findById(highImportance.id).status,
+             QStringLiteral("completed"));
+    highImportanceRow = -1;
+    for (int row = 0; row < taskTable->rowCount(); ++row) {
+        if (taskTable->item(row, 0)->text() == highImportance.title) {
+            highImportanceRow = row;
+            QCOMPARE(taskTable->item(row, 9)->text(),
+                     QStringLiteral("已完成"));
+            break;
+        }
+    }
+    QVERIFY(highImportanceRow >= 0);
+    taskTable->selectRow(highImportanceRow);
+    QCoreApplication::processEvents();
+    QVERIFY(taskStatusButton->isEnabled());
+    QCOMPARE(taskStatusButton->text(), QStringLiteral("完成"));
+    QVERIFY(taskStatusButton->toolTip().contains(QStringLiteral("重新打开")));
 
     taskTable->sortItems(6, Qt::AscendingOrder);
     for (int row = 1; row < taskTable->rowCount(); ++row) {

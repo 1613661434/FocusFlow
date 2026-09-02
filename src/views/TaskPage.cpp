@@ -79,6 +79,9 @@ void TaskPage::buildInterface()
     addButton->setObjectName(QStringLiteral("primaryButton"));
     auto *editButton = new QPushButton(QStringLiteral("编辑"), this);
     completeButton_ = new QPushButton(QStringLiteral("完成"), this);
+    completeButton_->setObjectName(QStringLiteral("taskStatusButton"));
+    completeButton_->setEnabled(false);
+    completeButton_->setToolTip(QStringLiteral("请先选择一项任务"));
     auto *deleteButton = new QPushButton(QStringLiteral("删除"), this);
     deleteButton->setObjectName(QStringLiteral("dangerButton"));
 
@@ -154,12 +157,20 @@ void TaskPage::buildInterface()
     connect(table_, &QTableWidget::itemSelectionChanged, this, [this] {
         const int index = selectedTaskIndex();
         if (index < 0) {
-            completeButton_->setText(QStringLiteral("完成"));
+            completeButton_->setEnabled(false);
+            completeButton_->setToolTip(QStringLiteral("请先选择一项任务"));
+            completeButton_->setAccessibleName(QStringLiteral("完成任务"));
             return;
         }
-        completeButton_->setText(tasks_.at(index).status == QStringLiteral("completed")
-                                     ? QStringLiteral("重新打开")
-                                     : QStringLiteral("完成"));
+        completeButton_->setEnabled(true);
+        const bool completed =
+            tasks_.at(index).status == QStringLiteral("completed");
+        completeButton_->setToolTip(
+            completed ? QStringLiteral("再次点击会重新打开所选任务")
+                      : QStringLiteral("将所选任务标记为已完成"));
+        completeButton_->setAccessibleName(
+            completed ? QStringLiteral("重新打开任务")
+                      : QStringLiteral("完成任务"));
     });
 }
 
@@ -297,9 +308,14 @@ void TaskPage::refresh()
     }
     table_->setSortingEnabled(true);
     table_->sortItems(sortColumn >= 0 ? sortColumn : ImportanceColumn, sortOrder);
+    table_->clearSelection();
+    table_->setCurrentIndex(QModelIndex());
 
     summaryLabel_->setText(QStringLiteral("当前显示 %1 项任务").arg(tasks_.size()));
     completeButton_->setText(QStringLiteral("完成"));
+    completeButton_->setEnabled(false);
+    completeButton_->setToolTip(QStringLiteral("请先选择一项任务"));
+    completeButton_->setAccessibleName(QStringLiteral("完成任务"));
 }
 
 void TaskPage::addTask()
@@ -364,7 +380,7 @@ void TaskPage::toggleSelectedTask()
         return;
     }
 
-    const auto &task = tasks_.at(index);
+    const Task task = tasks_.at(index);
     const bool completed = task.status != QStringLiteral("completed");
     QString error;
     if (!repository_.setCompleted(task.id, completed, &error)) {

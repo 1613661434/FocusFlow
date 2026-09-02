@@ -23,6 +23,7 @@
 #include <QMessageBox>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QSet>
 #include <QSignalBlocker>
 #include <QSizePolicy>
 #include <QTimer>
@@ -33,6 +34,24 @@
 namespace {
 constexpr int kAllLookups = -2;
 constexpr int kCustomPreset = -2;
+
+QString nextCustomPresetName(const QVector<TimerPreset> &presets)
+{
+    const QString baseName = QStringLiteral("我的专注方案");
+    QSet<QString> existingNames;
+    for (const TimerPreset &preset : presets) {
+        existingNames.insert(preset.name.trimmed());
+    }
+    if (!existingNames.contains(baseName)) {
+        return baseName;
+    }
+
+    int suffix = 2;
+    while (existingNames.contains(baseName + QString::number(suffix))) {
+        ++suffix;
+    }
+    return baseName + QString::number(suffix);
+}
 }
 
 FocusPage::FocusPage(QWidget *parent)
@@ -898,12 +917,14 @@ void FocusPage::saveCustomPreset()
     }
 
     bool accepted = false;
+    const QString suggestedName =
+        nextCustomPresetName(TimerPresetRepository().findAll());
     const QString name = QInputDialog::getText(
                              this,
                              QStringLiteral("保存为专注方案"),
                              QStringLiteral("方案名称："),
                              QLineEdit::Normal,
-                             QStringLiteral("我的专注方案"),
+                             suggestedName,
                              &accepted)
                              .trimmed();
     if (!accepted) {
@@ -1025,8 +1046,16 @@ bool FocusPage::eventFilter(QObject *watched, QEvent *event)
                        || (focused != nullptr
                            && editor->isAncestorOf(focused)));
         });
-    if (event->type() == QEvent::MouseButtonPress && editingCustomValue) {
-        clearCustomEditorFocus();
+    const bool selectingPreset =
+        focused == presetCombo_
+        || (focused != nullptr && presetCombo_->isAncestorOf(focused));
+    if (event->type() == QEvent::MouseButtonPress) {
+        if (editingCustomValue) {
+            clearCustomEditorFocus();
+        }
+        if (selectingPreset) {
+            presetCombo_->clearFocus();
+        }
     }
     return QWidget::eventFilter(watched, event);
 }

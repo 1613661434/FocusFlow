@@ -326,6 +326,13 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     presetCombo->setCurrentIndex(customIndex);
     QCoreApplication::processEvents();
     QVERIFY(customEditor->isVisible());
+    presetCombo->setFocus(Qt::MouseFocusReason);
+    QTRY_VERIFY(presetCombo->hasFocus());
+    const int selectedPresetId = presetCombo->currentData().toInt();
+    QTest::mouseClick(&page, Qt::LeftButton, Qt::NoModifier,
+                      QPoint(4, 4));
+    QVERIFY(!presetCombo->hasFocus());
+    QCOMPARE(presetCombo->currentData().toInt(), selectedPresetId);
     for (QLabel *label : page.findChildren<QLabel *>()) {
         QVERIFY(label->text() != QStringLiteral("自定义本次方案"));
     }
@@ -357,18 +364,33 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     QVERIFY(!confirmCustom->isEnabled());
     QVERIFY(saveCustom->isEnabled());
 
-    const QString savedName = QStringLiteral("界面保存方案-%1")
-                                  .arg(QUuid::createUuid().toString(
-                                      QUuid::WithoutBraces));
+    TimerPreset existingName;
+    existingName.id = -1;
+    existingName.name = QStringLiteral("我的专注方案");
+    existingName.focusMinutes = 25;
+    existingName.shortBreakMinutes = 5;
+    existingName.longBreakMinutes = 15;
+    existingName.cyclesBeforeLongBreak = 4;
+    QVERIFY2(TimerPresetRepository().save(existingName, &error),
+             qPrintable(error));
+    TimerPreset existingNumberedName = existingName;
+    existingNumberedName.id = -1;
+    existingNumberedName.name = QStringLiteral("我的专注方案2");
+    QVERIFY2(TimerPresetRepository().save(existingNumberedName, &error),
+             qPrintable(error));
+
+    const QString savedName = QStringLiteral("我的专注方案3");
+    QString suggestedName;
     QSignalSpy presetsChangedSpy(&page, &FocusPage::presetsChanged);
-    QTimer::singleShot(0, [savedName] {
+    QTimer::singleShot(0, [&suggestedName] {
         if (auto *dialog = qobject_cast<QInputDialog *>(
                 QApplication::activeModalWidget())) {
-            dialog->setTextValue(savedName);
+            suggestedName = dialog->textValue();
             dialog->accept();
         }
     });
     saveCustom->click();
+    QCOMPARE(suggestedName, savedName);
     QCOMPARE(presetsChangedSpy.count(), 1);
     const QVector<TimerPreset> presets = TimerPresetRepository().findAll();
     const auto saved = std::find_if(
