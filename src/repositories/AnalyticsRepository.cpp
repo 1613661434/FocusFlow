@@ -92,6 +92,7 @@ QVector<CategoryFocus> AnalyticsRepository::focusByCategory() const
     QSqlQuery query(DatabaseManager::instance().database());
     query.exec(QStringLiteral(R"(
         SELECT COALESCE(c.name, '未分类') AS category_name,
+               COALESCE(c.color, '#667085') AS category_color,
                COALESCE(SUM(fs.actual_seconds), 0) AS focus_seconds
         FROM focus_sessions fs
         LEFT JOIN tasks t ON t.id = fs.task_id
@@ -100,14 +101,16 @@ QVector<CategoryFocus> AnalyticsRepository::focusByCategory() const
           AND fs.status IN ('completed', 'interrupted')
           AND fs.actual_seconds > 0
           AND date(fs.start_time) >= date('now', 'localtime', '-29 days')
-        GROUP BY COALESCE(c.name, '未分类')
+        GROUP BY COALESCE(c.name, '未分类'), COALESCE(c.color, '#667085')
         HAVING focus_seconds > 0
         ORDER BY focus_seconds DESC
     )"));
 
     QVector<CategoryFocus> result;
     while (query.next()) {
-        result.push_back({query.value(0).toString(), query.value(1).toInt()});
+        result.push_back({query.value(0).toString(),
+                          query.value(1).toString(),
+                          query.value(2).toInt()});
     }
     return result;
 }
@@ -117,6 +120,7 @@ QVector<ProjectFocus> AnalyticsRepository::focusByProject() const
     QSqlQuery query(DatabaseManager::instance().database());
     query.exec(QStringLiteral(R"(
         SELECT COALESCE(p.name, '无项目') AS project_name,
+               COALESCE(p.color, '#667085') AS project_color,
                COALESCE(SUM(fs.actual_seconds), 0) AS focus_seconds
         FROM focus_sessions fs
         LEFT JOIN tasks t ON t.id = fs.task_id
@@ -125,14 +129,16 @@ QVector<ProjectFocus> AnalyticsRepository::focusByProject() const
           AND fs.status IN ('completed', 'interrupted')
           AND fs.actual_seconds > 0
           AND date(fs.start_time) >= date('now', 'localtime', '-29 days')
-        GROUP BY COALESCE(p.name, '无项目')
+        GROUP BY COALESCE(p.name, '无项目'), COALESCE(p.color, '#667085')
         HAVING focus_seconds > 0
         ORDER BY focus_seconds DESC
     )"));
 
     QVector<ProjectFocus> result;
     while (query.next()) {
-        result.push_back({query.value(0).toString(), query.value(1).toInt()});
+        result.push_back({query.value(0).toString(),
+                          query.value(1).toString(),
+                          query.value(2).toInt()});
     }
     return result;
 }
@@ -144,7 +150,9 @@ QVector<RecentFocusSession> AnalyticsRepository::recentFocusSessions(int limit) 
         SELECT strftime('%Y-%m-%d %H:%M:%S', fs.start_time, 'localtime'),
                COALESCE(t.title, '无关联任务'),
                COALESCE(p.name, '无项目'),
+               COALESCE(p.color, '#667085'),
                COALESCE(c.name, '未分类'),
+               COALESCE(c.color, '#667085'),
                fs.actual_seconds,
                fs.status = 'completed'
         FROM focus_sessions fs
@@ -166,8 +174,10 @@ QVector<RecentFocusSession> AnalyticsRepository::recentFocusSessions(int limit) 
                           query.value(1).toString(),
                           query.value(2).toString(),
                           query.value(3).toString(),
-                          query.value(4).toInt(),
-                          query.value(5).toBool()});
+                          query.value(4).toString(),
+                          query.value(5).toString(),
+                          query.value(6).toInt(),
+                          query.value(7).toBool()});
     }
     return result;
 }

@@ -110,7 +110,8 @@ void TaskPage::buildInterface()
     table_->verticalHeader()->setDefaultSectionSize(44);
     table_->horizontalHeader()->setStretchLastSection(false);
     table_->horizontalHeader()->setSectionResizeMode(TitleColumn, QHeaderView::ResizeToContents);
-    table_->horizontalHeader()->setSectionResizeMode(DescriptionColumn, QHeaderView::Stretch);
+    table_->horizontalHeader()->setSectionResizeMode(DescriptionColumn, QHeaderView::Interactive);
+    table_->horizontalHeader()->resizeSection(DescriptionColumn, 220);
     table_->horizontalHeader()->setSectionResizeMode(ProjectColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(CategoryColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(DueColumn, QHeaderView::ResizeToContents);
@@ -205,26 +206,41 @@ void TaskPage::refresh()
             project->setTextAlignment(Qt::AlignCenter);
             project->setToolTip(QStringLiteral("未选择项目"));
         }
+        if (hasProject && QColor(task.projectColor).isValid()) {
+            project->setForeground(QColor(task.projectColor));
+        }
         table_->setItem(row, ProjectColumn, project);
-        table_->setItem(row, CategoryColumn,
-                        new SortKeyTableWidgetItem(
-                            task.categoryName.isEmpty() ? QStringLiteral("未分类")
-                                                        : task.categoryName,
-                            task.categoryName.toCaseFolded()));
+        auto *category = new SortKeyTableWidgetItem(
+            task.categoryName.isEmpty() ? QStringLiteral("未分类")
+                                        : task.categoryName,
+            task.categoryName.toCaseFolded());
+        if (!task.categoryName.isEmpty()
+            && QColor(task.categoryColor).isValid()) {
+            category->setForeground(QColor(task.categoryColor));
+        }
+        table_->setItem(row, CategoryColumn, category);
 
         QString dueText = QStringLiteral("无截止时间");
+        bool overdue = false;
         if (task.dueAt.isValid()) {
-            dueText = task.dueAt.toString(QStringLiteral("MM-dd HH:mm"));
+            dueText = task.dueAt.toString(QStringLiteral("yyyy-MM-dd HH:mm"));
             if (task.status != QStringLiteral("completed")
                 && task.dueAt < QDateTime::currentDateTime()) {
+                overdue = true;
                 dueText = QStringLiteral("已逾期 ") + dueText;
             }
         }
         const qint64 dueSortKey = task.dueAt.isValid()
                                       ? task.dueAt.toMSecsSinceEpoch()
                                       : std::numeric_limits<qint64>::max();
-        table_->setItem(row, DueColumn,
-                        new SortKeyTableWidgetItem(dueText, dueSortKey));
+        auto *dueItem = new SortKeyTableWidgetItem(dueText, dueSortKey);
+        if (overdue) {
+            dueItem->setForeground(QColor(QStringLiteral("#B42318")));
+            dueItem->setToolTip(
+                QStringLiteral("该任务已超过截止时间：%1")
+                    .arg(task.dueAt.toString(QStringLiteral("yyyy-MM-dd HH:mm"))));
+        }
+        table_->setItem(row, DueColumn, dueItem);
         auto *importanceItem = new SortKeyTableWidgetItem(
             importanceText(task.importance), task.importance);
         importanceItem->setForeground(PriorityColors::importance(task.importance));

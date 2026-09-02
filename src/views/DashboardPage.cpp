@@ -4,6 +4,7 @@
 #include "repositories/TaskRepository.h"
 #include "services/PriorityService.h"
 #include "widgets/ClearSelectionOnBlankClick.h"
+#include "widgets/ColoredComboBox.h"
 #include "widgets/PriorityColors.h"
 
 #include <QFrame>
@@ -14,6 +15,7 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QSignalBlocker>
+#include <QSizePolicy>
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
@@ -69,6 +71,8 @@ void DashboardPage::buildInterface()
     categoryFilter_ = new QComboBox(recommendationCard);
     categoryFilter_->setObjectName(QStringLiteral("recommendationCategoryFilter"));
     categoryFilter_->setMinimumWidth(160);
+    ColoredComboBox::enableCurrentItemColor(projectFilter_);
+    ColoredComboBox::enableCurrentItemColor(categoryFilter_);
     filterLayout->addWidget(projectLabel);
     filterLayout->addWidget(projectFilter_);
     filterLayout->addSpacing(12);
@@ -166,20 +170,24 @@ void DashboardPage::reloadRecommendationFilters()
     projectFilter_->addItem(QStringLiteral("全部项目"), kAllLookups);
     projectFilter_->addItem(QStringLiteral("无项目"), -1);
     for (const LookupItem &project : repository.projects()) {
-        projectFilter_->addItem(project.name, project.id);
+        ColoredComboBox::addColoredItem(
+            projectFilter_, project.name, project.id, QColor(project.color));
     }
 
     categoryFilter_->clear();
     categoryFilter_->addItem(QStringLiteral("全部分类"), kAllLookups);
     categoryFilter_->addItem(QStringLiteral("未分类"), -1);
     for (const LookupItem &category : repository.categories()) {
-        categoryFilter_->addItem(category.name, category.id);
+        ColoredComboBox::addColoredItem(
+            categoryFilter_, category.name, category.id, QColor(category.color));
     }
 
     const int projectIndex = projectFilter_->findData(selectedProject);
     const int categoryIndex = categoryFilter_->findData(selectedCategory);
     projectFilter_->setCurrentIndex(projectIndex >= 0 ? projectIndex : 0);
     categoryFilter_->setCurrentIndex(categoryIndex >= 0 ? categoryIndex : 0);
+    ColoredComboBox::applyCurrentItemColor(projectFilter_);
+    ColoredComboBox::applyCurrentItemColor(categoryFilter_);
 }
 
 void DashboardPage::refreshRecommendations()
@@ -234,7 +242,55 @@ void DashboardPage::refreshRecommendations()
         item->setForeground(PriorityColors::recommendation(score));
         item->setToolTip(
             QStringLiteral("推荐分：%1；颜色表示推荐程度区间").arg(score));
-        item->setSizeHint(QSize(0, 54));
+        item->setSizeHint(QSize(0, 60));
+
+        auto *rowWidget = new QWidget(recommendations_);
+        rowWidget->setAttribute(Qt::WA_TransparentForMouseEvents);
+        rowWidget->setStyleSheet(QStringLiteral("background: transparent;"));
+        auto *rowLayout = new QVBoxLayout(rowWidget);
+        rowLayout->setContentsMargins(8, 5, 8, 5);
+        rowLayout->setSpacing(3);
+        auto *titleLabel = new QLabel(task.title, rowWidget);
+        titleLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+        titleLabel->setStyleSheet(
+            QStringLiteral("color: #182230; background: transparent; "
+                           "font-weight: 600;"));
+        auto *detailLabel = new QLabel(rowWidget);
+        detailLabel->setObjectName(QStringLiteral("recommendationScoreLine"));
+        detailLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+        detailLabel->setTextFormat(Qt::RichText);
+        detailLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+        const QColor projectColor = QColor(task.projectColor).isValid()
+                                        ? QColor(task.projectColor)
+                                        : QColor(QStringLiteral("#667085"));
+        const QColor categoryColor = QColor(task.categoryColor).isValid()
+                                         ? QColor(task.categoryColor)
+                                         : QColor(QStringLiteral("#667085"));
+        QString context =
+            QStringLiteral("<span style=\"color:#667085;\">项目：</span>"
+                           "<span style=\"color:%1;font-weight:600;\">%2</span>"
+                           "<span style=\"color:#667085;\">"
+                           "&nbsp;&nbsp;·&nbsp;&nbsp;分类：</span>"
+                           "<span style=\"color:%3;font-weight:600;\">%4</span>")
+                .arg(projectColor.name(), projectName.toHtmlEscaped(),
+                     categoryColor.name(), categoryName.toHtmlEscaped());
+        if (task.dueAt.isValid()) {
+            context += QStringLiteral("<span style=\"color:#667085;\">"
+                                      "&nbsp;&nbsp;·&nbsp;&nbsp;截止 %1</span>")
+                           .arg(task.dueAt.toString(
+                               QStringLiteral("MM-dd HH:mm")));
+        }
+        detailLabel->setText(
+            QStringLiteral("<span style=\"color:%1;font-weight:600;\">"
+                           "推荐分 %2</span>"
+                           "<span style=\"color:#667085;\">"
+                           "&nbsp;&nbsp;·&nbsp;&nbsp;</span>%3")
+                .arg(PriorityColors::recommendation(score).name(),
+                     QString::number(score),
+                     context));
+        rowLayout->addWidget(titleLabel);
+        rowLayout->addWidget(detailLabel);
+        recommendations_->setItemWidget(item, rowWidget);
     }
 }
 

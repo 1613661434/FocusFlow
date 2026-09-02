@@ -10,8 +10,10 @@ struct Task
     QString description;
     int projectId = -1;
     QString projectName;
+    QString projectColor;
     int categoryId = -1;
     QString categoryName;
+    QString categoryColor;
     int importance = 3;
     QDateTime dueAt;
     int estimatedMinutes = 25;

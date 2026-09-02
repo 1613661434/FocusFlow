@@ -1,6 +1,8 @@
 #include "views/TaskDialog.h"
+#include "widgets/PriorityColors.h"
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDate>
 #include <QDateTimeEdit>
 #include <QSpinBox>
@@ -14,6 +16,7 @@ private slots:
     void newTaskDefaultsToTodayAtEndOfDay();
     void savesSeparateDateHourAndMinuteControls();
     void canCreateTaskWithoutDueTime();
+    void lookupAndImportanceChoicesKeepTheirColors();
 };
 
 void TaskDialogTests::newTaskDefaultsToTodayAtEndOfDay()
@@ -77,6 +80,45 @@ void TaskDialogTests::canCreateTaskWithoutDueTime()
     QVERIFY(!hour->isEnabled());
     QVERIFY(!minute->isEnabled());
     QVERIFY(!dialog.task().dueAt.isValid());
+}
+
+void TaskDialogTests::lookupAndImportanceChoicesKeepTheirColors()
+{
+    const LookupItem project{7, QStringLiteral("蓝色项目"),
+                             QStringLiteral("#175CD3")};
+    const LookupItem category{8, QStringLiteral("紫色分类"),
+                              QStringLiteral("#6941C6")};
+    TaskDialog dialog({project}, {category});
+
+    auto *projectCombo = dialog.findChild<QComboBox *>(
+        QStringLiteral("taskProjectCombo"));
+    auto *categoryCombo = dialog.findChild<QComboBox *>(
+        QStringLiteral("taskCategoryCombo"));
+    auto *importanceCombo = dialog.findChild<QComboBox *>(
+        QStringLiteral("taskImportanceCombo"));
+    QVERIFY(projectCombo != nullptr);
+    QVERIFY(categoryCombo != nullptr);
+    QVERIFY(importanceCombo != nullptr);
+    QCOMPARE(importanceCombo->count(), 5);
+
+    for (int index = 0; index < importanceCombo->count(); ++index) {
+        const int level = index + 1;
+        QVERIFY(importanceCombo->itemText(index).contains(
+            QString(level, QChar(0x2605))));
+        QCOMPARE(importanceCombo->itemData(index, Qt::ForegroundRole)
+                     .value<QColor>(),
+                 PriorityColors::importance(level));
+    }
+
+    projectCombo->setCurrentIndex(projectCombo->findData(project.id));
+    categoryCombo->setCurrentIndex(categoryCombo->findData(category.id));
+    importanceCombo->setCurrentIndex(4);
+    QCOMPARE(projectCombo->palette().color(QPalette::Text),
+             QColor(project.color));
+    QCOMPARE(categoryCombo->palette().color(QPalette::Text),
+             QColor(category.color));
+    QCOMPARE(importanceCombo->palette().color(QPalette::Text),
+             PriorityColors::importance(5));
 }
 
 QTEST_MAIN(TaskDialogTests)

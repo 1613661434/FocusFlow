@@ -61,7 +61,8 @@ QVector<Task> TaskRepository::findAll(Filter filter, const QString &searchText) 
     const QString sql = QStringLiteral(R"(
         SELECT t.id, t.title, t.description, t.project_id, p.name AS project_name,
                t.category_id, c.name AS category_name, t.importance, t.due_at,
-               t.estimated_minutes, t.status, t.created_at, t.completed_at
+               t.estimated_minutes, t.status, t.created_at, t.completed_at,
+               p.color AS project_color, c.color AS category_color
         FROM tasks t
         LEFT JOIN projects p ON p.id = t.project_id
         LEFT JOIN categories c ON c.id = t.category_id
@@ -97,7 +98,8 @@ Task TaskRepository::findById(int id) const
     query.prepare(QStringLiteral(R"(
         SELECT t.id, t.title, t.description, t.project_id, p.name AS project_name,
                t.category_id, c.name AS category_name, t.importance, t.due_at,
-               t.estimated_minutes, t.status, t.created_at, t.completed_at
+               t.estimated_minutes, t.status, t.created_at, t.completed_at,
+               p.color AS project_color, c.color AS category_color
         FROM tasks t
         LEFT JOIN projects p ON p.id = t.project_id
         LEFT JOIN categories c ON c.id = t.category_id
@@ -239,9 +241,11 @@ Task TaskRepository::fromQuery(const QSqlQuery &query)
     task.projectId = query.value(QStringLiteral("project_id")).isNull()
         ? -1 : query.value(QStringLiteral("project_id")).toInt();
     task.projectName = query.value(QStringLiteral("project_name")).toString();
+    task.projectColor = query.value(QStringLiteral("project_color")).toString();
     task.categoryId = query.value(QStringLiteral("category_id")).isNull()
         ? -1 : query.value(QStringLiteral("category_id")).toInt();
     task.categoryName = query.value(QStringLiteral("category_name")).toString();
+    task.categoryColor = query.value(QStringLiteral("category_color")).toString();
     task.importance = query.value(QStringLiteral("importance")).toInt();
     task.dueAt = dateTimeFromStorage(query.value(QStringLiteral("due_at")));
     task.estimatedMinutes = query.value(QStringLiteral("estimated_minutes")).toInt();

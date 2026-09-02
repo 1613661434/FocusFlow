@@ -153,10 +153,23 @@ void FocusPageTests::taskFiltersShowScoresAndSortRecommendations()
     QCOMPARE(taskCombo->itemData(2).toInt(), lowScore.id);
     QVERIFY(taskCombo->itemText(1).contains(QStringLiteral("推荐分 100")));
     QVERIFY(taskCombo->itemText(2).contains(QStringLiteral("推荐分 20")));
+    QCOMPARE(projectFilter->itemData(projectFilter->findData(projectId),
+                                     Qt::ForegroundRole).value<QColor>(),
+             QColor(QStringLiteral("#4F6EF7")));
+    QCOMPARE(categoryFilter->itemData(categoryFilter->findData(categoryId),
+                                      Qt::ForegroundRole).value<QColor>(),
+             QColor(QStringLiteral("#C335B4")));
+    QCOMPARE(projectFilter->palette().color(QPalette::Text),
+             QColor(QStringLiteral("#4F6EF7")));
+    QCOMPARE(categoryFilter->palette().color(QPalette::Text),
+             QColor(QStringLiteral("#C335B4")));
     QCOMPARE(taskCombo->itemData(1, Qt::ForegroundRole).value<QColor>(),
              PriorityColors::recommendation(100));
     QCOMPARE(taskCombo->itemData(2, Qt::ForegroundRole).value<QColor>(),
              PriorityColors::recommendation(20));
+    taskCombo->setCurrentIndex(1);
+    QCOMPARE(taskCombo->palette().color(QPalette::Text),
+             PriorityColors::recommendation(100));
 
     taskCombo->setCurrentIndex(taskCombo->findData(lowScore.id));
     projectFilter->setCurrentIndex(projectFilter->findData(-1));
