@@ -23,6 +23,7 @@ signals:
 
 public slots:
     void refresh();
+    void setActiveFocusTask(int taskId);
 
 private slots:
     void addTask();
@@ -46,4 +47,5 @@ private:
     QTableWidget *table_ = nullptr;
     QLabel *summaryLabel_ = nullptr;
     QPushButton *completeButton_ = nullptr;
+    int activeFocusTaskId_ = -1;
 };

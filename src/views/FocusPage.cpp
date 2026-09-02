@@ -432,6 +432,12 @@ void FocusPage::refreshFilteredTasks()
 
     auto tasks = TaskRepository().findAll(TaskRepository::Filter::All);
     tasks.erase(std::remove_if(tasks.begin(), tasks.end(), [&](const Task &task) {
+        const bool activeFocusTask = timer_.state() != FocusTimer::State::Idle
+                                     && timer_.phase() == FocusTimer::Phase::Focus
+                                     && task.id == currentTaskId_;
+        if (activeFocusTask) {
+            return false;
+        }
         const bool unavailable = task.status == QStringLiteral("completed")
                                  || task.status == QStringLiteral("cancelled");
         const bool projectMismatch = selectedProject != kAllLookups
@@ -520,6 +526,8 @@ void FocusPage::startCurrentPhase()
     currentTaskTitle_ = task.id > 0 ? task.title : QStringLiteral("无关联任务");
     currentRemainingSeconds_ = durationSeconds(phase);
     timer_.start(phase, currentRemainingSeconds_, currentTaskId_);
+    emit activeFocusTaskChanged(
+        phase == FocusTimer::Phase::Focus ? currentTaskId_ : -1);
 }
 
 void FocusPage::handlePrimaryAction()
@@ -644,6 +652,9 @@ void FocusPage::handleSessionEnded(FocusTimer::Phase phase,
                                    int plannedSeconds,
                                    int actualSeconds)
 {
+    if (phase == FocusTimer::Phase::Focus) {
+        emit activeFocusTaskChanged(-1);
+    }
     QString error;
     const bool saved = FocusRepository().recordSession(
         taskId,

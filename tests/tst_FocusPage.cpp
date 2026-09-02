@@ -217,6 +217,8 @@ void FocusPageTests::taskSchemeAndTrayStatusFollowTheRunningTimer()
     QVERIFY2(TaskRepository().save(task, &error), qPrintable(error));
 
     FocusPage page;
+    auto *taskCombo = page.findChild<QComboBox *>(
+        QStringLiteral("focusTaskCombo"));
     auto *presetCombo = page.findChild<QComboBox *>(
         QStringLiteral("focusPresetCombo"));
     auto *customMinutes = page.findChild<QSpinBox *>(
@@ -224,10 +226,12 @@ void FocusPageTests::taskSchemeAndTrayStatusFollowTheRunningTimer()
     auto *primary = buttonForRole(page, QStringLiteral("primary"));
     auto *confirmCustom = page.findChild<QPushButton *>(
         QStringLiteral("confirmCustomMinutesButton"));
+    QVERIFY(taskCombo != nullptr);
     QVERIFY(presetCombo != nullptr);
     QVERIFY(customMinutes != nullptr);
     QVERIFY(primary != nullptr);
     QVERIFY(confirmCustom != nullptr);
+    QSignalSpy activeTaskSpy(&page, &FocusPage::activeFocusTaskChanged);
 
     page.selectTask(task.id);
     QCOMPARE(presetCombo->currentData().toInt(), deepWork->id);
@@ -243,11 +247,19 @@ void FocusPageTests::taskSchemeAndTrayStatusFollowTheRunningTimer()
 
     QSignalSpy traySpy(&page, &FocusPage::trayStatusChanged);
     primary->click();
+    QCOMPARE(activeTaskSpy.count(), 1);
+    QCOMPARE(activeTaskSpy.constLast().at(0).toInt(), task.id);
     QVERIFY(!traySpy.isEmpty());
     QString status = traySpy.constLast().at(0).toString();
     QVERIFY(status.contains(QStringLiteral("专注中")));
     QVERIFY(status.contains(task.title));
     QVERIFY(status.contains(QStringLiteral("剩余 01:00")));
+
+    QVERIFY2(TaskRepository().setCompleted(task.id, true, &error),
+             qPrintable(error));
+    page.refreshTasks();
+    QCOMPARE(taskCombo->currentData().toInt(), task.id);
+    QVERIFY(!taskCombo->isEnabled());
 
     primary->click();
     status = traySpy.constLast().at(0).toString();
