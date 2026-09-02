@@ -280,6 +280,8 @@ void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
     QCOMPARE(table->item(9, 0)->text(), QStringLiteral("10"));
     QCOMPARE(table->verticalScrollBarPolicy(), Qt::ScrollBarAlwaysOff);
     QCOMPARE(table->horizontalScrollBarPolicy(), Qt::ScrollBarAlwaysOff);
+    QCOMPARE(table->verticalHeader()->sectionResizeMode(0),
+             QHeaderView::Stretch);
     QVERIFY(hint->text().contains(QStringLiteral("最近 10 条")));
     QVERIFY(page.findChild<QScrollArea *>() == nullptr);
 
