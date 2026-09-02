@@ -24,6 +24,7 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QSignalBlocker>
+#include <QSizePolicy>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -149,11 +150,12 @@ void FocusPage::buildInterface()
     presetCombo_ = new QComboBox(optionsCard);
     presetCombo_->setObjectName(QStringLiteral("focusPresetCombo"));
     presetCombo_->setAccessibleName(QStringLiteral("选择本次计时使用的专注方案"));
-    customMinutesLabel_ = new QLabel(QStringLiteral("自定义本次方案"), optionsCard);
     customMinutesRow_ = new QWidget(optionsCard);
     customMinutesRow_->setObjectName(QStringLiteral("focusCustomPresetEditor"));
+    customMinutesRow_->setSizePolicy(QSizePolicy::Preferred,
+                                     QSizePolicy::Minimum);
     auto *customForm = new QFormLayout(customMinutesRow_);
-    customForm->setContentsMargins(0, 0, 0, 0);
+    customForm->setContentsMargins(0, 0, 0, 4);
     customForm->setHorizontalSpacing(10);
     customForm->setVerticalSpacing(8);
     customForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
@@ -197,8 +199,9 @@ void FocusPage::buildInterface()
     customForm->addRow(customAutoStartFocus_);
 
     auto *customButtons = new QWidget(customMinutesRow_);
+    customButtons->setMinimumHeight(44);
     auto *customButtonsLayout = new QHBoxLayout(customButtons);
-    customButtonsLayout->setContentsMargins(0, 0, 0, 0);
+    customButtonsLayout->setContentsMargins(0, 0, 0, 3);
     customButtonsLayout->setSpacing(8);
     confirmCustomMinutesButton_ = new QPushButton(
         QStringLiteral("确定"), customButtons);
@@ -217,7 +220,6 @@ void FocusPage::buildInterface()
     customButtonsLayout->addWidget(confirmCustomMinutesButton_, 2);
     customButtonsLayout->addWidget(saveCustomPresetButton_, 3);
     customForm->addRow(customButtons);
-    customMinutesLabel_->setVisible(false);
     customMinutesRow_->setVisible(false);
     setTaskPresetButton_ = new QPushButton(
         QStringLiteral("设为该任务默认方案"), optionsCard);
@@ -252,7 +254,6 @@ void FocusPage::buildInterface()
     optionsLayout->addWidget(taskCombo_);
     optionsLayout->addWidget(presetLabel);
     optionsLayout->addWidget(presetCombo_);
-    optionsLayout->addWidget(customMinutesLabel_);
     optionsLayout->addWidget(customMinutesRow_);
     optionsLayout->addWidget(setTaskPresetButton_);
     optionsLayout->addWidget(phaseSelectLabel);
@@ -300,8 +301,7 @@ void FocusPage::buildInterface()
     const QVector<QWidget *> blankClickSurfaces{
         this, timerCard, phaseLabel_, timerLabel_, progress_, cycleLabel_,
         statusLabel_, optionsCard, optionsTitle, projectFilterLabel,
-        categoryFilterLabel, taskLabel, presetLabel, customMinutesLabel_,
-        phaseSelectLabel, tip};
+        categoryFilterLabel, taskLabel, presetLabel, phaseSelectLabel, tip};
     for (QWidget *surface : blankClickSurfaces) {
         surface->installEventFilter(this);
     }
@@ -837,7 +837,6 @@ void FocusPage::updatePresetControls()
     const bool idle = timer_.state() == FocusTimer::State::Idle;
     const bool hasTask = taskCombo_->currentData().toInt() > 0;
     const bool customDirty = custom && customEditorDirty();
-    customMinutesLabel_->setVisible(custom);
     customMinutesRow_->setVisible(custom);
     confirmCustomMinutesButton_->setEnabled(idle && customDirty);
     confirmCustomMinutesButton_->setToolTip(

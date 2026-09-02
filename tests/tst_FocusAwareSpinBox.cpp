@@ -167,6 +167,14 @@ void FocusAwareSpinBoxTests::tableIgnoresWheelUntilClicked()
     QApplication::sendEvent(table->viewport(), &acceptedWheel);
     QVERIFY(table->verticalScrollBar()->value() > 0);
     QVERIFY(acceptedWheel.isAccepted());
+
+    table->verticalScrollBar()->setValue(
+        table->verticalScrollBar()->maximum());
+    const int bottomValue = table->verticalScrollBar()->value();
+    auto boundaryWheel = downwardWheelEvent();
+    QApplication::sendEvent(table->viewport(), &boundaryWheel);
+    QCOMPARE(table->verticalScrollBar()->value(), bottomValue);
+    QVERIFY(boundaryWheel.isAccepted());
 }
 
 QTEST_MAIN(FocusAwareSpinBoxTests)

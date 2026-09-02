@@ -24,6 +24,8 @@
 #include <QLabel>
 #include <QHeaderView>
 #include <QListWidget>
+#include <QPieSeries>
+#include <QPieSlice>
 #include <QSignalSpy>
 #include <QScrollArea>
 #include <QSet>
@@ -286,6 +288,41 @@ void DashboardPageTests::todayFocusMetricShowsSeconds()
 
 void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
 {
+    const QString dominantCategory =
+        QStringLiteral("大占比分类-%1")
+            .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    QSqlQuery category(DatabaseManager::instance().database());
+    category.prepare(QStringLiteral(
+        "INSERT INTO categories(name, color) VALUES(:name, '#7F56D9')"));
+    category.bindValue(QStringLiteral(":name"), dominantCategory);
+    QVERIFY(category.exec());
+    const int dominantCategoryId = category.lastInsertId().toInt();
+
+    QSqlQuery task(DatabaseManager::instance().database());
+    task.prepare(QStringLiteral(R"(
+        INSERT INTO tasks(title, category_id, estimated_minutes, status)
+        VALUES('饼图标签布局测试', :category_id, 30, 'pending')
+    )"));
+    task.bindValue(QStringLiteral(":category_id"), dominantCategoryId);
+    QVERIFY(task.exec());
+    const int dominantTaskId = task.lastInsertId().toInt();
+
+    QSqlQuery dominantSession(DatabaseManager::instance().database());
+    dominantSession.prepare(QStringLiteral(R"(
+        INSERT INTO focus_sessions(
+            task_id, session_type, status, start_time, end_time,
+            planned_seconds, actual_seconds, interruption_reason
+        ) VALUES(
+            :task_id, 'focus', 'completed', :started_at, :started_at,
+            1800, 1800, ''
+        )
+    )"));
+    dominantSession.bindValue(QStringLiteral(":task_id"), dominantTaskId);
+    dominantSession.bindValue(
+        QStringLiteral(":started_at"),
+        QDateTime::currentDateTime().addSecs(-1000).toString(Qt::ISODate));
+    QVERIFY(dominantSession.exec());
+
     QSqlQuery insert(DatabaseManager::instance().database());
     insert.prepare(QStringLiteral(R"(
         INSERT INTO focus_sessions(
@@ -394,6 +431,28 @@ void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
                                       Q_ARG(bool, false), Q_ARG(int, 6)));
     QCoreApplication::processEvents();
     QVERIFY(!dailyValueLabel->isVisible());
+
+    auto *categoryChartView = page.findChild<QChartView *>(
+        QStringLiteral("categoryFocusChartView"));
+    QVERIFY(categoryChartView != nullptr);
+    QVERIFY(!categoryChartView->chart()->series().isEmpty());
+    auto *categorySeries = qobject_cast<QPieSeries *>(
+        categoryChartView->chart()->series().constFirst());
+    QVERIFY(categorySeries != nullptr);
+    QCOMPARE(categorySeries->pieSize(), 0.60);
+    bool foundStaggeredSmallLabels = false;
+    const auto categorySlices = categorySeries->slices();
+    for (qsizetype index = 0; index < categorySlices.size(); ++index) {
+        QCOMPARE(categorySlices.at(index)->labelPosition(),
+                 QPieSlice::LabelOutside);
+        if (index > 0 && categorySlices.at(index)->percentage() <= 0.12
+            && categorySlices.at(index - 1)->percentage() <= 0.12
+            && categorySlices.at(index)->labelArmLengthFactor()
+                   > categorySlices.at(index - 1)->labelArmLengthFactor()) {
+            foundStaggeredSmallLabels = true;
+        }
+    }
+    QVERIFY(foundStaggeredSmallLabels);
 
     tabs->setCurrentIndex(1);
     QCoreApplication::processEvents();

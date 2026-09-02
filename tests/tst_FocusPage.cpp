@@ -289,6 +289,8 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
         QStringLiteral("saveCustomPresetButton"));
     auto *statusLabel = page.findChild<QLabel *>(
         QStringLiteral("focusStatusLabel"));
+    auto *customEditor = page.findChild<QWidget *>(
+        QStringLiteral("focusCustomPresetEditor"));
     auto *primary = buttonForRole(page, QStringLiteral("primary"));
     QVERIFY(taskCombo != nullptr);
     QVERIFY(presetCombo != nullptr);
@@ -302,6 +304,7 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     QVERIFY(confirmCustom != nullptr);
     QVERIFY(saveCustom != nullptr);
     QVERIFY(statusLabel != nullptr);
+    QVERIFY(customEditor != nullptr);
     QVERIFY(primary != nullptr);
     QCOMPARE(saveCustom->text(), QStringLiteral("保存为方案"));
     QVERIFY(confirmCustom->minimumHeight() >= 40);
@@ -322,6 +325,18 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     QVERIFY(customIndex >= 0);
     presetCombo->setCurrentIndex(customIndex);
     QCoreApplication::processEvents();
+    QVERIFY(customEditor->isVisible());
+    for (QLabel *label : page.findChildren<QLabel *>()) {
+        QVERIFY(label->text() != QStringLiteral("自定义本次方案"));
+    }
+    const int confirmBottom =
+        confirmCustom->mapTo(customEditor,
+                             QPoint(0, confirmCustom->height())).y();
+    const int saveBottom =
+        saveCustom->mapTo(customEditor,
+                          QPoint(0, saveCustom->height())).y();
+    QVERIFY(confirmBottom < customEditor->height());
+    QVERIFY(saveBottom < customEditor->height());
     QVERIFY(cycles->width() >= 190);
     customMinutes->setValue(7);
     shortBreakMinutes->setValue(2);
