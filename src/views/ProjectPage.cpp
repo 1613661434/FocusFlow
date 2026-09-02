@@ -2,6 +2,7 @@
 
 #include "widgets/ClearSelectionOnBlankClick.h"
 #include "widgets/SortKeyTableWidgetItem.h"
+#include "widgets/StatusColors.h"
 
 #include <QAbstractItemView>
 #include <QColorDialog>
@@ -251,11 +252,16 @@ void ProjectPage::refresh()
         color->setData(kColorRole, project.color);
         color->setToolTip(project.color);
         projectTable_->setItem(row, 2, color);
-        projectTable_->setItem(row, 3,
-                               new SortKeyTableWidgetItem(
-                                   project.archived ? QStringLiteral("已归档")
-                                                    : QStringLiteral("进行中"),
-                                   project.archived ? 1 : 0));
+        const QString projectStatus = project.archived
+            ? QStringLiteral("已归档")
+            : QStringLiteral("进行中");
+        auto *statusItem = new SortKeyTableWidgetItem(
+            projectStatus, project.archived ? 1 : 0);
+        statusItem->setForeground(
+            StatusColors::projectStatus(project.archived));
+        statusItem->setToolTip(
+            QStringLiteral("项目状态：%1").arg(projectStatus));
+        projectTable_->setItem(row, 3, statusItem);
         for (int column = 0; column < projectTable_->columnCount(); ++column) {
             if (auto *item = projectTable_->item(row, column)) {
                 item->setTextAlignment(Qt::AlignCenter);

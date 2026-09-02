@@ -9,6 +9,7 @@
 #include "views/StatisticsPage.h"
 #include "views/TaskPage.h"
 #include "widgets/PriorityColors.h"
+#include "widgets/StatusColors.h"
 
 #include <QBarSet>
 #include <QBarSeries>
@@ -29,6 +30,7 @@
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QTabWidget>
+#include <QTabBar>
 #include <QTableWidget>
 #include <QTest>
 #include <QToolTip>
@@ -253,6 +255,10 @@ void DashboardPageTests::interruptedFocusIsIncludedInStatistics()
         if (recentTable->item(row, 4)->text() == categoryName) {
             QCOMPARE(recentTable->item(row, 4)->foreground().color(),
                      updatedCategoryColor);
+            QCOMPARE(recentTable->item(row, 6)->text(),
+                     QStringLiteral("已终止"));
+            QCOMPARE(recentTable->item(row, 6)->foreground().color(),
+                     StatusColors::focusResult(false));
             foundUpdatedColor = true;
             break;
         }
@@ -302,8 +308,15 @@ void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
     QCOMPARE(tabs->count(), 2);
     QCOMPARE(tabs->tabText(0), QStringLiteral("图表分析"));
     QCOMPARE(tabs->tabText(1), QStringLiteral("最近记录"));
+    QCOMPARE(tabs->tabBar()->objectName(),
+             QStringLiteral("statisticsModeSwitch"));
+    QCOMPARE(tabs->currentIndex(), 0);
+    QVERIFY(tabs->widget(0)->isVisible());
+    QVERIFY(!tabs->widget(1)->isVisible());
     tabs->setCurrentIndex(1);
     QCoreApplication::processEvents();
+    QVERIFY(!tabs->widget(0)->isVisible());
+    QVERIFY(tabs->widget(1)->isVisible());
 
     auto *table = page.findChild<QTableWidget *>(
         QStringLiteral("recentFocusSessions"));
@@ -315,6 +328,22 @@ void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
     QCOMPARE(table->horizontalHeaderItem(0)->text(), QStringLiteral("编号"));
     QCOMPARE(table->item(0, 0)->text(), QStringLiteral("1"));
     QCOMPARE(table->item(9, 0)->text(), QStringLiteral("10"));
+    bool foundCompletedResult = false;
+    bool foundInterruptedResult = false;
+    for (int row = 0; row < table->rowCount(); ++row) {
+        const QString result = table->item(row, 6)->text();
+        if (result == QStringLiteral("已完成")) {
+            QCOMPARE(table->item(row, 6)->foreground().color(),
+                     StatusColors::focusResult(true));
+            foundCompletedResult = true;
+        } else if (result == QStringLiteral("已终止")) {
+            QCOMPARE(table->item(row, 6)->foreground().color(),
+                     StatusColors::focusResult(false));
+            foundInterruptedResult = true;
+        }
+    }
+    QVERIFY(foundCompletedResult);
+    QVERIFY(foundInterruptedResult);
     QCOMPARE(table->verticalScrollBarPolicy(), Qt::ScrollBarAlwaysOff);
     QCOMPARE(table->horizontalScrollBarPolicy(), Qt::ScrollBarAlwaysOff);
     QCOMPARE(table->verticalHeader()->sectionResizeMode(0),
@@ -327,6 +356,11 @@ void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
     auto *dailyChartView = page.findChild<QChartView *>(
         QStringLiteral("dailyFocusChartView"));
     QVERIFY(dailyChartView != nullptr);
+    QVERIFY(!dailyChartView->isVisible());
+    tabs->setCurrentIndex(0);
+    QCoreApplication::processEvents();
+    QVERIFY(dailyChartView->isVisible());
+    QVERIFY(!tabs->widget(1)->isVisible());
     QVERIFY(!dailyChartView->chart()->series().isEmpty());
     auto *dailySeries = qobject_cast<QBarSeries *>(
         dailyChartView->chart()->series().constFirst());
@@ -343,6 +377,9 @@ void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
     QCOMPARE(dailyChartView->property("focusTooltipIndex").toInt(), 6);
     QVERIFY(QMetaObject::invokeMethod(dailyFocusSet, "hovered",
                                       Q_ARG(bool, false), Q_ARG(int, 6)));
+
+    tabs->setCurrentIndex(1);
+    QCoreApplication::processEvents();
 
     const QRect lastRow = table->visualItemRect(table->item(9, 0));
     QVERIFY(lastRow.isValid());
@@ -618,10 +655,17 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     highImportance.importance = 5;
     highImportance.estimatedMinutes = 5;
     highImportance.dueAt = QDateTime::currentDateTime().addDays(-1);
+    Task completedTask;
+    completedTask.title = QStringLiteral("排序测试-已完成");
+    completedTask.description = QStringLiteral("");
+    completedTask.importance = 3;
+    completedTask.estimatedMinutes = 25;
+    completedTask.status = QStringLiteral("completed");
     QString error;
     TaskRepository taskRepository;
     QVERIFY2(taskRepository.save(lowImportance, &error), qPrintable(error));
     QVERIFY2(taskRepository.save(highImportance, &error), qPrintable(error));
+    QVERIFY2(taskRepository.save(completedTask, &error), qPrintable(error));
 
     TaskPage taskPage;
     taskPage.resize(1800, 800);
@@ -674,17 +718,25 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     QColor lowScoreColor;
     QColor highScoreColor;
     QColor overdueColor;
+    QColor pendingStatusColor;
+    QColor completedStatusColor;
     QString overdueText;
     for (int row = 0; row < taskTable->rowCount(); ++row) {
         const QString title = taskTable->item(row, 0)->text();
         if (title == lowImportance.title) {
             lowImportanceColor = taskTable->item(row, 5)->foreground().color();
             lowScoreColor = taskTable->item(row, 7)->foreground().color();
+            pendingStatusColor = taskTable->item(row, 8)->foreground().color();
         } else if (title == highImportance.title) {
             highImportanceColor = taskTable->item(row, 5)->foreground().color();
             highScoreColor = taskTable->item(row, 7)->foreground().color();
             overdueColor = taskTable->item(row, 4)->foreground().color();
             overdueText = taskTable->item(row, 4)->text();
+        } else if (title == completedTask.title) {
+            QCOMPARE(taskTable->item(row, 8)->text(),
+                     QStringLiteral("已完成"));
+            completedStatusColor =
+                taskTable->item(row, 8)->foreground().color();
         }
     }
     QVERIFY(lowImportanceColor.isValid());
@@ -693,6 +745,11 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     QCOMPARE(highImportanceColor, PriorityColors::importance(5));
     QVERIFY(lowScoreColor != highScoreColor);
     QCOMPARE(overdueColor, QColor(QStringLiteral("#B42318")));
+    QCOMPARE(pendingStatusColor, StatusColors::taskStatus(
+                                       QStringLiteral("pending")));
+    QCOMPARE(completedStatusColor, StatusColors::taskStatus(
+                                         QStringLiteral("completed")));
+    QVERIFY(pendingStatusColor != completedStatusColor);
     QVERIFY(overdueText.contains(QStringLiteral("已逾期")));
     QVERIFY(overdueText.contains(QString::number(QDate::currentDate().year())));
     QCOMPARE(taskTable->horizontalHeader()->sectionResizeMode(0),
@@ -758,9 +815,17 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
         if (projectName == activeProject.name) {
             QCOMPARE(projectTable->item(row, 0)->foreground().color(),
                      QColor(activeProject.color));
+            QCOMPARE(projectTable->item(row, 3)->text(),
+                     QStringLiteral("进行中"));
+            QCOMPARE(projectTable->item(row, 3)->foreground().color(),
+                     StatusColors::projectStatus(false));
         } else if (projectName == archivedProject.name) {
             QCOMPARE(projectTable->item(row, 0)->foreground().color(),
                      QColor(archivedProject.color));
+            QCOMPARE(projectTable->item(row, 3)->text(),
+                     QStringLiteral("已归档"));
+            QCOMPARE(projectTable->item(row, 3)->foreground().color(),
+                     StatusColors::projectStatus(true));
         }
     }
     for (int row = 0; row < categoryTable->rowCount(); ++row) {

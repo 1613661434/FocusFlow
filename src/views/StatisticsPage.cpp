@@ -3,6 +3,7 @@
 #include "repositories/AnalyticsRepository.h"
 #include "widgets/ClearSelectionOnBlankClick.h"
 #include "widgets/SortKeyTableWidgetItem.h"
+#include "widgets/StatusColors.h"
 
 #include <QAbstractItemView>
 #include <QBarCategoryAxis>
@@ -20,6 +21,7 @@
 #include <QPieSlice>
 #include <QHeaderView>
 #include <QTabWidget>
+#include <QTabBar>
 #include <QTableWidget>
 #include <QToolTip>
 #include <QValueAxis>
@@ -59,6 +61,41 @@ void StatisticsPage::buildInterface()
 
     auto *tabs = new QTabWidget(this);
     tabs->setObjectName(QStringLiteral("statisticsTabs"));
+    tabs->tabBar()->setObjectName(QStringLiteral("statisticsModeSwitch"));
+    tabs->setTabPosition(QTabWidget::North);
+    tabs->setMovable(false);
+    tabs->setUsesScrollButtons(false);
+    tabs->setStyleSheet(QStringLiteral(R"(
+        QTabWidget#statisticsTabs::pane {
+            background: transparent;
+            border: none;
+            top: 0px;
+        }
+        QTabBar#statisticsModeSwitch {
+            background: #eef2f7;
+            border: 1px solid #dce2ec;
+            border-radius: 9px;
+        }
+        QTabBar#statisticsModeSwitch::tab {
+            min-width: 128px;
+            min-height: 20px;
+            color: #475467;
+            background: transparent;
+            border: none;
+            border-radius: 7px;
+            padding: 8px 18px;
+            margin: 2px;
+            font-weight: 600;
+        }
+        QTabBar#statisticsModeSwitch::tab:hover:!selected {
+            color: #182230;
+            background: #e4e9f2;
+        }
+        QTabBar#statisticsModeSwitch::tab:selected {
+            color: #ffffff;
+            background: #4f6ef7;
+        }
+    )"));
 
     auto *chartsPage = new QWidget(tabs);
     auto *charts = new QGridLayout(chartsPage);
@@ -321,6 +358,11 @@ void StatisticsPage::updateRecentSessions()
             } else if (column == 4
                        && QColor(session.categoryColor).isValid()) {
                 item->setForeground(QColor(session.categoryColor));
+            } else if (column == 6) {
+                item->setForeground(
+                    StatusColors::focusResult(session.completed));
+                item->setToolTip(
+                    QStringLiteral("专注结果：%1").arg(result));
             }
             recentSessions_->setItem(row, column, item);
         }
