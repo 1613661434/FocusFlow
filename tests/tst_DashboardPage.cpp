@@ -360,6 +360,10 @@ void DashboardPageTests::recommendationSupportsFocusShortcutAndBlankDeselection(
     auto *scoreLine = list->itemWidget(item)->findChild<QLabel *>(
         QStringLiteral("recommendationScoreLine"));
     QVERIFY(scoreLine != nullptr);
+    QVERIFY(item->text().isEmpty());
+    QVERIFY(item->data(Qt::AccessibleTextRole).toString().contains(
+        QStringLiteral("推荐分")));
+    QCOMPARE(list->itemWidget(item)->findChildren<QLabel *>().size(), 2);
     QVERIFY(scoreLine->text().contains(QStringLiteral("推荐分")));
     QVERIFY(scoreLine->text().contains(QStringLiteral("color:")));
     QSignalSpy focusRequestSpy(&page, &DashboardPage::focusTaskRequested);
@@ -444,8 +448,10 @@ void DashboardPageTests::recommendationFiltersByProjectAndCategory()
     QVERIFY(scoreLine != nullptr);
     QVERIFY(scoreLine->text().toLower().contains(project.color.toLower()));
     QVERIFY(scoreLine->text().toLower().contains(category.color.toLower()));
-    QVERIFY(item->text().contains(QStringLiteral("项目：%1").arg(project.name)));
-    QVERIFY(item->text().contains(QStringLiteral("分类：%1").arg(category.name)));
+    const QString accessibleText =
+        item->data(Qt::AccessibleTextRole).toString();
+    QVERIFY(accessibleText.contains(QStringLiteral("项目：%1").arg(project.name)));
+    QVERIFY(accessibleText.contains(QStringLiteral("分类：%1").arg(category.name)));
 }
 
 void DashboardPageTests::taskDeletionIsPermanentAndPreservesFocusHistory()
