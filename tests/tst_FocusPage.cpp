@@ -303,6 +303,9 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     QVERIFY(saveCustom != nullptr);
     QVERIFY(statusLabel != nullptr);
     QVERIFY(primary != nullptr);
+    QCOMPARE(saveCustom->text(), QStringLiteral("保存为方案"));
+    QVERIFY(confirmCustom->minimumHeight() >= 40);
+    QVERIFY(saveCustom->minimumWidth() >= 138);
 
     QCOMPARE(taskCombo->currentData().toInt(), -1);
     QVERIFY(!setTaskPreset->isEnabled());
@@ -318,6 +321,8 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     const int customIndex = presetCombo->findData(-2);
     QVERIFY(customIndex >= 0);
     presetCombo->setCurrentIndex(customIndex);
+    QCoreApplication::processEvents();
+    QVERIFY(cycles->width() >= 190);
     customMinutes->setValue(7);
     shortBreakMinutes->setValue(2);
     longBreakMinutes->setValue(11);

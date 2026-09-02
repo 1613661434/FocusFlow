@@ -11,6 +11,7 @@
 #include "services/SoundStorageService.h"
 #include "widgets/FocusAwareSlider.h"
 #include "widgets/FocusAwareSpinBox.h"
+#include "widgets/FocusAwareTableWidget.h"
 #include "widgets/ClearSelectionOnBlankClick.h"
 #include "widgets/SortKeyTableWidgetItem.h"
 
@@ -138,7 +139,7 @@ void SettingsPage::buildInterface()
     presetHint->setObjectName(QStringLiteral("mutedLabel"));
     presetHint->setWordWrap(true);
 
-    presetTable_ = new QTableWidget(timerGroup);
+    presetTable_ = new FocusAwareTableWidget(timerGroup);
     presetTable_->setObjectName(QStringLiteral("timerPresetTable"));
     presetTable_->setColumnCount(PresetColumnCount);
     presetTable_->setHorizontalHeaderLabels({
@@ -163,10 +164,11 @@ void SettingsPage::buildInterface()
         presetTable_->horizontalHeader()->setSectionResizeMode(
             column, QHeaderView::ResizeToContents);
     }
-    presetTable_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    presetTable_->setVerticalScrollMode(QAbstractItemView::ScrollPerItem);
+    presetTable_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     presetTable_->setSortingEnabled(true);
     presetTable_->setToolTip(
-        QStringLiteral("点击任意列标题排序；默认按方案状态排序"));
+        QStringLiteral("点击任意列标题排序；先点击表格，再用滚轮浏览更多方案"));
     enableClearSelectionOnBlankClick(presetTable_);
 
     auto *presetButtons = new QHBoxLayout;
@@ -483,12 +485,13 @@ void SettingsPage::reloadPresets()
         sortColumn >= 0 ? sortColumn : PresetStatusColumn,
         sortColumn >= 0 ? sortOrder : Qt::AscendingOrder);
 
+    constexpr int kVisiblePresetRows = 5;
     const int tableHeight = presetTable_->horizontalHeader()->height()
-                            + presetTable_->rowCount()
+                            + kVisiblePresetRows
                                   * presetTable_->verticalHeader()
                                         ->defaultSectionSize()
                             + presetTable_->frameWidth() * 2 + 2;
-    presetTable_->setFixedHeight(qMax(110, tableHeight));
+    presetTable_->setFixedHeight(tableHeight);
     int selectedRow = -1;
     for (int row = 0; row < presetTable_->rowCount(); ++row) {
         const QTableWidgetItem *titleItem =
