@@ -34,6 +34,7 @@ private slots:
 
 private:
     void buildInterface();
+    void updateActionButtons();
     int selectedTaskId() const;
     int selectedTaskIndex() const;
     void showRepositoryError(const QString &action, const QString &details);
@@ -46,6 +47,8 @@ private:
     QComboBox *filterCombo_ = nullptr;
     QTableWidget *table_ = nullptr;
     QLabel *summaryLabel_ = nullptr;
+    QPushButton *editButton_ = nullptr;
     QPushButton *completeButton_ = nullptr;
+    QPushButton *deleteButton_ = nullptr;
     int activeFocusTaskId_ = -1;
 };

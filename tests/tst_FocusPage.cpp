@@ -72,9 +72,18 @@ void FocusPageTests::primaryButtonTracksTimerState()
     auto *stop = buttonForRole(page, QStringLiteral("stop"));
     auto *statusLabel = page.findChild<QLabel *>(
         QStringLiteral("focusStatusLabel"));
+    auto *phaseCombo = page.findChild<QComboBox *>(
+        QStringLiteral("focusPhaseCombo"));
     QVERIFY(primary);
     QVERIFY(stop);
     QVERIFY(statusLabel);
+    QVERIFY(phaseCombo);
+    QCOMPARE(statusLabel->text(), QStringLiteral("准备开始"));
+    phaseCombo->setCurrentIndex(1);
+    QCOMPARE(statusLabel->text(), QStringLiteral("准备开始"));
+    phaseCombo->setCurrentIndex(2);
+    QCOMPARE(statusLabel->text(), QStringLiteral("准备开始"));
+    phaseCombo->setCurrentIndex(0);
     QCOMPARE(primary->text(), QStringLiteral("开始"));
     QVERIFY(primary->isEnabled());
     QVERIFY(!stop->isEnabled());
@@ -105,7 +114,7 @@ void FocusPageTests::primaryButtonTracksTimerState()
     QTRY_VERIFY_WITH_TIMEOUT(
         statusLabel->text().contains(QStringLiteral("已终止")), 500);
     QTRY_COMPARE_WITH_TIMEOUT(statusLabel->text(),
-                              QStringLiteral("准备开始专注"), 4700);
+                              QStringLiteral("准备开始"), 4700);
 }
 
 void FocusPageTests::taskFiltersShowScoresAndSortRecommendations()
@@ -331,7 +340,7 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     setTaskPreset->click();
     QVERIFY(statusLabel->text().contains(QStringLiteral("默认专注方案")));
     QTRY_COMPARE_WITH_TIMEOUT(statusLabel->text(),
-                              QStringLiteral("准备开始专注"), 3200);
+                              QStringLiteral("准备开始"), 3200);
 
     const int customIndex = presetCombo->findData(-2);
     QVERIFY(customIndex >= 0);

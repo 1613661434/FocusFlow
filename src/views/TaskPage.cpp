@@ -77,21 +77,22 @@ void TaskPage::buildInterface()
 
     auto *addButton = new QPushButton(QStringLiteral("+ 新建任务"), this);
     addButton->setObjectName(QStringLiteral("primaryButton"));
-    auto *editButton = new QPushButton(QStringLiteral("编辑"), this);
+    editButton_ = new QPushButton(QStringLiteral("编辑"), this);
+    editButton_->setObjectName(QStringLiteral("taskEditButton"));
+    editButton_->setAccessibleName(QStringLiteral("编辑任务"));
     completeButton_ = new QPushButton(QStringLiteral("完成"), this);
     completeButton_->setObjectName(QStringLiteral("taskStatusButton"));
-    completeButton_->setEnabled(false);
-    completeButton_->setToolTip(QStringLiteral("请先选择一项任务"));
-    auto *deleteButton = new QPushButton(QStringLiteral("删除"), this);
-    deleteButton->setObjectName(QStringLiteral("dangerButton"));
+    deleteButton_ = new QPushButton(QStringLiteral("删除"), this);
+    deleteButton_->setObjectName(QStringLiteral("dangerButton"));
+    deleteButton_->setAccessibleName(QStringLiteral("删除任务"));
 
     toolbar->addWidget(searchEdit_, 1);
     toolbar->addWidget(filterCombo_);
     toolbar->addSpacing(8);
     toolbar->addWidget(addButton);
-    toolbar->addWidget(editButton);
+    toolbar->addWidget(editButton_);
     toolbar->addWidget(completeButton_);
-    toolbar->addWidget(deleteButton);
+    toolbar->addWidget(deleteButton_);
 
     table_ = new QTableWidget(this);
     table_->setObjectName(QStringLiteral("taskTable"));
@@ -134,6 +135,7 @@ void TaskPage::buildInterface()
         QStringLiteral("点击列标题排序，再次点击可切换升序或降序"));
     table_->setSortingEnabled(true);
     enableClearSelectionOnBlankClick(table_);
+    enableClearSelectionOnClick(this, table_);
 
     summaryLabel_ = new QLabel(this);
     summaryLabel_->setObjectName(QStringLiteral("mutedLabel"));
@@ -143,10 +145,11 @@ void TaskPage::buildInterface()
     root->addWidget(summaryLabel_);
 
     connect(addButton, &QPushButton::clicked, this, &TaskPage::addTask);
-    connect(editButton, &QPushButton::clicked, this, &TaskPage::editSelectedTask);
+    connect(editButton_, &QPushButton::clicked,
+            this, &TaskPage::editSelectedTask);
     connect(completeButton_, &QPushButton::clicked,
             this, &TaskPage::toggleSelectedTask);
-    connect(deleteButton, &QPushButton::clicked,
+    connect(deleteButton_, &QPushButton::clicked,
             this, &TaskPage::deleteSelectedTask);
     connect(searchEdit_, &QLineEdit::textChanged,
             this, &TaskPage::refreshForFilter);
@@ -154,36 +157,55 @@ void TaskPage::buildInterface()
             this, &TaskPage::refreshForFilter);
     connect(table_, &QTableWidget::cellDoubleClicked,
             this, [this](int, int) { editSelectedTask(); });
-    connect(table_, &QTableWidget::itemSelectionChanged, this, [this] {
-        const int index = selectedTaskIndex();
-        if (index < 0) {
-            completeButton_->setText(QStringLiteral("完成"));
-            completeButton_->setEnabled(false);
-            completeButton_->setToolTip(QStringLiteral("请先选择一项任务"));
-            completeButton_->setAccessibleName(QStringLiteral("完成任务"));
-            return;
-        }
-        if (tasks_.at(index).id == activeFocusTaskId_) {
-            completeButton_->setText(QStringLiteral("完成"));
-            completeButton_->setEnabled(false);
-            completeButton_->setToolTip(
-                QStringLiteral("该任务正在专注计时，暂时不能完成"));
-            completeButton_->setAccessibleName(
-                QStringLiteral("完成任务，专注计时期间不可用"));
-            return;
-        }
-        const bool completed =
-            tasks_.at(index).status == QStringLiteral("completed");
-        completeButton_->setEnabled(true);
-        completeButton_->setText(
-            completed ? QStringLiteral("恢复") : QStringLiteral("完成"));
+    connect(table_, &QTableWidget::itemSelectionChanged,
+            this, &TaskPage::updateActionButtons);
+}
+
+void TaskPage::updateActionButtons()
+{
+    const int index = selectedTaskIndex();
+    if (index < 0) {
+        editButton_->setEnabled(false);
+        completeButton_->setText(QStringLiteral("完成"));
+        completeButton_->setEnabled(false);
+        deleteButton_->setEnabled(false);
+        editButton_->setToolTip(QStringLiteral("请先选择一项任务"));
+        completeButton_->setToolTip(QStringLiteral("请先选择一项任务"));
+        deleteButton_->setToolTip(QStringLiteral("请先选择一项任务"));
+        completeButton_->setAccessibleName(QStringLiteral("完成任务"));
+        return;
+    }
+
+    const Task &task = tasks_.at(index);
+    if (task.id == activeFocusTaskId_) {
+        editButton_->setEnabled(false);
+        completeButton_->setText(QStringLiteral("完成"));
+        completeButton_->setEnabled(false);
+        deleteButton_->setEnabled(false);
+        editButton_->setToolTip(
+            QStringLiteral("该任务正在专注计时，暂时不能编辑"));
         completeButton_->setToolTip(
-            completed ? QStringLiteral("将所选任务恢复为待处理")
-                      : QStringLiteral("将所选任务标记为已完成"));
+            QStringLiteral("该任务正在专注计时，暂时不能完成"));
+        deleteButton_->setToolTip(
+            QStringLiteral("该任务正在专注计时，暂时不能删除"));
         completeButton_->setAccessibleName(
-            completed ? QStringLiteral("恢复任务")
-                      : QStringLiteral("完成任务"));
-    });
+            QStringLiteral("完成任务，专注计时期间不可用"));
+        return;
+    }
+
+    editButton_->setEnabled(true);
+    deleteButton_->setEnabled(true);
+    editButton_->setToolTip(QStringLiteral("编辑所选任务"));
+    deleteButton_->setToolTip(QStringLiteral("永久删除所选任务"));
+    const bool completed = task.status == QStringLiteral("completed");
+    completeButton_->setEnabled(true);
+    completeButton_->setText(
+        completed ? QStringLiteral("恢复") : QStringLiteral("完成"));
+    completeButton_->setToolTip(
+        completed ? QStringLiteral("将所选任务恢复为待处理")
+                  : QStringLiteral("将所选任务标记为已完成"));
+    completeButton_->setAccessibleName(
+        completed ? QStringLiteral("恢复任务") : QStringLiteral("完成任务"));
 }
 
 void TaskPage::refresh()
@@ -327,10 +349,7 @@ void TaskPage::refresh()
     table_->setCurrentIndex(QModelIndex());
 
     summaryLabel_->setText(QStringLiteral("当前显示 %1 项任务").arg(tasks_.size()));
-    completeButton_->setText(QStringLiteral("完成"));
-    completeButton_->setEnabled(false);
-    completeButton_->setToolTip(QStringLiteral("请先选择一项任务"));
-    completeButton_->setAccessibleName(QStringLiteral("完成任务"));
+    updateActionButtons();
 }
 
 void TaskPage::setActiveFocusTask(int taskId)
@@ -375,6 +394,9 @@ void TaskPage::editSelectedTask()
     if (task.id < 0) {
         showRepositoryError(QStringLiteral("读取任务"),
                             QStringLiteral("任务不存在或已被删除。"));
+        return;
+    }
+    if (task.id == activeFocusTaskId_) {
         return;
     }
 
@@ -430,6 +452,9 @@ void TaskPage::deleteSelectedTask()
     }
 
     const auto &task = tasks_.at(index);
+    if (task.id == activeFocusTaskId_) {
+        return;
+    }
     const auto choice = QMessageBox::question(
         this,
         QStringLiteral("永久删除任务"),
@@ -464,10 +489,12 @@ int TaskPage::selectedTaskId() const
 
 int TaskPage::selectedTaskIndex() const
 {
-    const int row = table_->currentRow();
-    if (row < 0) {
+    const QModelIndexList selectedRows =
+        table_->selectionModel()->selectedRows(TitleColumn);
+    if (selectedRows.size() != 1) {
         return -1;
     }
+    const int row = selectedRows.constFirst().row();
     const QTableWidgetItem *title = table_->item(row, TitleColumn);
     if (title == nullptr) {
         return -1;
