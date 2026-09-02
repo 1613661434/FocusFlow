@@ -9,6 +9,8 @@ FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
 
 英文名称：**FocusFlow — Personal Task Planning and Focus Management System**
 
+项目地址：[https://github.com/1613661434/FocusFlow](https://github.com/1613661434/FocusFlow)
+
 系统面向学生、职场人士、自由职业者以及希望改善个人时间安排的普通用户。
 它把“规划任务、选择下一项行动、进入专注、安排休息、回顾时间投入”放在同一
 个本地桌面应用中，无需注册账号，也不依赖云服务。
