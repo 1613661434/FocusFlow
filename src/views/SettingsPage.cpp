@@ -86,7 +86,8 @@ void SettingsPage::buildInterface()
 
     auto *presetHint = new QLabel(
         QStringLiteral("为不同类型的任务保存不同节奏。任务可绑定默认方案，"
-                       "计时开始前也可临时切换；下列操作会立即保存。"),
+                       "计时开始前也可临时切换。内置预设不可修改或删除，"
+                       "需要调整时可先复制；下列操作会立即保存。"),
         timerGroup);
     presetHint->setObjectName(QStringLiteral("mutedLabel"));
     presetHint->setWordWrap(true);
@@ -390,13 +391,22 @@ void SettingsPage::reloadPresets()
             QStringLiteral("%1 分钟").arg(preset.longBreakMinutes),
             QStringLiteral("%1 次").arg(preset.cyclesBeforeLongBreak),
             autoLink,
-            preset.isDefault ? QStringLiteral("默认方案") : QStringLiteral("可用")};
+            preset.isBuiltIn
+                ? (preset.isDefault ? QStringLiteral("内置 · 默认")
+                                    : QStringLiteral("内置预设"))
+                : (preset.isDefault ? QStringLiteral("用户 · 默认")
+                                    : QStringLiteral("用户方案"))};
         for (int column = 0; column < texts.size(); ++column) {
             auto *item = new QTableWidgetItem(texts.at(column));
             item->setTextAlignment(Qt::AlignCenter);
             if (column == 0) {
                 item->setData(Qt::UserRole, preset.id);
                 item->setData(Qt::UserRole + 1, preset.isDefault);
+                item->setData(Qt::UserRole + 2, preset.isBuiltIn);
+            }
+            if (preset.isBuiltIn) {
+                item->setToolTip(QStringLiteral(
+                    "内置预设保持固定；可使用“复制”创建可编辑方案。"));
             }
             presetTable_->setItem(row, column, item);
         }
@@ -432,13 +442,18 @@ void SettingsPage::updatePresetButtons()
     const QTableWidgetItem *item = row >= 0 ? presetTable_->item(row, 0) : nullptr;
     const bool selected = item != nullptr;
     const bool isDefault = selected && item->data(Qt::UserRole + 1).toBool();
-    editPresetButton_->setEnabled(selected);
+    const bool isBuiltIn = selected && item->data(Qt::UserRole + 2).toBool();
+    editPresetButton_->setEnabled(selected && !isBuiltIn);
     copyPresetButton_->setEnabled(selected);
     defaultPresetButton_->setEnabled(selected && !isDefault);
-    deletePresetButton_->setEnabled(selected && !isDefault);
+    deletePresetButton_->setEnabled(selected && !isDefault && !isBuiltIn);
+    editPresetButton_->setToolTip(
+        isBuiltIn ? QStringLiteral("内置预设不能修改，请先复制一份")
+                  : QStringLiteral("编辑所选用户方案"));
     deletePresetButton_->setToolTip(
-        isDefault ? QStringLiteral("默认方案不能删除，请先把其他方案设为默认")
-                  : QStringLiteral("删除方案；绑定任务将改为跟随默认方案"));
+        isBuiltIn ? QStringLiteral("内置预设不能删除")
+        : isDefault ? QStringLiteral("默认方案不能删除，请先把其他方案设为默认")
+                    : QStringLiteral("删除方案；绑定任务将改为跟随默认方案"));
 }
 
 void SettingsPage::addPreset()
@@ -468,6 +483,13 @@ void SettingsPage::editPreset()
     if (preset.id <= 0) {
         return;
     }
+    if (preset.isBuiltIn) {
+        QMessageBox::information(
+            this, QStringLiteral("内置预设"),
+            QStringLiteral("内置预设保持固定，不能直接修改。\n"
+                           "请点击“复制”，再编辑生成的用户方案。"));
+        return;
+    }
     TimerPresetDialog dialog(this);
     dialog.setPreset(preset);
     if (dialog.exec() != QDialog::Accepted) {
@@ -492,6 +514,7 @@ void SettingsPage::copyPreset()
     preset.id = -1;
     preset.name += QStringLiteral(" 副本");
     preset.isDefault = false;
+    preset.isBuiltIn = false;
     TimerPresetDialog dialog(this);
     dialog.setPreset(preset);
     if (dialog.exec() != QDialog::Accepted) {

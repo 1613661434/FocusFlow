@@ -97,7 +97,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.25"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.26"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -147,6 +147,8 @@ void MainWindow::buildInterface()
             statisticsPage, &StatisticsPage::refresh);
     connect(settingsPage_, &SettingsPage::settingsSaved,
             focusPage, &FocusPage::reloadSettings);
+    connect(settingsPage_, &SettingsPage::settingsSaved,
+            taskPage, &TaskPage::refresh);
     connect(settingsPage_, &SettingsPage::statisticsCleared,
             dashboardPage, &DashboardPage::refresh);
     connect(settingsPage_, &SettingsPage::statisticsCleared,
@@ -388,6 +390,10 @@ void MainWindow::applyTheme()
             color: #667085;
             background: transparent;
         }
+        QLabel#focusStatusLabel {
+            color: #667085;
+            background: transparent;
+        }
         QLineEdit, QComboBox, QDateTimeEdit, QSpinBox, QTextEdit {
             background: #ffffff;
             border: 1px solid #dce2ec;
@@ -408,6 +414,11 @@ void MainWindow::applyTheme()
         QPushButton:hover {
             background: #f0f3f9;
         }
+        QPushButton:disabled {
+            color: #98a2b3;
+            background: #f2f4f7;
+            border-color: #d0d5dd;
+        }
         QPushButton#primaryButton {
             background: #4f6ef7;
             border-color: #4f6ef7;
@@ -416,6 +427,11 @@ void MainWindow::applyTheme()
         }
         QPushButton#primaryButton:hover {
             background: #405dde;
+        }
+        QPushButton#primaryButton:disabled {
+            color: #98a2b3;
+            background: #e4e7ec;
+            border-color: #d0d5dd;
         }
         QPushButton#dangerButton {
             color: #d84a4a;

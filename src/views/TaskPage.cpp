@@ -33,6 +33,7 @@ enum Column {
     DueColumn,
     ImportanceColumn,
     EstimateColumn,
+    PresetColumn,
     ScoreColumn,
     StatusColumn,
     ColumnCount,
@@ -100,6 +101,7 @@ void TaskPage::buildInterface()
         QStringLiteral("截止时间"),
         QStringLiteral("重要度"),
         QStringLiteral("预计"),
+        QStringLiteral("专注方案"),
         QStringLiteral("推荐分"),
         QStringLiteral("状态"),
     });
@@ -118,6 +120,7 @@ void TaskPage::buildInterface()
     table_->horizontalHeader()->setSectionResizeMode(DueColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(ImportanceColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(EstimateColumn, QHeaderView::ResizeToContents);
+    table_->horizontalHeader()->setSectionResizeMode(PresetColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(ScoreColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(StatusColumn, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionsClickable(true);
@@ -176,6 +179,7 @@ void TaskPage::refresh()
         table_->horizontalHeader()->sortIndicatorOrder();
     table_->setSortingEnabled(false);
     table_->setRowCount(tasks_.size());
+    const TimerPreset defaultPreset = TimerPresetRepository().defaultPreset();
     for (qsizetype row = 0; row < tasks_.size(); ++row) {
         const auto &task = tasks_.at(row);
         auto *title = new SortKeyTableWidgetItem(task.title);
@@ -252,6 +256,19 @@ void TaskPage::refresh()
                         new SortKeyTableWidgetItem(
                             QStringLiteral("%1 分钟").arg(task.estimatedMinutes),
                             task.estimatedMinutes));
+        const QString presetText = task.timerPresetId > 0
+            ? task.timerPresetName
+            : (defaultPreset.name.isEmpty()
+                   ? QStringLiteral("跟随全局默认")
+                   : QStringLiteral("跟随默认 · %1").arg(defaultPreset.name));
+        auto *presetItem = new SortKeyTableWidgetItem(
+            presetText, presetText.toCaseFolded());
+        presetItem->setToolTip(
+            task.timerPresetId > 0
+                ? QStringLiteral("该任务固定使用“%1”方案").arg(presetText)
+                : QStringLiteral("该任务未单独绑定方案，将使用当前全局默认方案“%1”")
+                      .arg(defaultPreset.name));
+        table_->setItem(row, PresetColumn, presetItem);
         const int score = PriorityService::score(task);
         auto *scoreItem = new SortKeyTableWidgetItem(QString::number(score), score);
         scoreItem->setForeground(PriorityColors::recommendation(score));
