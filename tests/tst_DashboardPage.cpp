@@ -226,6 +226,8 @@ void DashboardPageTests::interruptedFocusIsIncludedInStatistics()
 
     const auto recentSessions = analytics.recentFocusSessions();
     QVERIFY(!recentSessions.isEmpty());
+    QCOMPARE(recentSessions.constFirst().startedAt,
+             startedAt.toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")));
     QCOMPARE(recentSessions.constFirst().taskName,
              QStringLiteral("一分钟测试任务"));
     QCOMPARE(recentSessions.constFirst().projectName,

@@ -27,22 +27,32 @@ void AboutDialogTests::exposesCopyrightAndAuthorInformation()
         QStringLiteral("aboutAuthorBlog"));
     auto *version = dialog.findChild<QLabel *>(
         QStringLiteral("aboutVersion"));
+    auto *repository = dialog.findChild<QLabel *>(
+        QStringLiteral("aboutProjectRepository"));
     auto *copyright = dialog.findChild<QLabel *>(
         QStringLiteral("aboutCopyright"));
     auto *blogButton = dialog.findChild<QPushButton *>(
         QStringLiteral("aboutBlogButton"));
+    auto *repositoryButton = dialog.findChild<QPushButton *>(
+        QStringLiteral("aboutRepositoryButton"));
     QVERIFY(author != nullptr);
     QVERIFY(shortName != nullptr);
     QVERIFY(blog != nullptr);
     QVERIFY(version != nullptr);
+    QVERIFY(repository != nullptr);
     QVERIFY(copyright != nullptr);
     QVERIFY(blogButton != nullptr);
+    QVERIFY(repositoryButton != nullptr);
     QCOMPARE(author->text(), QStringLiteral("ol木子李lo"));
     QCOMPARE(shortName->text(), QStringLiteral("OL"));
     QCOMPARE(blog->property("authorBlogUrl").toString(),
              QStringLiteral("https://1613661434.github.io/"));
     QCOMPARE(blogButton->property("authorBlogUrl").toString(),
              QStringLiteral("https://1613661434.github.io/"));
+    QCOMPARE(repository->property("projectRepositoryUrl").toString(),
+             QStringLiteral("https://github.com/1613661434/FocusFlow"));
+    QCOMPARE(repositoryButton->property("projectRepositoryUrl").toString(),
+             QStringLiteral("https://github.com/1613661434/FocusFlow"));
     QVERIFY(version->text().contains(QStringLiteral("0.1.19")));
     QVERIFY(copyright->text().contains(QStringLiteral("© 2026")));
     QVERIFY(copyright->text().contains(QStringLiteral("ol木子李lo")));

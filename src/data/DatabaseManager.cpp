@@ -126,6 +126,7 @@ bool DatabaseManager::createSchema()
                 description TEXT NOT NULL DEFAULT '',
                 project_id INTEGER,
                 category_id INTEGER,
+                timer_preset_id INTEGER,
                 importance INTEGER NOT NULL DEFAULT 3 CHECK (importance BETWEEN 1 AND 5),
                 due_at TEXT,
                 estimated_minutes INTEGER NOT NULL DEFAULT 25 CHECK (estimated_minutes >= 0),
@@ -136,7 +137,8 @@ bool DatabaseManager::createSchema()
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 completed_at TEXT,
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
-                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+                FOREIGN KEY (timer_preset_id) REFERENCES timer_presets(id) ON DELETE SET NULL
             )
         )"),
         QStringLiteral(R"(
@@ -188,6 +190,28 @@ bool DatabaseManager::createSchema()
             db.rollback();
             return false;
         }
+    }
+
+    bool hasTimerPresetColumn = false;
+    QSqlQuery columns(db);
+    if (!columns.exec(QStringLiteral("PRAGMA table_info(tasks)"))) {
+        lastError_ = columns.lastError().text();
+        db.rollback();
+        return false;
+    }
+    while (columns.next()) {
+        if (columns.value(QStringLiteral("name")).toString()
+            == QStringLiteral("timer_preset_id")) {
+            hasTimerPresetColumn = true;
+            break;
+        }
+    }
+    if (!hasTimerPresetColumn
+        && !executeStatement(QStringLiteral(
+            "ALTER TABLE tasks ADD COLUMN timer_preset_id INTEGER "
+            "REFERENCES timer_presets(id) ON DELETE SET NULL"))) {
+        db.rollback();
+        return false;
     }
 
     if (!db.commit()) {
@@ -245,14 +269,48 @@ bool DatabaseManager::seedDefaults()
         return false;
     }
 
+    struct PresetSeed {
+        QString name;
+        int focusMinutes;
+        int shortBreakMinutes;
+        int longBreakMinutes;
+        int cycles;
+        bool isDefault;
+    };
+    const QList<PresetSeed> presets{
+        {QStringLiteral("经典番茄钟"), 25, 5, 15, 4, true},
+        {QStringLiteral("快速处理"), 15, 3, 10, 4, false},
+        {QStringLiteral("深度工作"), 50, 10, 20, 3, false},
+        {QStringLiteral("长时专注"), 90, 15, 30, 2, false},
+    };
     QSqlQuery preset(db);
-    if (!preset.exec(QStringLiteral(R"(
+    preset.prepare(QStringLiteral(R"(
         INSERT OR IGNORE INTO timer_presets(
             name, focus_minutes, short_break_minutes,
             long_break_minutes, cycles_before_long_break, is_default
-        ) VALUES('经典番茄钟', 25, 5, 15, 4, 1)
+        ) VALUES(?, ?, ?, ?, ?, ?)
+    )"));
+    for (const auto &item : presets) {
+        preset.addBindValue(item.name);
+        preset.addBindValue(item.focusMinutes);
+        preset.addBindValue(item.shortBreakMinutes);
+        preset.addBindValue(item.longBreakMinutes);
+        preset.addBindValue(item.cycles);
+        preset.addBindValue(item.isDefault ? 1 : 0);
+        if (!preset.exec()) {
+            lastError_ = preset.lastError().text();
+            db.rollback();
+            return false;
+        }
+    }
+
+    QSqlQuery ensureDefault(db);
+    if (!ensureDefault.exec(QStringLiteral(R"(
+        UPDATE timer_presets SET is_default = 1
+        WHERE id = (SELECT id FROM timer_presets ORDER BY id LIMIT 1)
+          AND NOT EXISTS (SELECT 1 FROM timer_presets WHERE is_default = 1)
     )"))) {
-        lastError_ = preset.lastError().text();
+        lastError_ = ensureDefault.lastError().text();
         db.rollback();
         return false;
     }

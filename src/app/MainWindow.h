@@ -22,6 +22,7 @@ public slots:
 private slots:
     void showPage(int index);
     void showNotification(const QString &title, const QString &message);
+    void updateTrayStatus(const QString &status);
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -38,5 +39,7 @@ private:
     QLabel *pageTitle_ = nullptr;
     QSystemTrayIcon *trayIcon_ = nullptr;
     SettingsPage *settingsPage_ = nullptr;
+    QString trayStatusText_ = QStringLiteral(
+        "FocusFlow\n当前没有正在运行的计时");
     bool quitRequested_ = false;
 };

@@ -62,10 +62,12 @@ QVector<Task> TaskRepository::findAll(Filter filter, const QString &searchText) 
         SELECT t.id, t.title, t.description, t.project_id, p.name AS project_name,
                t.category_id, c.name AS category_name, t.importance, t.due_at,
                t.estimated_minutes, t.status, t.created_at, t.completed_at,
-               p.color AS project_color, c.color AS category_color
+               p.color AS project_color, c.color AS category_color,
+               t.timer_preset_id, tp.name AS timer_preset_name
         FROM tasks t
         LEFT JOIN projects p ON p.id = t.project_id
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN timer_presets tp ON tp.id = t.timer_preset_id
         WHERE %1
         ORDER BY
             CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END,
@@ -99,10 +101,12 @@ Task TaskRepository::findById(int id) const
         SELECT t.id, t.title, t.description, t.project_id, p.name AS project_name,
                t.category_id, c.name AS category_name, t.importance, t.due_at,
                t.estimated_minutes, t.status, t.created_at, t.completed_at,
-               p.color AS project_color, c.color AS category_color
+               p.color AS project_color, c.color AS category_color,
+               t.timer_preset_id, tp.name AS timer_preset_name
         FROM tasks t
         LEFT JOIN projects p ON p.id = t.project_id
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN timer_presets tp ON tp.id = t.timer_preset_id
         WHERE t.id = :id AND t.is_deleted = 0
     )"));
     query.bindValue(QStringLiteral(":id"), id);
@@ -149,10 +153,10 @@ bool TaskRepository::save(Task &task, QString *errorMessage) const
     if (task.id < 0) {
         query.prepare(QStringLiteral(R"(
             INSERT INTO tasks(
-                title, description, project_id, category_id,
+                title, description, project_id, category_id, timer_preset_id,
                 importance, due_at, estimated_minutes, status, updated_at
             ) VALUES(
-                :title, :description, :project_id, :category_id,
+                :title, :description, :project_id, :category_id, :timer_preset_id,
                 :importance, :due_at, :estimated_minutes, :status, CURRENT_TIMESTAMP
             )
         )"));
@@ -163,6 +167,7 @@ bool TaskRepository::save(Task &task, QString *errorMessage) const
                 description = :description,
                 project_id = :project_id,
                 category_id = :category_id,
+                timer_preset_id = :timer_preset_id,
                 importance = :importance,
                 due_at = :due_at,
                 estimated_minutes = :estimated_minutes,
@@ -174,11 +179,15 @@ bool TaskRepository::save(Task &task, QString *errorMessage) const
     }
 
     query.bindValue(QStringLiteral(":title"), task.title.trimmed());
-    query.bindValue(QStringLiteral(":description"), task.description.trimmed());
+    query.bindValue(QStringLiteral(":description"),
+                    task.description.isNull()
+                        ? QStringLiteral("") : task.description.trimmed());
     query.bindValue(QStringLiteral(":project_id"),
                     task.projectId > 0 ? QVariant(task.projectId) : QVariant());
     query.bindValue(QStringLiteral(":category_id"),
                     task.categoryId > 0 ? QVariant(task.categoryId) : QVariant());
+    query.bindValue(QStringLiteral(":timer_preset_id"),
+                    task.timerPresetId > 0 ? QVariant(task.timerPresetId) : QVariant());
     query.bindValue(QStringLiteral(":importance"), task.importance);
     query.bindValue(QStringLiteral(":due_at"),
                     task.dueAt.isValid() ? QVariant(dateTimeToStorage(task.dueAt)) : QVariant());
@@ -194,6 +203,26 @@ bool TaskRepository::save(Task &task, QString *errorMessage) const
         task.id = query.lastInsertId().toInt();
     }
     return true;
+}
+
+bool TaskRepository::setTimerPreset(int id, int timerPresetId,
+                                    QString *errorMessage) const
+{
+    QSqlQuery query(DatabaseManager::instance().database());
+    query.prepare(QStringLiteral(R"(
+        UPDATE tasks SET
+            timer_preset_id = :timer_preset_id,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = :id AND is_deleted = 0
+    )"));
+    query.bindValue(QStringLiteral(":timer_preset_id"),
+                    timerPresetId > 0 ? QVariant(timerPresetId) : QVariant());
+    query.bindValue(QStringLiteral(":id"), id);
+    if (!query.exec()) {
+        assignError(query.lastError().text(), errorMessage);
+        return false;
+    }
+    return query.numRowsAffected() == 1;
 }
 
 bool TaskRepository::setCompleted(int id, bool completed, QString *errorMessage) const
@@ -246,6 +275,9 @@ Task TaskRepository::fromQuery(const QSqlQuery &query)
         ? -1 : query.value(QStringLiteral("category_id")).toInt();
     task.categoryName = query.value(QStringLiteral("category_name")).toString();
     task.categoryColor = query.value(QStringLiteral("category_color")).toString();
+    task.timerPresetId = query.value(QStringLiteral("timer_preset_id")).isNull()
+        ? -1 : query.value(QStringLiteral("timer_preset_id")).toInt();
+    task.timerPresetName = query.value(QStringLiteral("timer_preset_name")).toString();
     task.importance = query.value(QStringLiteral("importance")).toInt();
     task.dueAt = dateTimeFromStorage(query.value(QStringLiteral("due_at")));
     task.estimatedMinutes = query.value(QStringLiteral("estimated_minutes")).toInt();

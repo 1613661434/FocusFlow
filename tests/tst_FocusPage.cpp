@@ -1,5 +1,6 @@
 #include "data/DatabaseManager.h"
 #include "repositories/TaskRepository.h"
+#include "repositories/TimerPresetRepository.h"
 #include "views/FocusPage.h"
 #include "widgets/PriorityColors.h"
 
@@ -9,11 +10,15 @@
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QSignalSpy>
+#include <QSpinBox>
 #include <QStandardPaths>
 #include <QSqlQuery>
 #include <QTest>
 #include <QTimer>
 #include <QUuid>
+
+#include <algorithm>
 
 class FocusPageTests final : public QObject
 {
@@ -23,6 +28,7 @@ private slots:
     void initTestCase();
     void primaryButtonTracksTimerState();
     void taskFiltersShowScoresAndSortRecommendations();
+    void taskSchemeAndTrayStatusFollowTheRunningTimer();
     void cleanupTestCase();
 
 private:
@@ -182,6 +188,52 @@ void FocusPageTests::taskFiltersShowScoresAndSortRecommendations()
     QCOMPARE(projectFilter->currentData().toInt(), projectId);
     QCOMPARE(categoryFilter->currentData().toInt(), categoryId);
     QCOMPARE(taskCombo->currentData().toInt(), highScore.id);
+}
+
+void FocusPageTests::taskSchemeAndTrayStatusFollowTheRunningTimer()
+{
+    const QVector<TimerPreset> presets = TimerPresetRepository().findAll();
+    const auto deepWork = std::find_if(
+        presets.cbegin(), presets.cend(), [](const TimerPreset &preset) {
+            return preset.name == QStringLiteral("深度工作");
+        });
+    QVERIFY(deepWork != presets.cend());
+
+    Task task;
+    task.title = QStringLiteral("托盘倒计时测试任务");
+    task.timerPresetId = deepWork->id;
+    QString error;
+    QVERIFY2(TaskRepository().save(task, &error), qPrintable(error));
+
+    FocusPage page;
+    auto *presetCombo = page.findChild<QComboBox *>(
+        QStringLiteral("focusPresetCombo"));
+    auto *customMinutes = page.findChild<QSpinBox *>(
+        QStringLiteral("focusCustomMinutes"));
+    auto *primary = buttonForRole(page, QStringLiteral("primary"));
+    QVERIFY(presetCombo != nullptr);
+    QVERIFY(customMinutes != nullptr);
+    QVERIFY(primary != nullptr);
+
+    page.selectTask(task.id);
+    QCOMPARE(presetCombo->currentData().toInt(), deepWork->id);
+    const int customIndex = presetCombo->findData(-2);
+    QVERIFY(customIndex >= 0);
+    presetCombo->setCurrentIndex(customIndex);
+    QVERIFY(!customMinutes->isHidden());
+    customMinutes->setValue(1);
+
+    QSignalSpy traySpy(&page, &FocusPage::trayStatusChanged);
+    primary->click();
+    QVERIFY(!traySpy.isEmpty());
+    QString status = traySpy.constLast().at(0).toString();
+    QVERIFY(status.contains(QStringLiteral("专注中")));
+    QVERIFY(status.contains(task.title));
+    QVERIFY(status.contains(QStringLiteral("剩余 01:00")));
+
+    primary->click();
+    status = traySpy.constLast().at(0).toString();
+    QVERIFY(status.contains(QStringLiteral("专注已暂停")));
 }
 
 void FocusPageTests::cleanupTestCase()

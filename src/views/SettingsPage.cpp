@@ -1,15 +1,19 @@
 #include "views/SettingsPage.h"
 
 #include "views/AboutDialog.h"
+#include "views/TimerPresetDialog.h"
 
 #include "data/DatabaseManager.h"
 #include "repositories/SettingsRepository.h"
+#include "repositories/TimerPresetRepository.h"
 #include "services/DataManagementService.h"
 #include "services/NotificationSoundPlayer.h"
 #include "services/SoundStorageService.h"
 #include "widgets/FocusAwareSlider.h"
 #include "widgets/FocusAwareSpinBox.h"
+#include "widgets/ClearSelectionOnBlankClick.h"
 
+#include <QAbstractItemView>
 #include <QCheckBox>
 #include <QCoreApplication>
 #include <QDateTime>
@@ -21,6 +25,7 @@
 #include <QGroupBox>
 #include <QHash>
 #include <QHBoxLayout>
+#include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -29,6 +34,8 @@
 #include <QSlider>
 #include <QSpinBox>
 #include <QStandardPaths>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QVBoxLayout>
 
 namespace {
@@ -72,33 +79,75 @@ void SettingsPage::buildInterface()
     root->setContentsMargins(0, 0, 18, 18);
     root->setSpacing(18);
 
-    auto *timerGroup = new QGroupBox(QStringLiteral("专注与休息"), content);
+    auto *timerGroup = new QGroupBox(QStringLiteral("专注方案"), content);
     timerGroup->setObjectName(QStringLiteral("settingsSection"));
-    auto *timerForm = new QFormLayout(timerGroup);
-    timerForm->setHorizontalSpacing(20);
-    timerForm->setVerticalSpacing(12);
+    auto *timerLayout = new QVBoxLayout(timerGroup);
+    timerLayout->setSpacing(10);
 
-    focusMinutes_ = new FocusAwareSpinBox(timerGroup);
-    focusMinutes_->setRange(1, 180);
-    focusMinutes_->setSuffix(QStringLiteral(" 分钟"));
-    shortBreakMinutes_ = new FocusAwareSpinBox(timerGroup);
-    shortBreakMinutes_->setRange(1, 60);
-    shortBreakMinutes_->setSuffix(QStringLiteral(" 分钟"));
-    longBreakMinutes_ = new FocusAwareSpinBox(timerGroup);
-    longBreakMinutes_->setRange(1, 120);
-    longBreakMinutes_->setSuffix(QStringLiteral(" 分钟"));
-    cyclesBeforeLongBreak_ = new FocusAwareSpinBox(timerGroup);
-    cyclesBeforeLongBreak_->setRange(2, 8);
-    cyclesBeforeLongBreak_->setSuffix(QStringLiteral(" 次专注"));
-    autoStartBreak_ = new QCheckBox(QStringLiteral("专注完成后自动开始休息"), timerGroup);
-    autoStartFocus_ = new QCheckBox(QStringLiteral("休息完成后自动开始专注"), timerGroup);
+    auto *presetHint = new QLabel(
+        QStringLiteral("为不同类型的任务保存不同节奏。任务可绑定默认方案，"
+                       "计时开始前也可临时切换；下列操作会立即保存。"),
+        timerGroup);
+    presetHint->setObjectName(QStringLiteral("mutedLabel"));
+    presetHint->setWordWrap(true);
 
-    timerForm->addRow(QStringLiteral("专注时长："), focusMinutes_);
-    timerForm->addRow(QStringLiteral("短休息："), shortBreakMinutes_);
-    timerForm->addRow(QStringLiteral("长休息："), longBreakMinutes_);
-    timerForm->addRow(QStringLiteral("长休息间隔："), cyclesBeforeLongBreak_);
-    timerForm->addRow(QString(), autoStartBreak_);
-    timerForm->addRow(QString(), autoStartFocus_);
+    presetTable_ = new QTableWidget(timerGroup);
+    presetTable_->setObjectName(QStringLiteral("timerPresetTable"));
+    presetTable_->setColumnCount(7);
+    presetTable_->setHorizontalHeaderLabels({
+        QStringLiteral("方案"), QStringLiteral("专注"),
+        QStringLiteral("短休息"), QStringLiteral("长休息"),
+        QStringLiteral("长休息间隔"), QStringLiteral("自动衔接"),
+        QStringLiteral("状态")});
+    presetTable_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    presetTable_->setSelectionMode(QAbstractItemView::SingleSelection);
+    presetTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    presetTable_->setAlternatingRowColors(true);
+    presetTable_->setShowGrid(false);
+    presetTable_->verticalHeader()->setVisible(false);
+    presetTable_->verticalHeader()->setDefaultSectionSize(42);
+    presetTable_->horizontalHeader()->setSectionResizeMode(
+        0, QHeaderView::Stretch);
+    for (int column = 1; column < 7; ++column) {
+        presetTable_->horizontalHeader()->setSectionResizeMode(
+            column, QHeaderView::ResizeToContents);
+    }
+    presetTable_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    enableClearSelectionOnBlankClick(presetTable_);
+
+    auto *presetButtons = new QHBoxLayout;
+    auto *addPresetButton = new QPushButton(QStringLiteral("新建方案"), timerGroup);
+    addPresetButton->setObjectName(QStringLiteral("primaryButton"));
+    editPresetButton_ = new QPushButton(QStringLiteral("编辑"), timerGroup);
+    copyPresetButton_ = new QPushButton(QStringLiteral("复制"), timerGroup);
+    defaultPresetButton_ = new QPushButton(QStringLiteral("设为默认"), timerGroup);
+    deletePresetButton_ = new QPushButton(QStringLiteral("删除"), timerGroup);
+    deletePresetButton_->setObjectName(QStringLiteral("dangerButton"));
+    presetButtons->addWidget(addPresetButton);
+    presetButtons->addWidget(editPresetButton_);
+    presetButtons->addWidget(copyPresetButton_);
+    presetButtons->addWidget(defaultPresetButton_);
+    presetButtons->addWidget(deletePresetButton_);
+    presetButtons->addStretch();
+
+    timerLayout->addWidget(presetHint);
+    timerLayout->addWidget(presetTable_);
+    timerLayout->addLayout(presetButtons);
+
+    connect(addPresetButton, &QPushButton::clicked,
+            this, &SettingsPage::addPreset);
+    connect(editPresetButton_, &QPushButton::clicked,
+            this, &SettingsPage::editPreset);
+    connect(copyPresetButton_, &QPushButton::clicked,
+            this, &SettingsPage::copyPreset);
+    connect(defaultPresetButton_, &QPushButton::clicked,
+            this, &SettingsPage::makePresetDefault);
+    connect(deletePresetButton_, &QPushButton::clicked,
+            this, &SettingsPage::deletePreset);
+    connect(presetTable_, &QTableWidget::itemSelectionChanged,
+            this, &SettingsPage::updatePresetButtons);
+    connect(presetTable_, &QTableWidget::cellDoubleClicked,
+            this, [this](int, int) { editPreset(); });
 
     auto *soundGroup = new QGroupBox(QStringLiteral("声音提醒"), content);
     soundGroup->setObjectName(QStringLiteral("settingsSection"));
@@ -186,7 +235,7 @@ void SettingsPage::buildInterface()
 
     auto *hint = new QLabel(
         QStringLiteral("支持 WAV、MP3、AAC、M4A、OGG 和 FLAC；"
-                       "超过最长播放时间的部分会在播放时被截止，"
+                       "达到最长播放时间前会平滑淡出，"
                        "不会修改原始音频文件。"),
         soundGroup);
     hint->setObjectName(QStringLiteral("mutedLabel"));
@@ -309,12 +358,7 @@ void SettingsPage::buildInterface()
 void SettingsPage::reloadSettings()
 {
     const TimerSettings settings = SettingsRepository().loadTimerSettings();
-    focusMinutes_->setValue(settings.focusMinutes);
-    shortBreakMinutes_->setValue(settings.shortBreakMinutes);
-    longBreakMinutes_->setValue(settings.longBreakMinutes);
-    cyclesBeforeLongBreak_->setValue(settings.cyclesBeforeLongBreak);
-    autoStartBreak_->setChecked(settings.autoStartBreak);
-    autoStartFocus_->setChecked(settings.autoStartFocus);
+    reloadPresets();
     soundEnabled_->setChecked(settings.soundEnabled);
     focusSoundPath_->setText(settings.focusSoundPath);
     breakSoundPath_->setText(settings.breakSoundPath);
@@ -326,6 +370,178 @@ void SettingsPage::reloadSettings()
     savedSettings_ = settings;
 }
 
+void SettingsPage::reloadPresets()
+{
+    const int previousId = selectedPresetId();
+    const QVector<TimerPreset> presets = TimerPresetRepository().findAll();
+    presetTable_->setRowCount(presets.size());
+    int selectedRow = -1;
+    for (qsizetype row = 0; row < presets.size(); ++row) {
+        const TimerPreset &preset = presets.at(row);
+        const QString autoLink = preset.autoStartBreak && preset.autoStartFocus
+                                     ? QStringLiteral("双向自动")
+            : preset.autoStartBreak ? QStringLiteral("自动休息")
+            : preset.autoStartFocus ? QStringLiteral("自动专注")
+                                    : QStringLiteral("手动");
+        const QStringList texts{
+            preset.name,
+            QStringLiteral("%1 分钟").arg(preset.focusMinutes),
+            QStringLiteral("%1 分钟").arg(preset.shortBreakMinutes),
+            QStringLiteral("%1 分钟").arg(preset.longBreakMinutes),
+            QStringLiteral("%1 次").arg(preset.cyclesBeforeLongBreak),
+            autoLink,
+            preset.isDefault ? QStringLiteral("默认方案") : QStringLiteral("可用")};
+        for (int column = 0; column < texts.size(); ++column) {
+            auto *item = new QTableWidgetItem(texts.at(column));
+            item->setTextAlignment(Qt::AlignCenter);
+            if (column == 0) {
+                item->setData(Qt::UserRole, preset.id);
+                item->setData(Qt::UserRole + 1, preset.isDefault);
+            }
+            presetTable_->setItem(row, column, item);
+        }
+        if (preset.id == previousId) {
+            selectedRow = static_cast<int>(row);
+        }
+    }
+    const int tableHeight = presetTable_->horizontalHeader()->height()
+                            + presetTable_->rowCount()
+                                  * presetTable_->verticalHeader()
+                                        ->defaultSectionSize()
+                            + presetTable_->frameWidth() * 2 + 2;
+    presetTable_->setFixedHeight(qMax(110, tableHeight));
+    if (selectedRow >= 0) {
+        presetTable_->selectRow(selectedRow);
+    } else {
+        presetTable_->clearSelection();
+        presetTable_->setCurrentItem(nullptr);
+    }
+    updatePresetButtons();
+}
+
+int SettingsPage::selectedPresetId() const
+{
+    const int row = presetTable_ != nullptr ? presetTable_->currentRow() : -1;
+    const QTableWidgetItem *item = row >= 0 ? presetTable_->item(row, 0) : nullptr;
+    return item != nullptr ? item->data(Qt::UserRole).toInt() : -1;
+}
+
+void SettingsPage::updatePresetButtons()
+{
+    const int row = presetTable_->currentRow();
+    const QTableWidgetItem *item = row >= 0 ? presetTable_->item(row, 0) : nullptr;
+    const bool selected = item != nullptr;
+    const bool isDefault = selected && item->data(Qt::UserRole + 1).toBool();
+    editPresetButton_->setEnabled(selected);
+    copyPresetButton_->setEnabled(selected);
+    defaultPresetButton_->setEnabled(selected && !isDefault);
+    deletePresetButton_->setEnabled(selected && !isDefault);
+    deletePresetButton_->setToolTip(
+        isDefault ? QStringLiteral("默认方案不能删除，请先把其他方案设为默认")
+                  : QStringLiteral("删除方案；绑定任务将改为跟随默认方案"));
+}
+
+void SettingsPage::addPreset()
+{
+    TimerPreset preset;
+    preset.id = -1;
+    preset.name = QStringLiteral("新专注方案");
+    preset.isDefault = false;
+    TimerPresetDialog dialog(this);
+    dialog.setPreset(preset);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+    preset = dialog.preset();
+    QString error;
+    if (!TimerPresetRepository().save(preset, &error)) {
+        QMessageBox::warning(this, QStringLiteral("新建失败"), error);
+        return;
+    }
+    reloadPresets();
+    emit settingsSaved();
+}
+
+void SettingsPage::editPreset()
+{
+    TimerPreset preset = TimerPresetRepository().findById(selectedPresetId());
+    if (preset.id <= 0) {
+        return;
+    }
+    TimerPresetDialog dialog(this);
+    dialog.setPreset(preset);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+    preset = dialog.preset();
+    QString error;
+    if (!TimerPresetRepository().save(preset, &error)) {
+        QMessageBox::warning(this, QStringLiteral("保存失败"), error);
+        return;
+    }
+    reloadPresets();
+    emit settingsSaved();
+}
+
+void SettingsPage::copyPreset()
+{
+    TimerPreset preset = TimerPresetRepository().findById(selectedPresetId());
+    if (preset.id <= 0) {
+        return;
+    }
+    preset.id = -1;
+    preset.name += QStringLiteral(" 副本");
+    preset.isDefault = false;
+    TimerPresetDialog dialog(this);
+    dialog.setPreset(preset);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+    preset = dialog.preset();
+    QString error;
+    if (!TimerPresetRepository().save(preset, &error)) {
+        QMessageBox::warning(this, QStringLiteral("复制失败"), error);
+        return;
+    }
+    reloadPresets();
+    emit settingsSaved();
+}
+
+void SettingsPage::makePresetDefault()
+{
+    QString error;
+    if (!TimerPresetRepository().setDefault(selectedPresetId(), &error)) {
+        QMessageBox::warning(this, QStringLiteral("设置失败"), error);
+        return;
+    }
+    reloadPresets();
+    emit settingsSaved();
+}
+
+void SettingsPage::deletePreset()
+{
+    const int row = presetTable_->currentRow();
+    const QTableWidgetItem *item = row >= 0 ? presetTable_->item(row, 0) : nullptr;
+    if (item == nullptr) {
+        return;
+    }
+    const auto choice = QMessageBox::question(
+        this, QStringLiteral("删除专注方案"),
+        QStringLiteral("确定删除“%1”吗？\n绑定该方案的任务将改为跟随默认方案。")
+            .arg(item->text()),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (choice != QMessageBox::Yes) {
+        return;
+    }
+    QString error;
+    if (!TimerPresetRepository().remove(item->data(Qt::UserRole).toInt(), &error)) {
+        QMessageBox::warning(this, QStringLiteral("删除失败"), error);
+        return;
+    }
+    reloadPresets();
+    emit settingsSaved();
+}
+
 bool SettingsPage::hasUnsavedChanges() const
 {
     return !sameSettings(settingsFromForm(), savedSettings_);
@@ -333,13 +549,7 @@ bool SettingsPage::hasUnsavedChanges() const
 
 TimerSettings SettingsPage::settingsFromForm() const
 {
-    TimerSettings settings;
-    settings.focusMinutes = focusMinutes_->value();
-    settings.shortBreakMinutes = shortBreakMinutes_->value();
-    settings.longBreakMinutes = longBreakMinutes_->value();
-    settings.cyclesBeforeLongBreak = cyclesBeforeLongBreak_->value();
-    settings.autoStartBreak = autoStartBreak_->isChecked();
-    settings.autoStartFocus = autoStartFocus_->isChecked();
+    TimerSettings settings = savedSettings_;
     settings.soundEnabled = soundEnabled_->isChecked();
     settings.focusSoundPath = focusSoundPath_->text();
     settings.breakSoundPath = breakSoundPath_->text();
@@ -413,7 +623,7 @@ bool SettingsPage::saveSettings(bool showConfirmation)
             QMessageBox::information(
                 this,
                 QStringLiteral("设置已保存"),
-                QStringLiteral("专注、声音和窗口设置已立即生效。"));
+                QStringLiteral("声音和窗口设置已立即生效。专注方案会在管理时立即保存。"));
         } else {
             QMessageBox::warning(
                 this,

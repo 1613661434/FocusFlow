@@ -23,18 +23,22 @@
 #include <QTime>
 #include <QVBoxLayout>
 
+#include <algorithm>
+
 TaskDialog::TaskDialog(const QVector<LookupItem> &projects,
                        const QVector<LookupItem> &categories,
+                       const QVector<TimerPreset> &presets,
                        QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle(QStringLiteral("新建任务"));
     setMinimumWidth(500);
-    buildInterface(projects, categories);
+    buildInterface(projects, categories, presets);
 }
 
 void TaskDialog::buildInterface(const QVector<LookupItem> &projects,
-                                const QVector<LookupItem> &categories)
+                                const QVector<LookupItem> &categories,
+                                const QVector<TimerPreset> &presets)
 {
     auto *root = new QVBoxLayout(this);
     auto *form = new QFormLayout;
@@ -43,7 +47,7 @@ void TaskDialog::buildInterface(const QVector<LookupItem> &projects,
     form->setVerticalSpacing(14);
 
     titleEdit_ = new QLineEdit(this);
-    titleEdit_->setPlaceholderText(QStringLiteral("例如：完成工程实践需求分析"));
+    titleEdit_->setPlaceholderText(QStringLiteral("例如：整理本周工作计划"));
     titleEdit_->setMaxLength(120);
 
     descriptionEdit_ = new QTextEdit(this);
@@ -86,6 +90,29 @@ void TaskDialog::buildInterface(const QVector<LookupItem> &projects,
     }
     importanceCombo_->setCurrentIndex(2);
     ColoredComboBox::enableCurrentItemColor(importanceCombo_);
+
+    timerPresetCombo_ = new QComboBox(this);
+    timerPresetCombo_->setObjectName(QStringLiteral("taskTimerPresetCombo"));
+    const auto defaultIt = std::find_if(
+        presets.cbegin(), presets.cend(),
+        [](const TimerPreset &preset) { return preset.isDefault; });
+    const QString defaultName = defaultIt != presets.cend()
+                                    ? defaultIt->name
+                                    : QStringLiteral("系统默认方案");
+    timerPresetCombo_->addItem(
+        QStringLiteral("跟随系统默认（%1）").arg(defaultName), -1);
+    for (const TimerPreset &preset : presets) {
+        QString text = QStringLiteral("%1（专注 %2 分钟 / 休息 %3 分钟）")
+                           .arg(preset.name)
+                           .arg(preset.focusMinutes)
+                           .arg(preset.shortBreakMinutes);
+        if (preset.isDefault) {
+            text += QStringLiteral(" · 默认");
+        }
+        timerPresetCombo_->addItem(text, preset.id);
+    }
+    timerPresetCombo_->setToolTip(
+        QStringLiteral("选择任务的默认计时节奏；计时前仍可临时切换"));
 
     const QDateTime defaultDue(QDate::currentDate(), QTime(23, 59));
     dueEnabled_ = new QCheckBox(QStringLiteral("设置截止时间"), this);
@@ -145,6 +172,7 @@ void TaskDialog::buildInterface(const QVector<LookupItem> &projects,
     form->addRow(QStringLiteral("所属项目："), projectCombo_);
     form->addRow(QStringLiteral("任务分类："), categoryCombo_);
     form->addRow(QStringLiteral("重要程度："), importanceCombo_);
+    form->addRow(QStringLiteral("默认专注方案："), timerPresetCombo_);
     form->addRow(QStringLiteral("截止时间："), dueWidget);
     form->addRow(QStringLiteral("预计耗时："), estimatedMinutes_);
 
@@ -170,6 +198,7 @@ void TaskDialog::setTask(const Task &task)
     selectId(projectCombo_, task.projectId);
     selectId(categoryCombo_, task.categoryId);
     selectId(importanceCombo_, task.importance);
+    selectId(timerPresetCombo_, task.timerPresetId);
     estimatedMinutes_->setValue(task.estimatedMinutes);
     dueEnabled_->setChecked(task.dueAt.isValid());
     if (task.dueAt.isValid()) {
@@ -187,6 +216,7 @@ Task TaskDialog::task() const
     result.projectId = projectCombo_->currentData().toInt();
     result.categoryId = categoryCombo_->currentData().toInt();
     result.importance = importanceCombo_->currentData().toInt();
+    result.timerPresetId = timerPresetCombo_->currentData().toInt();
     result.dueAt = dueEnabled_->isChecked()
                        ? QDateTime(dueEdit_->date(),
                                    QTime(dueHour_->value(), dueMinute_->value()))

@@ -97,7 +97,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.24"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.25"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -153,6 +153,8 @@ void MainWindow::buildInterface()
             statisticsPage, &StatisticsPage::refresh);
     connect(focusPage, &FocusPage::notificationRequested,
             this, &MainWindow::showNotification);
+    connect(focusPage, &FocusPage::trayStatusChanged,
+            this, &MainWindow::updateTrayStatus);
     connect(focusPage, &FocusPage::focusDataChanged,
             dashboardPage, &DashboardPage::refresh);
     connect(focusPage, &FocusPage::focusDataChanged,
@@ -478,7 +480,7 @@ void MainWindow::setupTray()
         ? style()->standardIcon(QStyle::SP_ComputerIcon)
         : qApp->windowIcon();
     trayIcon_ = new QSystemTrayIcon(trayIcon, this);
-    trayIcon_->setToolTip(QStringLiteral("FocusFlow"));
+    trayIcon_->setToolTip(trayStatusText_);
 
     auto *menu = new QMenu(this);
     auto *showAction = menu->addAction(QStringLiteral("显示 FocusFlow"));
@@ -523,6 +525,14 @@ void MainWindow::showNotification(const QString &title, const QString &message)
                                message,
                                QSystemTrayIcon::Information,
                                8000);
+    }
+}
+
+void MainWindow::updateTrayStatus(const QString &status)
+{
+    trayStatusText_ = status.left(127);
+    if (trayIcon_ != nullptr) {
+        trayIcon_->setToolTip(trayStatusText_);
     }
 }
 

@@ -24,6 +24,8 @@ public:
     QVector<LookupItem> categories() const;
 
     bool save(Task &task, QString *errorMessage = nullptr) const;
+    bool setTimerPreset(int id, int timerPresetId,
+                        QString *errorMessage = nullptr) const;
     bool setCompleted(int id, bool completed, QString *errorMessage = nullptr) const;
     bool deleteTask(int id, QString *errorMessage = nullptr) const;
 

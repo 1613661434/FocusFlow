@@ -14,6 +14,8 @@ struct Task
     int categoryId = -1;
     QString categoryName;
     QString categoryColor;
+    int timerPresetId = -1;
+    QString timerPresetName;
     int importance = 3;
     QDateTime dueAt;
     int estimatedMinutes = 25;

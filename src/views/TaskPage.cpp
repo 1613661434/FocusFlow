@@ -1,6 +1,7 @@
 #include "views/TaskPage.h"
 
 #include "views/TaskDialog.h"
+#include "repositories/TimerPresetRepository.h"
 #include "services/PriorityService.h"
 #include "widgets/ClearSelectionOnBlankClick.h"
 #include "widgets/PriorityColors.h"
@@ -286,7 +287,8 @@ void TaskPage::refresh()
 
 void TaskPage::addTask()
 {
-    TaskDialog dialog(repository_.projects(), repository_.categories(), this);
+    TaskDialog dialog(repository_.projects(), repository_.categories(),
+                      TimerPresetRepository().findAll(), this);
     if (dialog.exec() != QDialog::Accepted) {
         return;
     }
@@ -318,7 +320,8 @@ void TaskPage::editSelectedTask()
         return;
     }
 
-    TaskDialog dialog(repository_.projects(), repository_.categories(), this);
+    TaskDialog dialog(repository_.projects(), repository_.categories(),
+                      TimerPresetRepository().findAll(), this);
     dialog.setTask(task);
     if (dialog.exec() != QDialog::Accepted) {
         return;
