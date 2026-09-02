@@ -33,7 +33,6 @@
 #include <QTabBar>
 #include <QTableWidget>
 #include <QTest>
-#include <QToolTip>
 #include <QUuid>
 
 namespace {
@@ -371,12 +370,27 @@ void DashboardPageTests::recentFocusTableShowsTenRowsWithoutNestedScrolling()
     QVERIFY(QMetaObject::invokeMethod(dailyFocusSet, "hovered",
                                       Q_ARG(bool, true), Q_ARG(int, 6)));
     QCoreApplication::processEvents();
-    QVERIFY(QToolTip::text().contains(QStringLiteral("秒")));
-    QVERIFY(dailyChartView->property("focusTooltipAnchor").toPoint()
-                != QPoint());
-    QCOMPARE(dailyChartView->property("focusTooltipIndex").toInt(), 6);
+    auto *dailyValueLabel = dailyChartView->findChild<QLabel *>(
+        QStringLiteral("dailyFocusValueLabel"));
+    QVERIFY(dailyValueLabel != nullptr);
+    QVERIFY(dailyValueLabel->isVisible());
+    bool isNumber = false;
+    QCOMPARE(dailyValueLabel->text().toInt(&isNumber),
+             qRound(dailyFocusSet->at(6)));
+    QVERIFY(isNumber);
+    QVERIFY(!dailyValueLabel->text().contains(QStringLiteral("秒")));
+    QCOMPARE(dailyValueLabel->frameShape(), QFrame::NoFrame);
+    QVERIFY(!dailyValueLabel->autoFillBackground());
+    QCOMPARE(dailyChartView->property("focusValueIndex").toInt(), 6);
+    const QPoint barTop =
+        dailyChartView->property("focusValueAnchor").toPoint();
+    QVERIFY(barTop != QPoint());
+    QVERIFY(qAbs(dailyValueLabel->geometry().center().x() - barTop.x()) <= 1);
+    QVERIFY(dailyValueLabel->geometry().bottom() < barTop.y());
     QVERIFY(QMetaObject::invokeMethod(dailyFocusSet, "hovered",
                                       Q_ARG(bool, false), Q_ARG(int, 6)));
+    QCoreApplication::processEvents();
+    QVERIFY(!dailyValueLabel->isVisible());
 
     tabs->setCurrentIndex(1);
     QCoreApplication::processEvents();
