@@ -142,9 +142,9 @@ void FocusPage::buildInterface()
     timerLayout->addStretch();
     timerLayout->addLayout(controls);
 
-    auto *optionsCard = new QWidget;
-    optionsCard->setObjectName(QStringLiteral("focusOptionsContent"));
-    optionsCard->setFixedWidth(378);
+    auto *optionsCard = new QFrame;
+    optionsCard->setObjectName(QStringLiteral("card"));
+    optionsCard->setMinimumWidth(350);
     auto *optionsLayout = new QVBoxLayout(optionsCard);
     optionsLayout->setContentsMargins(26, 26, 26, 26);
     optionsLayout->setSpacing(12);
@@ -295,12 +295,12 @@ void FocusPage::buildInterface()
 
     optionsScrollArea_ = new QScrollArea(this);
     optionsScrollArea_->setObjectName(QStringLiteral("focusOptionsScrollArea"));
-    optionsScrollArea_->setWidgetResizable(false);
+    optionsScrollArea_->setWidgetResizable(true);
     optionsScrollArea_->setFrameShape(QFrame::NoFrame);
     optionsScrollArea_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    optionsScrollArea_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    optionsScrollArea_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    optionsScrollArea_->setFixedWidth(390);
     optionsScrollArea_->setWidget(optionsCard);
-    optionsCard->adjustSize();
     optionsScrollArea_->setStyleSheet(QStringLiteral(
         "QScrollArea#focusOptionsScrollArea { background: transparent; border: none; }"
         "QScrollArea#focusOptionsScrollArea QScrollBar:vertical {"
@@ -309,6 +309,8 @@ void FocusPage::buildInterface()
         "  min-height: 36px; border-radius: 5px; background: #c5ccd8; }"
         "QScrollArea#focusOptionsScrollArea QScrollBar::handle:vertical:hover {"
         "  background: #98a2b3; }"
+        "QScrollArea#focusOptionsScrollArea QScrollBar::handle:vertical:disabled {"
+        "  background: transparent; }"
         "QScrollArea#focusOptionsScrollArea QScrollBar::add-line:vertical,"
         "QScrollArea#focusOptionsScrollArea QScrollBar::sub-line:vertical {"
         "  height: 0; background: transparent; }"
@@ -317,15 +319,8 @@ void FocusPage::buildInterface()
         "  background: transparent; }"));
     optionsScrollArea_->viewport()->setAutoFillBackground(false);
 
-    auto *optionsShell = new QFrame(this);
-    optionsShell->setObjectName(QStringLiteral("card"));
-    optionsShell->setFixedWidth(390);
-    auto *optionsShellLayout = new QVBoxLayout(optionsShell);
-    optionsShellLayout->setContentsMargins(1, 1, 1, 1);
-    optionsShellLayout->addWidget(optionsScrollArea_);
-
     root->addWidget(timerCard, 1);
-    root->addWidget(optionsShell);
+    root->addWidget(optionsScrollArea_);
 
     connect(primaryActionButton_, &QPushButton::clicked,
             this, &FocusPage::handlePrimaryAction);
@@ -576,7 +571,9 @@ void FocusPage::startCurrentPhase()
     currentRemainingSeconds_ = durationSeconds(phase);
     timer_.start(phase, currentRemainingSeconds_, currentTaskId_);
     emit activeFocusTaskChanged(
-        phase == FocusTimer::Phase::Focus ? currentTaskId_ : -1);
+        phase == FocusTimer::Phase::Focus
+            ? (currentTaskId_ > 0 ? currentTaskId_ : 0)
+            : -1);
 }
 
 void FocusPage::handlePrimaryAction()
@@ -923,15 +920,17 @@ void FocusPage::updatePresetControls()
     const bool customDirty = custom && customEditorDirty();
     const bool customBreaksEnabled = customBreakMode_->currentData().toBool();
     customMinutesRow_->setVisible(custom);
-    auto *customForm = qobject_cast<QFormLayout *>(customMinutesRow_->layout());
-    if (customForm != nullptr) {
-        customForm->setRowVisible(customShortBreakMinutes_, customBreaksEnabled);
-        customForm->setRowVisible(customLongBreakMinutes_, customBreaksEnabled);
-        customForm->setRowVisible(customCycles_, customBreaksEnabled);
-        customForm->setRowVisible(customAutoStartBreak_, customBreaksEnabled);
-        customForm->setRowVisible(customAutoStartFocus_, customBreaksEnabled);
-        customForm->setRowVisible(customAutoStartNextFocus_,
-                                  !customBreaksEnabled);
+    if (auto *customForm = qobject_cast<QFormLayout *>(
+            customMinutesRow_->layout())) {
+        const auto setRestLabelEnabled = [customForm, customBreaksEnabled](
+                                             QWidget *field) {
+            if (QWidget *label = customForm->labelForField(field)) {
+                label->setEnabled(customBreaksEnabled);
+            }
+        };
+        setRestLabelEnabled(customShortBreakMinutes_);
+        setRestLabelEnabled(customLongBreakMinutes_);
+        setRestLabelEnabled(customCycles_);
     }
     customShortBreakMinutes_->setEnabled(idle && customBreaksEnabled);
     customLongBreakMinutes_->setEnabled(idle && customBreaksEnabled);
@@ -939,12 +938,6 @@ void FocusPage::updatePresetControls()
     customAutoStartBreak_->setEnabled(idle && customBreaksEnabled);
     customAutoStartFocus_->setEnabled(idle && customBreaksEnabled);
     customAutoStartNextFocus_->setEnabled(idle && !customBreaksEnabled);
-    if (optionsScrollArea_ != nullptr
-        && optionsScrollArea_->widget() != nullptr) {
-        customMinutesRow_->layout()->activate();
-        optionsScrollArea_->widget()->layout()->activate();
-        optionsScrollArea_->widget()->adjustSize();
-    }
 
     const TimerPreset activePreset = selectedPreset();
     if (idle && !activePreset.breaksEnabled

@@ -37,7 +37,7 @@ private slots:
     void taskSchemeAndTrayStatusFollowTheRunningTimer();
     void customSchemeRequiresConfirmationAndCanBeSaved();
     void noBreakSchemeWorksInCompactHeight();
-    void noBreakPresetDialogHidesRestFields();
+    void noBreakPresetDialogKeepsStableDisabledFields();
     void cleanupTestCase();
 
 private:
@@ -361,7 +361,8 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     QCOMPARE(breakMode->currentData().toBool(), true);
     QVERIFY(autoStartBreak->isVisible());
     QVERIFY(autoStartFocus->isVisible());
-    QVERIFY(!autoStartNext->isVisible());
+    QVERIFY(autoStartNext->isVisible());
+    QVERIFY(!autoStartNext->isEnabled());
     presetCombo->setFocus(Qt::MouseFocusReason);
     QTRY_VERIFY(presetCombo->hasFocus());
     const int selectedPresetId = presetCombo->currentData().toInt();
@@ -493,7 +494,8 @@ void FocusPageTests::noBreakSchemeWorksInCompactHeight()
     QVERIFY(cycleLabel != nullptr);
     QVERIFY(optionsScroll != nullptr);
     QCOMPARE(optionsScroll->verticalScrollBarPolicy(),
-             Qt::ScrollBarAsNeeded);
+             Qt::ScrollBarAlwaysOn);
+    QVERIFY(optionsScroll->widgetResizable());
     const int stableContentWidth = optionsScroll->widget()->width();
 
     presetCombo->setCurrentIndex(presetCombo->findData(-2));
@@ -502,12 +504,18 @@ void FocusPageTests::noBreakSchemeWorksInCompactHeight()
     QCoreApplication::processEvents();
     QCOMPARE(optionsScroll->widget()->width(), stableContentWidth);
 
-    QVERIFY(!shortBreak->isVisible());
-    QVERIFY(!longBreak->isVisible());
-    QVERIFY(!cycles->isVisible());
-    QVERIFY(!autoStartBreak->isVisible());
-    QVERIFY(!autoStartFocus->isVisible());
+    QVERIFY(shortBreak->isVisible());
+    QVERIFY(longBreak->isVisible());
+    QVERIFY(cycles->isVisible());
+    QVERIFY(autoStartBreak->isVisible());
+    QVERIFY(autoStartFocus->isVisible());
     QVERIFY(autoStartNext->isVisible());
+    QVERIFY(!shortBreak->isEnabled());
+    QVERIFY(!longBreak->isEnabled());
+    QVERIFY(!cycles->isEnabled());
+    QVERIFY(!autoStartBreak->isEnabled());
+    QVERIFY(!autoStartFocus->isEnabled());
+    QVERIFY(autoStartNext->isEnabled());
     QVERIFY(confirm->isEnabled());
     confirm->click();
     QVERIFY(!phaseCombo->isEnabled());
@@ -540,11 +548,12 @@ void FocusPageTests::noBreakSchemeWorksInCompactHeight()
     QVERIFY(cycleLabel->text().contains(QStringLiteral("1 轮")));
 }
 
-void FocusPageTests::noBreakPresetDialogHidesRestFields()
+void FocusPageTests::noBreakPresetDialogKeepsStableDisabledFields()
 {
     TimerPresetDialog dialog;
     dialog.show();
     QCoreApplication::processEvents();
+    const QSize normalSize = dialog.size();
 
     auto *breakMode = dialog.findChild<QComboBox *>(
         QStringLiteral("presetBreakMode"));
@@ -554,11 +563,20 @@ void FocusPageTests::noBreakPresetDialogHidesRestFields()
         QStringLiteral("presetLongBreakMinutes"));
     auto *cycles = dialog.findChild<QSpinBox *>(
         QStringLiteral("presetCycles"));
+    auto *autoStartBreak = dialog.findChild<QCheckBox *>(
+        QStringLiteral("presetAutoStartBreak"));
+    auto *autoStartFocus = dialog.findChild<QCheckBox *>(
+        QStringLiteral("presetAutoStartFocus"));
+    auto *autoStartNext = dialog.findChild<QCheckBox *>(
+        QStringLiteral("presetAutoStartNextFocus"));
 
     QVERIFY(breakMode != nullptr);
     QVERIFY(shortBreak != nullptr);
     QVERIFY(longBreak != nullptr);
     QVERIFY(cycles != nullptr);
+    QVERIFY(autoStartBreak != nullptr);
+    QVERIFY(autoStartFocus != nullptr);
+    QVERIFY(autoStartNext != nullptr);
     QVERIFY(shortBreak->isVisible());
     QVERIFY(longBreak->isVisible());
     QVERIFY(cycles->isVisible());
@@ -566,9 +584,19 @@ void FocusPageTests::noBreakPresetDialogHidesRestFields()
     breakMode->setCurrentIndex(breakMode->findData(false));
     QCoreApplication::processEvents();
 
-    QVERIFY(!shortBreak->isVisible());
-    QVERIFY(!longBreak->isVisible());
-    QVERIFY(!cycles->isVisible());
+    QCOMPARE(dialog.size(), normalSize);
+    QVERIFY(shortBreak->isVisible());
+    QVERIFY(longBreak->isVisible());
+    QVERIFY(cycles->isVisible());
+    QVERIFY(autoStartBreak->isVisible());
+    QVERIFY(autoStartFocus->isVisible());
+    QVERIFY(autoStartNext->isVisible());
+    QVERIFY(!shortBreak->isEnabled());
+    QVERIFY(!longBreak->isEnabled());
+    QVERIFY(!cycles->isEnabled());
+    QVERIFY(!autoStartBreak->isEnabled());
+    QVERIFY(!autoStartFocus->isEnabled());
+    QVERIFY(autoStartNext->isEnabled());
 }
 
 void FocusPageTests::cleanupTestCase()

@@ -990,6 +990,23 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     QVERIFY(!taskDeleteButton->isEnabled());
     QCOMPARE(taskStatusButton->text(), QStringLiteral("完成"));
     QVERIFY(taskStatusButton->toolTip().contains(QStringLiteral("专注计时")));
+
+    const QPoint activeTaskPosition =
+        taskTable->visualItemRect(taskTable->item(highImportanceRow, 0))
+            .center();
+    QVERIFY(QMetaObject::invokeMethod(
+        &taskPage, "showTaskContextMenu", Qt::DirectConnection,
+        Q_ARG(QPoint, activeTaskPosition)));
+    QCoreApplication::processEvents();
+    focusTaskAction = taskPage.findChild<QAction *>(
+        QStringLiteral("focusSelectedTaskAction"));
+    QVERIFY(focusTaskAction != nullptr);
+    QVERIFY(!focusTaskAction->isEnabled());
+    QVERIFY(focusTaskAction->text().contains(QStringLiteral("计时中")));
+    if (QMenu *menu = qobject_cast<QMenu *>(focusTaskAction->parent())) {
+        QVERIFY(menu->styleSheet().contains(QStringLiteral("item:disabled")));
+        menu->close();
+    }
     taskPage.setActiveFocusTask(-1);
 
     taskTable->sortItems(6, Qt::AscendingOrder);
