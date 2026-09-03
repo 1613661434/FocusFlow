@@ -10,6 +10,7 @@ class QLabel;
 class QLineEdit;
 class QPushButton;
 class QTableWidget;
+class QPoint;
 
 class TaskPage final : public QWidget
 {
@@ -20,6 +21,7 @@ public:
 
 signals:
     void tasksChanged();
+    void focusTaskRequested(int taskId);
 
 public slots:
     void refresh();
@@ -31,6 +33,7 @@ private slots:
     void toggleSelectedTask();
     void deleteSelectedTask();
     void refreshForFilter();
+    void showTaskContextMenu(const QPoint &position);
 
 private:
     void buildInterface();

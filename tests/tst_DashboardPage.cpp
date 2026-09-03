@@ -14,6 +14,7 @@
 
 #include <QBarSet>
 #include <QBarSeries>
+#include <QAction>
 #include <QChartView>
 #include <QCoreApplication>
 #include <QComboBox>
@@ -24,6 +25,7 @@
 #include <QLabel>
 #include <QHeaderView>
 #include <QListWidget>
+#include <QMenu>
 #include <QPieSeries>
 #include <QPieSlice>
 #include <QPushButton>
@@ -676,12 +678,20 @@ void DashboardPageTests::closeToTrayReminderPreferenceRoundTrips()
     QVERIFY(!settings.suppressCloseToTrayReminder);
 
     settings.suppressCloseToTrayReminder = true;
+    settings.playFullSound = true;
+    settings.focusSoundPath = QStringLiteral("builtin://bright");
+    settings.breakSoundPath = QStringLiteral("builtin://gentle");
     QString error;
     QVERIFY2(repository.saveTimerSettings(settings, &error), qPrintable(error));
-    QVERIFY(repository.loadTimerSettings().suppressCloseToTrayReminder);
+    const TimerSettings loaded = repository.loadTimerSettings();
+    QVERIFY(loaded.suppressCloseToTrayReminder);
+    QVERIFY(loaded.playFullSound);
+    QCOMPARE(loaded.focusSoundPath, QStringLiteral("builtin://bright"));
+    QCOMPARE(loaded.breakSoundPath, QStringLiteral("builtin://gentle"));
 
     settings = repository.loadTimerSettings();
     settings.suppressCloseToTrayReminder = false;
+    settings.playFullSound = false;
     QVERIFY2(repository.saveTimerSettings(settings, &error), qPrintable(error));
     QVERIFY(!repository.loadTimerSettings().suppressCloseToTrayReminder);
 }
@@ -878,6 +888,27 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     QVERIFY(taskStatusButton->isEnabled());
     QVERIFY(taskDeleteButton->isEnabled());
     QCOMPARE(taskStatusButton->text(), QStringLiteral("完成"));
+
+    QSignalSpy focusTaskSpy(&taskPage, &TaskPage::focusTaskRequested);
+    const QPoint taskPosition =
+        taskTable->visualItemRect(taskTable->item(highImportanceRow, 0))
+            .center();
+    QVERIFY(QMetaObject::invokeMethod(
+        &taskPage, "showTaskContextMenu", Qt::DirectConnection,
+        Q_ARG(QPoint, taskPosition)));
+    QCoreApplication::processEvents();
+    auto *focusTaskAction = taskPage.findChild<QAction *>(
+        QStringLiteral("focusSelectedTaskAction"));
+    QVERIFY(focusTaskAction != nullptr);
+    QVERIFY(focusTaskAction->isEnabled());
+    QCOMPARE(focusTaskAction->text(), QStringLiteral("开始专注"));
+    focusTaskAction->trigger();
+    QCOMPARE(focusTaskSpy.count(), 1);
+    QCOMPARE(focusTaskSpy.takeFirst().at(0).toInt(), highImportance.id);
+    if (QMenu *menu = qobject_cast<QMenu *>(focusTaskAction->parent())) {
+        menu->close();
+    }
+
     taskStatusButton->click();
     QCoreApplication::processEvents();
     QVERIFY(taskTable->selectedItems().isEmpty());

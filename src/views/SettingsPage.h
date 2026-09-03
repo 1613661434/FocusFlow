@@ -6,6 +6,7 @@
 
 class NotificationSoundPlayer;
 class QCheckBox;
+class QComboBox;
 class QLabel;
 class QLineEdit;
 class QSlider;
@@ -37,6 +38,7 @@ private slots:
     void resetBreakSound();
     void previewFocusSound();
     void previewBreakSound();
+    void updateSoundControls();
     void backupDatabase();
     void restoreDatabase();
     void exportTasks();
@@ -53,6 +55,11 @@ private:
     TimerSettings settingsFromForm() const;
     void browseSound(QLineEdit *destination);
     void previewSound(const QString &path);
+    QString selectedSoundPath(const QComboBox *choice,
+                              const QLineEdit *customPath) const;
+    void loadSoundSelection(QComboBox *choice,
+                            QLineEdit *customPath,
+                            const QString &path);
     void updatePresetButtons();
     int selectedPresetId() const;
 
@@ -65,6 +72,9 @@ private:
     QCheckBox *soundEnabled_ = nullptr;
     QLineEdit *focusSoundPath_ = nullptr;
     QLineEdit *breakSoundPath_ = nullptr;
+    QComboBox *focusSoundChoice_ = nullptr;
+    QComboBox *breakSoundChoice_ = nullptr;
+    QComboBox *soundPlaybackMode_ = nullptr;
     QSlider *volume_ = nullptr;
     QLabel *volumeLabel_ = nullptr;
     QSpinBox *maxSoundSeconds_ = nullptr;

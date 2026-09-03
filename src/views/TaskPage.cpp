@@ -16,6 +16,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QMenu>
 #include <QPushButton>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -134,6 +135,7 @@ void TaskPage::buildInterface()
     table_->horizontalHeader()->setToolTip(
         QStringLiteral("点击列标题排序，再次点击可切换升序或降序"));
     table_->setSortingEnabled(true);
+    table_->setContextMenuPolicy(Qt::CustomContextMenu);
     enableClearSelectionOnBlankClick(table_);
     enableClearSelectionOnClick(this, table_);
 
@@ -159,6 +161,39 @@ void TaskPage::buildInterface()
             this, [this](int, int) { editSelectedTask(); });
     connect(table_, &QTableWidget::itemSelectionChanged,
             this, &TaskPage::updateActionButtons);
+    connect(table_, &QTableWidget::customContextMenuRequested,
+            this, &TaskPage::showTaskContextMenu);
+}
+
+void TaskPage::showTaskContextMenu(const QPoint &position)
+{
+    QTableWidgetItem *clickedItem = table_->itemAt(position);
+    if (clickedItem == nullptr) {
+        return;
+    }
+    table_->selectRow(clickedItem->row());
+    const int index = selectedTaskIndex();
+    if (index < 0) {
+        return;
+    }
+
+    const Task task = tasks_.at(index);
+    auto *menu = new QMenu(table_);
+    auto *focusAction = menu->addAction(QStringLiteral("开始专注"));
+    focusAction->setObjectName(QStringLiteral("focusSelectedTaskAction"));
+    const bool canFocus = activeFocusTaskId_ < 0
+                          && task.status != QStringLiteral("completed")
+                          && task.status != QStringLiteral("cancelled");
+    focusAction->setEnabled(canFocus);
+    focusAction->setToolTip(canFocus
+        ? QStringLiteral("切换到专注计时并关联“%1”").arg(task.title)
+        : activeFocusTaskId_ > 0
+            ? QStringLiteral("当前已有任务正在专注计时")
+            : QStringLiteral("请先将任务恢复为待处理"));
+    connect(focusAction, &QAction::triggered, this,
+            [this, taskId = task.id] { emit focusTaskRequested(taskId); });
+    connect(menu, &QMenu::aboutToHide, menu, &QObject::deleteLater);
+    menu->popup(table_->viewport()->mapToGlobal(position));
 }
 
 void TaskPage::updateActionButtons()
