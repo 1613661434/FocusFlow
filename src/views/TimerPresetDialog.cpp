@@ -51,8 +51,12 @@ TimerPresetDialog::TimerPresetDialog(QWidget *parent)
     breakMode_->addItem(QStringLiteral("不安排休息"), false);
     autoStartBreak_ = new QCheckBox(
         QStringLiteral("专注完成后自动开始休息"), this);
+    autoStartBreak_->setObjectName(
+        QStringLiteral("presetAutoStartBreak"));
     autoStartFocus_ = new QCheckBox(
         QStringLiteral("休息完成后自动开始专注"), this);
+    autoStartFocus_->setObjectName(
+        QStringLiteral("presetAutoStartFocus"));
     autoStartNextFocus_ = new QCheckBox(
         QStringLiteral("专注结束后自动开始下一轮"), this);
     autoStartNextFocus_->setObjectName(
@@ -131,12 +135,30 @@ TimerPreset TimerPresetDialog::preset() const
 void TimerPresetDialog::updateBreakControls()
 {
     const bool breaksEnabled = breakMode_->currentData().toBool();
-    form_->setRowVisible(shortBreakMinutes_, breaksEnabled);
-    form_->setRowVisible(longBreakMinutes_, breaksEnabled);
-    form_->setRowVisible(cycles_, breaksEnabled);
-    form_->setRowVisible(autoStartBreak_, breaksEnabled);
-    form_->setRowVisible(autoStartFocus_, breaksEnabled);
-    form_->setRowVisible(autoStartNextFocus_, !breaksEnabled);
+    const auto setRestFieldEnabled = [this, breaksEnabled](QWidget *field) {
+        field->setEnabled(breaksEnabled);
+        if (QWidget *label = form_->labelForField(field)) {
+            label->setEnabled(breaksEnabled);
+        }
+    };
+    setRestFieldEnabled(shortBreakMinutes_);
+    setRestFieldEnabled(longBreakMinutes_);
+    setRestFieldEnabled(cycles_);
+    autoStartBreak_->setEnabled(breaksEnabled);
+    autoStartFocus_->setEnabled(breaksEnabled);
+    autoStartNextFocus_->setEnabled(!breaksEnabled);
+
+    const QString disabledHint = QStringLiteral(
+        "当前方案不安排休息，此项不会生效");
+    shortBreakMinutes_->setToolTip(breaksEnabled ? QString() : disabledHint);
+    longBreakMinutes_->setToolTip(breaksEnabled ? QString() : disabledHint);
+    cycles_->setToolTip(breaksEnabled ? QString() : disabledHint);
+    autoStartBreak_->setToolTip(breaksEnabled ? QString() : disabledHint);
+    autoStartFocus_->setToolTip(breaksEnabled ? QString() : disabledHint);
+    autoStartNextFocus_->setToolTip(
+        breaksEnabled
+            ? QStringLiteral("仅用于不安排休息的连续专注方案")
+            : QStringLiteral("专注完成后直接开始下一轮专注"));
 }
 
 void TimerPresetDialog::accept()

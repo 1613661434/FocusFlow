@@ -7,6 +7,7 @@
 #include "views/StatisticsPage.h"
 #include "views/SettingsPage.h"
 #include "repositories/SettingsRepository.h"
+#include "widgets/TextOnlyMenu.h"
 
 #include <QAction>
 #include <QApplication>
@@ -97,7 +98,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.34"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.35"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -525,6 +526,7 @@ void MainWindow::setupTray()
     auto *menu = new QMenu(this);
     auto *showAction = menu->addAction(QStringLiteral("显示 FocusFlow"));
     auto *quitAction = menu->addAction(QStringLiteral("退出"));
+    TextOnlyMenu::apply(menu);
     connect(showAction, &QAction::triggered,
             this, &MainWindow::restoreAndActivate);
     connect(quitAction, &QAction::triggered, this, [this] {

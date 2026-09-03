@@ -7,6 +7,7 @@
 #include "widgets/PriorityColors.h"
 #include "widgets/SortKeyTableWidgetItem.h"
 #include "widgets/StatusColors.h"
+#include "widgets/TextOnlyMenu.h"
 
 #include <QAbstractItemView>
 #include <QComboBox>
@@ -184,15 +185,21 @@ void TaskPage::showTaskContextMenu(const QPoint &position)
     const bool canFocus = activeFocusTaskId_ < 0
                           && task.status != QStringLiteral("completed")
                           && task.status != QStringLiteral("cancelled");
+    if (!canFocus) {
+        focusAction->setText(activeFocusTaskId_ >= 0
+            ? QStringLiteral("开始专注（计时中）")
+            : QStringLiteral("开始专注（任务已完成）"));
+    }
     focusAction->setEnabled(canFocus);
     focusAction->setToolTip(canFocus
         ? QStringLiteral("切换到专注计时并关联“%1”").arg(task.title)
-        : activeFocusTaskId_ > 0
+        : activeFocusTaskId_ >= 0
             ? QStringLiteral("当前已有任务正在专注计时")
             : QStringLiteral("请先将任务恢复为待处理"));
     connect(focusAction, &QAction::triggered, this,
             [this, taskId = task.id] { emit focusTaskRequested(taskId); });
     connect(menu, &QMenu::aboutToHide, menu, &QObject::deleteLater);
+    TextOnlyMenu::apply(menu);
     menu->popup(table_->viewport()->mapToGlobal(position));
 }
 
@@ -389,7 +396,7 @@ void TaskPage::refresh()
 
 void TaskPage::setActiveFocusTask(int taskId)
 {
-    const int normalizedTaskId = taskId > 0 ? taskId : -1;
+    const int normalizedTaskId = taskId >= 0 ? taskId : -1;
     if (activeFocusTaskId_ == normalizedTaskId) {
         return;
     }
