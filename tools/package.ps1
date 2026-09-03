@@ -14,10 +14,14 @@ $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $distributionRoot = Join-Path $projectRoot "dist"
 $packageDirectory = Join-Path $distributionRoot "FocusFlow-0.1.39-$timestamp"
 $executable = Join-Path $projectRoot "build\FocusFlow.exe"
+$uninstaller = Join-Path $projectRoot "build\Uninstall.exe"
 $deployTool = Join-Path $QtRoot "bin\windeployqt.exe"
 
 if (-not (Test-Path $executable)) {
     throw "没有找到可执行文件：$executable"
+}
+if (-not (Test-Path $uninstaller)) {
+    throw "没有找到卸载程序：$uninstaller"
 }
 if (-not (Test-Path $deployTool)) {
     throw "没有找到 windeployqt：$deployTool"
@@ -25,6 +29,7 @@ if (-not (Test-Path $deployTool)) {
 
 New-Item -ItemType Directory -Path $packageDirectory -Force | Out-Null
 Copy-Item $executable (Join-Path $packageDirectory "FocusFlow.exe")
+Copy-Item $uninstaller (Join-Path $packageDirectory "Uninstall.exe")
 foreach ($document in @("README.md", "LICENSE")) {
     Copy-Item (Join-Path $projectRoot $document) $packageDirectory
 }

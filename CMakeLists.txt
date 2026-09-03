@@ -112,10 +112,34 @@ set_target_properties(FocusFlow PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
+if(WIN32)
+    add_executable(FocusFlowUninstaller WIN32
+        resources/focusflow.rc
+        src/uninstaller/UninstallerMain.cpp
+        src/uninstaller/UninstallerSupport.cpp
+        src/uninstaller/UninstallerSupport.h
+    )
+    target_include_directories(FocusFlowUninstaller PRIVATE src)
+    target_compile_definitions(FocusFlowUninstaller PRIVATE UNICODE _UNICODE)
+    target_link_libraries(FocusFlowUninstaller PRIVATE shell32)
+    if(MINGW)
+        target_link_options(FocusFlowUninstaller PRIVATE
+            -static -static-libgcc -static-libstdc++)
+    endif()
+    set_target_properties(FocusFlowUninstaller PROPERTIES
+        OUTPUT_NAME Uninstall
+    )
+endif()
+
 include(GNUInstallDirs)
 install(TARGETS FocusFlow
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+if(WIN32)
+    install(TARGETS FocusFlowUninstaller
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
 
 include(CTest)
 if(BUILD_TESTING)
@@ -352,4 +376,21 @@ if(BUILD_TESTING)
         target_link_libraries(DashboardPageTests PRIVATE dwmapi)
     endif()
     add_test(NAME DashboardPageTests COMMAND DashboardPageTests)
+
+    if(WIN32)
+        qt_add_executable(UninstallerSupportTests
+            tests/tst_UninstallerSupport.cpp
+            src/uninstaller/UninstallerSupport.cpp
+            src/uninstaller/UninstallerSupport.h
+        )
+        target_include_directories(UninstallerSupportTests PRIVATE src)
+        target_compile_definitions(UninstallerSupportTests PRIVATE
+            UNICODE _UNICODE)
+        target_link_libraries(UninstallerSupportTests PRIVATE
+            Qt6::Core
+            Qt6::Test
+        )
+        add_test(NAME UninstallerSupportTests
+                 COMMAND UninstallerSupportTests)
+    endif()
 endif()
