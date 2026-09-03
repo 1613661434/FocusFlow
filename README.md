@@ -3,6 +3,7 @@
 [![Version](https://img.shields.io/badge/version-v0.1.38-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.38)
 [![GitHub Stars](https://img.shields.io/github/stars/1613661434/FocusFlow?style=flat-square&logo=github)](https://github.com/1613661434/FocusFlow/stargazers)
 [![Last Commit](https://img.shields.io/github/last-commit/1613661434/FocusFlow?style=flat-square&logo=git)](https://github.com/1613661434/FocusFlow/commits/main)
+[![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-6B7280?style=flat-square)](LICENSE)
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?style=flat-square&logo=cplusplus)
 ![Qt 6](https://img.shields.io/badge/Qt-6-41CD52?style=flat-square&logo=qt&logoColor=white)
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4?style=flat-square&logo=windows11&logoColor=white)
@@ -294,5 +295,9 @@ git switch -c inspect-old-version <提交号或标签>
 
 版权所有 © 2026 ol木子李lo（OL）。
 Copyright © 2026 OL. All rights reserved.
+
+允许个人以非商业目的下载、安装和使用未经修改的官方发布版本；源代码可供学习
+和参考。复制、修改、再发布或用于其他项目需要事先获得作者书面许可，完整条款
+请查看 [LICENSE](LICENSE)。
 
 FocusFlow 使用 Qt 开源框架构建，相关第三方组件版权归其各自权利人所有。
