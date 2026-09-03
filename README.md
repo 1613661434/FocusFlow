@@ -1,6 +1,6 @@
 # FocusFlow
 
-[![Version](https://img.shields.io/badge/version-v0.1.38-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.38)
+[![Version](https://img.shields.io/badge/version-v0.1.39-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.39)
 [![GitHub Stars](https://img.shields.io/github/stars/1613661434/FocusFlow?style=flat-square&logo=github)](https://github.com/1613661434/FocusFlow/stargazers)
 [![Last Commit](https://img.shields.io/github/last-commit/1613661434/FocusFlow?style=flat-square&logo=git)](https://github.com/1613661434/FocusFlow/commits/main)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-6B7280?style=flat-square)](LICENSE)
@@ -9,7 +9,7 @@
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4?style=flat-square&logo=windows11&logoColor=white)
 
 FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
-个人任务规划与专注管理工具，当前版本为 **v0.1.38**。
+个人任务规划与专注管理工具，当前版本为 **v0.1.39**。
 
 中文定位：**个人任务规划与专注管理系统**
 
@@ -74,6 +74,7 @@ FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
 - 保存自定义方案时自动建议可用名称；已有“我的专注方案”后依次使用“我的专注方案2、3……”避免重名。
 - 选择“自定义本次方案”后直接展开编辑项，不再重复显示同名标题；操作按钮、长休息间隔和自动衔接选项不会被裁切。
 - 主按钮根据状态在“开始 / 暂停 / 继续”之间切换，另设“终止”按钮。
+- 中央大数字明确标注为“剩余时间”；进度条下方同时显示精确的已用时长、当前周期和计划总时长，专注及两种休息阶段保持一致。
 - 计时空闲时中央状态统一显示“准备开始”，不随专注、短休息或长休息类型变化。
 - 可按项目、分类筛选关联任务；任务按推荐分从高到低排列并显示推荐分。
 - 专注正常结束或被终止后都会保存实际用时；终止关联任务的专注时可选择是否同时完成任务。
@@ -97,7 +98,7 @@ FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
 - 自定义声音会复制到应用数据目录；更换或恢复默认后会清理不再使用的托管副本。
 - 最小化窗口时仍保留在任务栏；关闭窗口时隐藏到系统托盘。
 - 只有从托盘图标右键菜单选择“退出”，程序才会真正结束；托盘菜单采用紧凑纯文字布局，不保留无用的图标列。
-- 鼠标悬停托盘图标可查看任务、专注/休息状态及实时剩余时间，休息阶段仍统一显示“任务”。
+- 鼠标悬停托盘图标可同时查看任务、专注/休息状态、已用时长、计划总时长及实时剩余时间，休息阶段仍统一显示“任务”。
 - 关闭到托盘提醒可在设置中关闭或重新开启。
 - 程序采用单实例运行；再次打开 FocusFlow 会直接恢复原窗口，不会创建第二套界面。
 
@@ -242,7 +243,8 @@ Qt Multimedia 和 Qt SQL 的 Qt 6 Kit 后构建。
 ```
 
 打包脚本会重新执行 Release 构建和全部测试，随后调用 `windeployqt` 收集 Qt
-运行库与中文翻译文件，最终在 `dist/` 下生成独立目录和 ZIP 压缩包。
+运行库与中文翻译文件，并附带面向用户的 `README.md` 与版权许可 `LICENSE`，
+最终在 `dist/` 下生成独立目录和 ZIP 压缩包。
 
 ## 本地数据与恢复
 
@@ -284,7 +286,7 @@ git tag --list
 git switch -c inspect-old-version <提交号或标签>
 ```
 
-当前稳定程序版本标签为 `v0.1.38`。
+当前稳定程序版本标签为 `v0.1.39`。
 
 ## 作者与版权
 

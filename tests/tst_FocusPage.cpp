@@ -244,11 +244,20 @@ void FocusPageTests::taskSchemeAndTrayStatusFollowTheRunningTimer()
     auto *primary = buttonForRole(page, QStringLiteral("primary"));
     auto *confirmCustom = page.findChild<QPushButton *>(
         QStringLiteral("confirmCustomMinutesButton"));
+    auto *timeCaption = page.findChild<QLabel *>(
+        QStringLiteral("focusTimeCaptionLabel"));
+    auto *elapsed = page.findChild<QLabel *>(
+        QStringLiteral("focusElapsedLabel"));
+    auto *totalDuration = page.findChild<QLabel *>(
+        QStringLiteral("focusTotalDurationLabel"));
     QVERIFY(taskCombo != nullptr);
     QVERIFY(presetCombo != nullptr);
     QVERIFY(customMinutes != nullptr);
     QVERIFY(primary != nullptr);
     QVERIFY(confirmCustom != nullptr);
+    QVERIFY(timeCaption != nullptr);
+    QVERIFY(elapsed != nullptr);
+    QVERIFY(totalDuration != nullptr);
     QSignalSpy activeTaskSpy(&page, &FocusPage::activeFocusTaskChanged);
 
     page.selectTask(task.id);
@@ -262,16 +271,26 @@ void FocusPageTests::taskSchemeAndTrayStatusFollowTheRunningTimer()
     QVERIFY(confirmCustom->isEnabled());
     confirmCustom->click();
     QVERIFY(primary->isEnabled());
+    QCOMPARE(timeCaption->text(), QStringLiteral("计划时长"));
+    QCOMPARE(elapsed->text(), QStringLiteral("已用 00:00"));
+    QCOMPARE(totalDuration->text(), QStringLiteral("总时长 01:00"));
 
     QSignalSpy traySpy(&page, &FocusPage::trayStatusChanged);
     primary->click();
     QCOMPARE(activeTaskSpy.count(), 1);
     QCOMPARE(activeTaskSpy.constLast().at(0).toInt(), task.id);
+    QCOMPARE(timeCaption->text(), QStringLiteral("剩余时间"));
     QVERIFY(!traySpy.isEmpty());
     QString status = traySpy.constLast().at(0).toString();
     QVERIFY(status.contains(QStringLiteral("专注中")));
     QVERIFY(status.contains(task.title));
+    QVERIFY(status.contains(QStringLiteral("已用 00:00 / 总计 01:00")));
     QVERIFY(status.contains(QStringLiteral("剩余 01:00")));
+
+    QTRY_COMPARE_WITH_TIMEOUT(elapsed->text(), QStringLiteral("已用 00:01"),
+                              2200);
+    status = traySpy.constLast().at(0).toString();
+    QVERIFY(status.contains(QStringLiteral("已用 00:01 / 总计 01:00")));
 
     QVERIFY2(TaskRepository().setCompleted(task.id, true, &error),
              qPrintable(error));
