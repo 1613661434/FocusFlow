@@ -15,6 +15,7 @@ class QCheckBox;
 class QLabel;
 class QProgressBar;
 class QPushButton;
+class QScrollArea;
 class QSpinBox;
 class QEvent;
 
@@ -66,6 +67,7 @@ private:
     void refreshFilteredTasks();
     TimerPreset selectedPreset() const;
     void updatePresetControls();
+    void updateCycleLabel();
     void updateTrayStatus();
     TimerPreset customEditorPreset() const;
     void loadCustomEditor(const TimerPreset &preset);
@@ -92,6 +94,8 @@ private:
     QComboBox *taskCombo_ = nullptr;
     QComboBox *presetCombo_ = nullptr;
     QComboBox *phaseCombo_ = nullptr;
+    QComboBox *customBreakMode_ = nullptr;
+    QScrollArea *optionsScrollArea_ = nullptr;
     QWidget *customMinutesRow_ = nullptr;
     QSpinBox *customMinutes_ = nullptr;
     QSpinBox *customShortBreakMinutes_ = nullptr;
@@ -99,6 +103,7 @@ private:
     QSpinBox *customCycles_ = nullptr;
     QCheckBox *customAutoStartBreak_ = nullptr;
     QCheckBox *customAutoStartFocus_ = nullptr;
+    QCheckBox *customAutoStartNextFocus_ = nullptr;
     QPushButton *confirmCustomMinutesButton_ = nullptr;
     QPushButton *saveCustomPresetButton_ = nullptr;
     QLabel *timerLabel_ = nullptr;

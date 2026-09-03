@@ -15,6 +15,7 @@ struct TimerSettings
     QString focusSoundPath;
     QString breakSoundPath;
     int volumePercent = 70;
+    bool playFullSound = false;
     int maxSoundSeconds = 5;
     int soundRepeatCount = 1;
 

@@ -10,8 +10,10 @@ struct TimerPreset
     int shortBreakMinutes = 5;
     int longBreakMinutes = 15;
     int cyclesBeforeLongBreak = 4;
+    bool breaksEnabled = true;
     bool autoStartBreak = false;
     bool autoStartFocus = false;
+    bool autoStartNextFocus = false;
     bool isDefault = false;
     bool isBuiltIn = false;
 };

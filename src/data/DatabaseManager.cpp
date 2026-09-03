@@ -163,8 +163,10 @@ bool DatabaseManager::createSchema()
                 short_break_minutes INTEGER NOT NULL DEFAULT 5,
                 long_break_minutes INTEGER NOT NULL DEFAULT 15,
                 cycles_before_long_break INTEGER NOT NULL DEFAULT 4,
+                breaks_enabled INTEGER NOT NULL DEFAULT 1,
                 auto_start_break INTEGER NOT NULL DEFAULT 0,
                 auto_start_focus INTEGER NOT NULL DEFAULT 0,
+                auto_start_next_focus INTEGER NOT NULL DEFAULT 0,
                 is_default INTEGER NOT NULL DEFAULT 0,
                 is_builtin INTEGER NOT NULL DEFAULT 0
             )
@@ -216,6 +218,8 @@ bool DatabaseManager::createSchema()
     }
 
     bool hasBuiltInPresetColumn = false;
+    bool hasBreaksEnabledColumn = false;
+    bool hasAutoNextFocusColumn = false;
     QSqlQuery presetColumns(db);
     if (!presetColumns.exec(QStringLiteral(
             "PRAGMA table_info(timer_presets)"))) {
@@ -224,15 +228,33 @@ bool DatabaseManager::createSchema()
         return false;
     }
     while (presetColumns.next()) {
-        if (presetColumns.value(QStringLiteral("name")).toString()
-            == QStringLiteral("is_builtin")) {
+        const QString columnName =
+            presetColumns.value(QStringLiteral("name")).toString();
+        if (columnName == QStringLiteral("is_builtin")) {
             hasBuiltInPresetColumn = true;
-            break;
+        } else if (columnName == QStringLiteral("breaks_enabled")) {
+            hasBreaksEnabledColumn = true;
+        } else if (columnName == QStringLiteral("auto_start_next_focus")) {
+            hasAutoNextFocusColumn = true;
         }
     }
     if (!hasBuiltInPresetColumn
         && !executeStatement(QStringLiteral(
             "ALTER TABLE timer_presets ADD COLUMN is_builtin INTEGER "
+            "NOT NULL DEFAULT 0"))) {
+        db.rollback();
+        return false;
+    }
+    if (!hasBreaksEnabledColumn
+        && !executeStatement(QStringLiteral(
+            "ALTER TABLE timer_presets ADD COLUMN breaks_enabled INTEGER "
+            "NOT NULL DEFAULT 1"))) {
+        db.rollback();
+        return false;
+    }
+    if (!hasAutoNextFocusColumn
+        && !executeStatement(QStringLiteral(
+            "ALTER TABLE timer_presets ADD COLUMN auto_start_next_focus INTEGER "
             "NOT NULL DEFAULT 0"))) {
         db.rollback();
         return false;

@@ -23,6 +23,7 @@
 #include <QMessageBox>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSet>
 #include <QSignalBlocker>
 #include <QSizePolicy>
@@ -141,9 +142,9 @@ void FocusPage::buildInterface()
     timerLayout->addStretch();
     timerLayout->addLayout(controls);
 
-    auto *optionsCard = new QFrame(this);
+    auto *optionsCard = new QFrame;
     optionsCard->setObjectName(QStringLiteral("card"));
-    optionsCard->setFixedWidth(390);
+    optionsCard->setMinimumWidth(350);
     auto *optionsLayout = new QVBoxLayout(optionsCard);
     optionsLayout->setContentsMargins(26, 26, 26, 26);
     optionsLayout->setSpacing(12);
@@ -184,6 +185,11 @@ void FocusPage::buildInterface()
     customMinutes_->setRange(1, 180);
     customMinutes_->setSuffix(QStringLiteral(" 分钟"));
     customMinutes_->setAccessibleName(QStringLiteral("自定义本次专注时长"));
+    customBreakMode_ = new QComboBox(customMinutesRow_);
+    customBreakMode_->setObjectName(QStringLiteral("focusCustomBreakMode"));
+    customBreakMode_->addItem(QStringLiteral("正常休息"), true);
+    customBreakMode_->addItem(QStringLiteral("不安排休息"), false);
+    customBreakMode_->setAccessibleName(QStringLiteral("自定义方案休息方式"));
     customShortBreakMinutes_ = new FocusAwareSpinBox(customMinutesRow_);
     customShortBreakMinutes_->setObjectName(
         QStringLiteral("focusCustomShortBreakMinutes"));
@@ -209,13 +215,19 @@ void FocusPage::buildInterface()
         QStringLiteral("休息后自动开始专注"), customMinutesRow_);
     customAutoStartFocus_->setObjectName(
         QStringLiteral("focusCustomAutoStartFocus"));
+    customAutoStartNextFocus_ = new QCheckBox(
+        QStringLiteral("专注结束后自动开始下一轮"), customMinutesRow_);
+    customAutoStartNextFocus_->setObjectName(
+        QStringLiteral("focusCustomAutoStartNextFocus"));
 
     customForm->addRow(QStringLiteral("专注："), customMinutes_);
+    customForm->addRow(QStringLiteral("休息方式："), customBreakMode_);
     customForm->addRow(QStringLiteral("短休息："), customShortBreakMinutes_);
     customForm->addRow(QStringLiteral("长休息："), customLongBreakMinutes_);
     customForm->addRow(QStringLiteral("长休息间隔："), customCycles_);
     customForm->addRow(customAutoStartBreak_);
     customForm->addRow(customAutoStartFocus_);
+    customForm->addRow(customAutoStartNextFocus_);
 
     auto *customButtons = new QWidget(customMinutesRow_);
     customButtons->setMinimumHeight(44);
@@ -281,8 +293,20 @@ void FocusPage::buildInterface()
     optionsLayout->addWidget(tip);
     optionsLayout->addStretch();
 
+    optionsScrollArea_ = new QScrollArea(this);
+    optionsScrollArea_->setObjectName(QStringLiteral("focusOptionsScrollArea"));
+    optionsScrollArea_->setWidgetResizable(true);
+    optionsScrollArea_->setFrameShape(QFrame::NoFrame);
+    optionsScrollArea_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    optionsScrollArea_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    optionsScrollArea_->setFixedWidth(390);
+    optionsScrollArea_->setWidget(optionsCard);
+    optionsScrollArea_->setStyleSheet(QStringLiteral(
+        "QScrollArea#focusOptionsScrollArea { background: transparent; border: none; }"));
+    optionsScrollArea_->viewport()->setAutoFillBackground(false);
+
     root->addWidget(timerCard, 1);
-    root->addWidget(optionsCard);
+    root->addWidget(optionsScrollArea_);
 
     connect(primaryActionButton_, &QPushButton::clicked,
             this, &FocusPage::handlePrimaryAction);
@@ -300,6 +324,8 @@ void FocusPage::buildInterface()
             this, &FocusPage::handlePresetChanged);
     connect(customMinutes_, &QSpinBox::valueChanged,
             this, [this] { updatePresetControls(); });
+    connect(customBreakMode_, &QComboBox::currentIndexChanged,
+            this, [this] { updatePresetControls(); });
     connect(customShortBreakMinutes_, &QSpinBox::valueChanged,
             this, [this] { updatePresetControls(); });
     connect(customLongBreakMinutes_, &QSpinBox::valueChanged,
@@ -309,6 +335,8 @@ void FocusPage::buildInterface()
     connect(customAutoStartBreak_, &QCheckBox::toggled,
             this, [this] { updatePresetControls(); });
     connect(customAutoStartFocus_, &QCheckBox::toggled,
+            this, [this] { updatePresetControls(); });
+    connect(customAutoStartNextFocus_, &QCheckBox::toggled,
             this, [this] { updatePresetControls(); });
     connect(confirmCustomMinutesButton_, &QPushButton::clicked,
             this, &FocusPage::confirmCustomMinutes);
@@ -324,6 +352,7 @@ void FocusPage::buildInterface()
     for (QWidget *surface : blankClickSurfaces) {
         surface->installEventFilter(this);
     }
+    optionsScrollArea_->viewport()->installEventFilter(this);
     for (QLabel *label : customMinutesRow_->findChildren<QLabel *>()) {
         label->installEventFilter(this);
     }
@@ -333,10 +362,7 @@ void FocusPage::reloadSettings()
 {
     settings_ = SettingsRepository().loadTimerSettings();
     reloadPresets();
-    const TimerPreset preset = selectedPreset();
-    cycleLabel_->setText(QStringLiteral("当前周期：%1 / %2")
-                             .arg(completedFocusCycles_ % preset.cyclesBeforeLongBreak)
-                             .arg(preset.cyclesBeforeLongBreak));
+    updateCycleLabel();
     applyTaskPreset();
     updateIdleDuration();
 }
@@ -356,10 +382,14 @@ void FocusPage::reloadPresets()
     const QSignalBlocker blocker(presetCombo_);
     presetCombo_->clear();
     for (const TimerPreset &preset : presets_) {
-        QString text = QStringLiteral("%1（%2 / %3 分钟）")
-                           .arg(preset.name)
-                           .arg(preset.focusMinutes)
-                           .arg(preset.shortBreakMinutes);
+        QString text = preset.breaksEnabled
+            ? QStringLiteral("%1（%2 / %3 分钟）")
+                  .arg(preset.name)
+                  .arg(preset.focusMinutes)
+                  .arg(preset.shortBreakMinutes)
+            : QStringLiteral("%1（%2 分钟 / 不安排休息）")
+                  .arg(preset.name)
+                  .arg(preset.focusMinutes);
         if (preset.isDefault) {
             text += QStringLiteral(" · 默认");
         }
@@ -617,12 +647,9 @@ void FocusPage::updateState(FocusTimer::State state)
     categoryFilter_->setEnabled(idle);
     taskCombo_->setEnabled(idle);
     presetCombo_->setEnabled(idle);
+    customBreakMode_->setEnabled(idle);
     customMinutes_->setEnabled(idle);
-    customShortBreakMinutes_->setEnabled(idle);
-    customLongBreakMinutes_->setEnabled(idle);
-    customCycles_->setEnabled(idle);
-    customAutoStartBreak_->setEnabled(idle);
-    customAutoStartFocus_->setEnabled(idle);
+    customAutoStartNextFocus_->setEnabled(idle);
     if (!idle) {
         statusResetTimer_.stop();
     }
@@ -728,13 +755,25 @@ void FocusPage::handleSessionEnded(FocusTimer::Phase phase,
     if (phase == FocusTimer::Phase::Focus) {
         ++completedFocusCycles_;
         const TimerPreset preset = selectedPreset();
-        const bool longBreak = completedFocusCycles_ % preset.cyclesBeforeLongBreak == 0;
-        nextPhase = longBreak ? FocusTimer::Phase::LongBreak
-                              : FocusTimer::Phase::ShortBreak;
         notificationTitle = QStringLiteral("专注完成");
-        notificationMessage = QStringLiteral("本次专注 %1，现在可以休息了。")
-                                  .arg(formatSeconds(actualSeconds));
-        autoStart = preset.autoStartBreak;
+        if (!preset.breaksEnabled) {
+            nextPhase = FocusTimer::Phase::Focus;
+            autoStart = preset.autoStartNextFocus;
+            notificationMessage = autoStart
+                ? QStringLiteral("本次专注 %1 已完成，即将开始下一轮。")
+                      .arg(formatSeconds(actualSeconds))
+                : QStringLiteral("本次专注 %1 已完成。")
+                      .arg(formatSeconds(actualSeconds));
+        } else {
+            const bool longBreak =
+                completedFocusCycles_ % preset.cyclesBeforeLongBreak == 0;
+            nextPhase = longBreak ? FocusTimer::Phase::LongBreak
+                                  : FocusTimer::Phase::ShortBreak;
+            notificationMessage =
+                QStringLiteral("本次专注 %1，现在可以休息了。")
+                    .arg(formatSeconds(actualSeconds));
+            autoStart = preset.autoStartBreak;
+        }
     } else {
         nextPhase = FocusTimer::Phase::Focus;
         notificationTitle = QStringLiteral("休息结束");
@@ -743,10 +782,8 @@ void FocusPage::handleSessionEnded(FocusTimer::Phase phase,
     }
 
     selectPhase(nextPhase);
-    cycleLabel_->setText(QStringLiteral("当前周期：%1 / %2")
-                             .arg(completedFocusCycles_ % selectedPreset().cyclesBeforeLongBreak)
-                             .arg(selectedPreset().cyclesBeforeLongBreak));
-    statusLabel_->setText(notificationMessage);
+    updateCycleLabel();
+    showTemporaryStatus(notificationMessage, 4000);
     emit notificationRequested(notificationTitle, notificationMessage);
 
     if (autoStart) {
@@ -817,9 +854,7 @@ void FocusPage::handlePresetChanged()
         loadCustomEditor(preset);
     }
     updatePresetControls();
-    cycleLabel_->setText(QStringLiteral("当前周期：%1 / %2")
-                             .arg(completedFocusCycles_ % preset.cyclesBeforeLongBreak)
-                             .arg(preset.cyclesBeforeLongBreak));
+    updateCycleLabel();
     updateIdleDuration();
 }
 
@@ -867,7 +902,35 @@ void FocusPage::updatePresetControls()
     const bool idle = timer_.state() == FocusTimer::State::Idle;
     const bool hasTask = taskCombo_->currentData().toInt() > 0;
     const bool customDirty = custom && customEditorDirty();
+    const bool customBreaksEnabled = customBreakMode_->currentData().toBool();
     customMinutesRow_->setVisible(custom);
+    auto *customForm = qobject_cast<QFormLayout *>(customMinutesRow_->layout());
+    if (customForm != nullptr) {
+        customForm->setRowVisible(customShortBreakMinutes_, customBreaksEnabled);
+        customForm->setRowVisible(customLongBreakMinutes_, customBreaksEnabled);
+        customForm->setRowVisible(customCycles_, customBreaksEnabled);
+        customForm->setRowVisible(customAutoStartBreak_, customBreaksEnabled);
+        customForm->setRowVisible(customAutoStartFocus_, customBreaksEnabled);
+        customForm->setRowVisible(customAutoStartNextFocus_,
+                                  !customBreaksEnabled);
+    }
+    customShortBreakMinutes_->setEnabled(idle && customBreaksEnabled);
+    customLongBreakMinutes_->setEnabled(idle && customBreaksEnabled);
+    customCycles_->setEnabled(idle && customBreaksEnabled);
+    customAutoStartBreak_->setEnabled(idle && customBreaksEnabled);
+    customAutoStartFocus_->setEnabled(idle && customBreaksEnabled);
+    customAutoStartNextFocus_->setEnabled(idle && !customBreaksEnabled);
+
+    const TimerPreset activePreset = selectedPreset();
+    if (idle && !activePreset.breaksEnabled
+        && selectedPhase() != FocusTimer::Phase::Focus) {
+        const QSignalBlocker phaseBlocker(phaseCombo_);
+        selectPhase(FocusTimer::Phase::Focus);
+    }
+    phaseCombo_->setEnabled(idle && activePreset.breaksEnabled);
+    phaseCombo_->setToolTip(activePreset.breaksEnabled
+        ? QStringLiteral("选择本次计时类型")
+        : QStringLiteral("当前方案不安排休息，只进行专注计时"));
     confirmCustomMinutesButton_->setEnabled(idle && customDirty);
     confirmCustomMinutesButton_->setToolTip(
         customDirty ? QStringLiteral("应用当前输入的完整计时方案")
@@ -901,6 +964,20 @@ void FocusPage::updatePresetControls()
     }
 }
 
+void FocusPage::updateCycleLabel()
+{
+    const TimerPreset preset = selectedPreset();
+    if (!preset.breaksEnabled) {
+        cycleLabel_->setText(
+            QStringLiteral("已完成专注：%1 轮").arg(completedFocusCycles_));
+        return;
+    }
+    cycleLabel_->setText(QStringLiteral("当前周期：%1 / %2")
+                             .arg(completedFocusCycles_
+                                  % preset.cyclesBeforeLongBreak)
+                             .arg(preset.cyclesBeforeLongBreak));
+}
+
 void FocusPage::confirmCustomMinutes()
 {
     if (timer_.state() != FocusTimer::State::Idle
@@ -909,10 +986,7 @@ void FocusPage::confirmCustomMinutes()
     }
     confirmedCustomPreset_ = customEditorPreset();
     clearCustomEditorFocus();
-    cycleLabel_->setText(QStringLiteral("当前周期：%1 / %2")
-                             .arg(completedFocusCycles_
-                                  % confirmedCustomPreset_.cyclesBeforeLongBreak)
-                             .arg(confirmedCustomPreset_.cyclesBeforeLongBreak));
+    updateCycleLabel();
     updateIdleDuration();
     updatePresetControls();
     showTemporaryStatus(
@@ -974,11 +1048,16 @@ TimerPreset FocusPage::customEditorPreset() const
     preset.id = kCustomPreset;
     preset.name = QStringLiteral("自定义本次方案");
     preset.focusMinutes = customMinutes_->value();
+    preset.breaksEnabled = customBreakMode_->currentData().toBool();
     preset.shortBreakMinutes = customShortBreakMinutes_->value();
     preset.longBreakMinutes = customLongBreakMinutes_->value();
     preset.cyclesBeforeLongBreak = customCycles_->value();
-    preset.autoStartBreak = customAutoStartBreak_->isChecked();
-    preset.autoStartFocus = customAutoStartFocus_->isChecked();
+    preset.autoStartBreak = preset.breaksEnabled
+                                && customAutoStartBreak_->isChecked();
+    preset.autoStartFocus = preset.breaksEnabled
+                                && customAutoStartFocus_->isChecked();
+    preset.autoStartNextFocus = !preset.breaksEnabled
+                                && customAutoStartNextFocus_->isChecked();
     preset.isDefault = false;
     preset.isBuiltIn = false;
     return preset;
@@ -993,32 +1072,38 @@ void FocusPage::loadCustomEditor(const TimerPreset &preset)
     confirmedCustomPreset_.isBuiltIn = false;
 
     const QSignalBlocker focusBlocker(customMinutes_);
+    const QSignalBlocker breakModeBlocker(customBreakMode_);
     const QSignalBlocker shortBreakBlocker(customShortBreakMinutes_);
     const QSignalBlocker longBreakBlocker(customLongBreakMinutes_);
     const QSignalBlocker cyclesBlocker(customCycles_);
     const QSignalBlocker autoBreakBlocker(customAutoStartBreak_);
     const QSignalBlocker autoFocusBlocker(customAutoStartFocus_);
+    const QSignalBlocker autoNextBlocker(customAutoStartNextFocus_);
     customMinutes_->setValue(preset.focusMinutes);
+    customBreakMode_->setCurrentIndex(preset.breaksEnabled ? 0 : 1);
     customShortBreakMinutes_->setValue(preset.shortBreakMinutes);
     customLongBreakMinutes_->setValue(preset.longBreakMinutes);
     customCycles_->setValue(preset.cyclesBeforeLongBreak);
     customAutoStartBreak_->setChecked(preset.autoStartBreak);
     customAutoStartFocus_->setChecked(preset.autoStartFocus);
+    customAutoStartNextFocus_->setChecked(preset.autoStartNextFocus);
 }
 
 bool FocusPage::customEditorDirty() const
 {
-    return customMinutes_->value() != confirmedCustomPreset_.focusMinutes
-           || customShortBreakMinutes_->value()
+    const TimerPreset editor = customEditorPreset();
+    return editor.focusMinutes != confirmedCustomPreset_.focusMinutes
+           || editor.breaksEnabled != confirmedCustomPreset_.breaksEnabled
+           || editor.shortBreakMinutes
                   != confirmedCustomPreset_.shortBreakMinutes
-           || customLongBreakMinutes_->value()
+           || editor.longBreakMinutes
                   != confirmedCustomPreset_.longBreakMinutes
-           || customCycles_->value()
+           || editor.cyclesBeforeLongBreak
                   != confirmedCustomPreset_.cyclesBeforeLongBreak
-           || customAutoStartBreak_->isChecked()
-                  != confirmedCustomPreset_.autoStartBreak
-           || customAutoStartFocus_->isChecked()
-                  != confirmedCustomPreset_.autoStartFocus;
+           || editor.autoStartBreak != confirmedCustomPreset_.autoStartBreak
+           || editor.autoStartFocus != confirmedCustomPreset_.autoStartFocus
+           || editor.autoStartNextFocus
+                  != confirmedCustomPreset_.autoStartNextFocus;
 }
 
 void FocusPage::clearCustomEditorFocus()
@@ -1058,13 +1143,17 @@ bool FocusPage::eventFilter(QObject *watched, QEvent *event)
         });
     const bool selectingPreset =
         focused == presetCombo_
-        || (focused != nullptr && presetCombo_->isAncestorOf(focused));
+        || focused == customBreakMode_
+        || (focused != nullptr
+            && (presetCombo_->isAncestorOf(focused)
+                || customBreakMode_->isAncestorOf(focused)));
     if (event->type() == QEvent::MouseButtonPress) {
         if (editingCustomValue) {
             clearCustomEditorFocus();
         }
         if (selectingPreset) {
             presetCombo_->clearFocus();
+            customBreakMode_->clearFocus();
         }
     }
     return QWidget::eventFilter(watched, event);
@@ -1120,7 +1209,8 @@ void FocusPage::playCompletionSound(FocusTimer::Phase phase)
         : settings_.breakSoundPath;
     soundPlayer_->play(path,
                        settings_.volumePercent,
-                       settings_.maxSoundSeconds,
+                       settings_.playFullSound
+                           ? 0 : settings_.maxSoundSeconds,
                        settings_.soundRepeatCount);
 }
 

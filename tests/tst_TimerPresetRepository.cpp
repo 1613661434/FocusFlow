@@ -17,6 +17,7 @@ class TimerPresetRepositoryTests final : public QObject
 private slots:
     void initTestCase();
     void seedsUsefulSchemesAndMaintainsOneDefault();
+    void persistsNoBreakSchemeAndNormalizesAutomation();
     void taskBindingFallsBackWhenSchemeIsDeleted();
     void cleanupTestCase();
 
@@ -86,6 +87,34 @@ void TimerPresetRepositoryTests::seedsUsefulSchemesAndMaintainsOneDefault()
     QVERIFY(!custom.isBuiltIn);
     QVERIFY2(repository.setDefault(custom.id, &error), qPrintable(error));
     QCOMPARE(repository.defaultPreset().id, custom.id);
+}
+
+void TimerPresetRepositoryTests::persistsNoBreakSchemeAndNormalizesAutomation()
+{
+    TimerPreset preset;
+    preset.name = QStringLiteral("连续专注测试");
+    preset.focusMinutes = 35;
+    preset.breaksEnabled = false;
+    preset.autoStartBreak = true;
+    preset.autoStartFocus = true;
+    preset.autoStartNextFocus = true;
+
+    QString error;
+    TimerPresetRepository repository;
+    QVERIFY2(repository.save(preset, &error), qPrintable(error));
+    QVERIFY(preset.id > 0);
+    QVERIFY(!preset.breaksEnabled);
+    QVERIFY(!preset.autoStartBreak);
+    QVERIFY(!preset.autoStartFocus);
+    QVERIFY(preset.autoStartNextFocus);
+
+    const TimerPreset loaded = repository.findById(preset.id);
+    QCOMPARE(loaded.name, preset.name);
+    QCOMPARE(loaded.focusMinutes, 35);
+    QVERIFY(!loaded.breaksEnabled);
+    QVERIFY(!loaded.autoStartBreak);
+    QVERIFY(!loaded.autoStartFocus);
+    QVERIFY(loaded.autoStartNextFocus);
 }
 
 void TimerPresetRepositoryTests::taskBindingFallsBackWhenSchemeIsDeleted()

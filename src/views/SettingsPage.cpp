@@ -17,6 +17,7 @@
 
 #include <QAbstractItemView>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
@@ -47,6 +48,7 @@ enum PresetColumn {
     ShortBreakMinutesColumn,
     LongBreakMinutesColumn,
     CyclesColumn,
+    BreakModeColumn,
     AutoLinkColumn,
     PresetStatusColumn,
     PresetColumnCount
@@ -96,6 +98,7 @@ bool sameSettings(const TimerSettings &left, const TimerSettings &right)
            && left.focusSoundPath == right.focusSoundPath
            && left.breakSoundPath == right.breakSoundPath
            && left.volumePercent == right.volumePercent
+           && left.playFullSound == right.playFullSound
            && left.maxSoundSeconds == right.maxSoundSeconds
            && left.soundRepeatCount == right.soundRepeatCount
            && left.suppressCloseToTrayReminder
@@ -145,8 +148,8 @@ void SettingsPage::buildInterface()
     presetTable_->setHorizontalHeaderLabels({
         QStringLiteral("方案"), QStringLiteral("专注"),
         QStringLiteral("短休息"), QStringLiteral("长休息"),
-        QStringLiteral("长休息间隔"), QStringLiteral("自动衔接"),
-        QStringLiteral("状态")});
+        QStringLiteral("长休息间隔"), QStringLiteral("休息方式"),
+        QStringLiteral("自动衔接"), QStringLiteral("状态")});
     presetTable_->setSelectionBehavior(QAbstractItemView::SelectRows);
     presetTable_->setSelectionMode(QAbstractItemView::SingleSelection);
     presetTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -216,13 +219,37 @@ void SettingsPage::buildInterface()
 
     soundEnabled_ = new QCheckBox(QStringLiteral("启用声音提醒"), soundGroup);
     focusSoundPath_ = new QLineEdit(soundGroup);
+    focusSoundPath_->setObjectName(QStringLiteral("focusCustomSoundPath"));
     focusSoundPath_->setReadOnly(true);
-    focusSoundPath_->setPlaceholderText(QStringLiteral("使用系统默认提示音"));
+    focusSoundPath_->setPlaceholderText(QStringLiteral("尚未选择自定义音频"));
     breakSoundPath_ = new QLineEdit(soundGroup);
+    breakSoundPath_->setObjectName(QStringLiteral("breakCustomSoundPath"));
     breakSoundPath_->setReadOnly(true);
-    breakSoundPath_->setPlaceholderText(QStringLiteral("使用系统默认提示音"));
+    breakSoundPath_->setPlaceholderText(QStringLiteral("尚未选择自定义音频"));
 
-    auto createSoundRow = [soundGroup](QLineEdit *path,
+    auto createSoundChoice = [soundGroup](const QString &objectName) {
+        auto *choice = new QComboBox(soundGroup);
+        choice->setObjectName(objectName);
+        choice->setMinimumWidth(170);
+        choice->addItem(QStringLiteral("系统默认"),
+                        QStringLiteral("builtin://system"));
+        choice->addItem(QStringLiteral("清脆提示"),
+                        QStringLiteral("builtin://bright"));
+        choice->addItem(QStringLiteral("柔和提示"),
+                        QStringLiteral("builtin://gentle"));
+        choice->addItem(QStringLiteral("简洁提示"),
+                        QStringLiteral("builtin://concise"));
+        choice->addItem(QStringLiteral("自定义音频"),
+                        QStringLiteral("custom"));
+        return choice;
+    };
+    focusSoundChoice_ = createSoundChoice(
+        QStringLiteral("focusSoundChoice"));
+    breakSoundChoice_ = createSoundChoice(
+        QStringLiteral("breakSoundChoice"));
+
+    auto createSoundRow = [soundGroup](QComboBox *choice,
+                                       QLineEdit *path,
                                        const QString &browseText,
                                        const QString &previewText,
                                        const QString &resetText,
@@ -237,7 +264,8 @@ void SettingsPage::buildInterface()
         auto *browse = new QPushButton(browseText, widget);
         auto *preview = new QPushButton(previewText, widget);
         auto *reset = new QPushButton(resetText, widget);
-        reset->setToolTip(QStringLiteral("清除自定义声音，恢复系统默认提示音"));
+        reset->setToolTip(QStringLiteral("恢复“系统默认”提示音"));
+        layout->addWidget(choice);
         layout->addWidget(path, 1);
         layout->addWidget(browse);
         layout->addWidget(preview);
@@ -266,12 +294,16 @@ void SettingsPage::buildInterface()
     soundRepeatCount_ = new FocusAwareSpinBox(soundGroup);
     soundRepeatCount_->setRange(1, 3);
     soundRepeatCount_->setSuffix(QStringLiteral(" 次"));
+    soundPlaybackMode_ = new QComboBox(soundGroup);
+    soundPlaybackMode_->setObjectName(QStringLiteral("soundPlaybackMode"));
+    soundPlaybackMode_->addItem(QStringLiteral("限制最长播放时间"), false);
+    soundPlaybackMode_->addItem(QStringLiteral("播放完整音频"), true);
 
     soundForm->addRow(QString(), soundEnabled_);
     soundForm->addRow(
         QStringLiteral("专注结束声音："),
-        createSoundRow(focusSoundPath_,
-                       QStringLiteral("选择"),
+        createSoundRow(focusSoundChoice_, focusSoundPath_,
+                       QStringLiteral("选择文件"),
                        QStringLiteral("试听"),
                        QStringLiteral("恢复默认"),
                        &SettingsPage::browseFocusSound,
@@ -280,8 +312,8 @@ void SettingsPage::buildInterface()
                        this));
     soundForm->addRow(
         QStringLiteral("休息结束声音："),
-        createSoundRow(breakSoundPath_,
-                       QStringLiteral("选择"),
+        createSoundRow(breakSoundChoice_, breakSoundPath_,
+                       QStringLiteral("选择文件"),
                        QStringLiteral("试听"),
                        QStringLiteral("恢复默认"),
                        &SettingsPage::browseBreakSound,
@@ -289,17 +321,25 @@ void SettingsPage::buildInterface()
                        &SettingsPage::resetBreakSound,
                        this));
     soundForm->addRow(QStringLiteral("提醒音量："), volumeWidget);
+    soundForm->addRow(QStringLiteral("播放方式："), soundPlaybackMode_);
     soundForm->addRow(QStringLiteral("最长播放："), maxSoundSeconds_);
     soundForm->addRow(QStringLiteral("播放次数："), soundRepeatCount_);
 
     auto *hint = new QLabel(
-        QStringLiteral("支持 WAV、MP3、AAC、M4A、OGG 和 FLAC；"
-                       "达到最长播放时间前会平滑淡出，"
-                       "不会修改原始音频文件。"),
+        QStringLiteral("可选择内置提示音或 WAV、MP3、AAC、M4A、OGG、FLAC；"
+                       "限时播放会在结束前平滑淡出。完整播放时，若下一阶段"
+                       "提醒到来，会先淡出当前声音再播放新声音，不会叠加。"),
         soundGroup);
     hint->setObjectName(QStringLiteral("mutedLabel"));
     hint->setWordWrap(true);
     soundForm->addRow(QString(), hint);
+
+    connect(focusSoundChoice_, &QComboBox::currentIndexChanged,
+            this, &SettingsPage::updateSoundControls);
+    connect(breakSoundChoice_, &QComboBox::currentIndexChanged,
+            this, &SettingsPage::updateSoundControls);
+    connect(soundPlaybackMode_, &QComboBox::currentIndexChanged,
+            this, &SettingsPage::updateSoundControls);
 
     auto *windowGroup = new QGroupBox(QStringLiteral("窗口行为"), content);
     windowGroup->setObjectName(QStringLiteral("settingsSection"));
@@ -416,16 +456,26 @@ void SettingsPage::buildInterface()
 
 void SettingsPage::reloadSettings()
 {
-    const TimerSettings settings = SettingsRepository().loadTimerSettings();
+    TimerSettings settings = SettingsRepository().loadTimerSettings();
+    if (settings.focusSoundPath.isEmpty()) {
+        settings.focusSoundPath = QStringLiteral("builtin://system");
+    }
+    if (settings.breakSoundPath.isEmpty()) {
+        settings.breakSoundPath = QStringLiteral("builtin://system");
+    }
     reloadPresets();
     soundEnabled_->setChecked(settings.soundEnabled);
-    focusSoundPath_->setText(settings.focusSoundPath);
-    breakSoundPath_->setText(settings.breakSoundPath);
+    loadSoundSelection(focusSoundChoice_, focusSoundPath_,
+                       settings.focusSoundPath);
+    loadSoundSelection(breakSoundChoice_, breakSoundPath_,
+                       settings.breakSoundPath);
     volume_->setValue(settings.volumePercent);
+    soundPlaybackMode_->setCurrentIndex(settings.playFullSound ? 1 : 0);
     maxSoundSeconds_->setValue(settings.maxSoundSeconds);
     soundRepeatCount_->setValue(settings.soundRepeatCount);
     suppressCloseToTrayReminder_->setChecked(
         settings.suppressCloseToTrayReminder);
+    updateSoundControls();
     savedSettings_ = settings;
 }
 
@@ -442,18 +492,31 @@ void SettingsPage::reloadPresets()
     presetTable_->setRowCount(presets.size());
     for (qsizetype row = 0; row < presets.size(); ++row) {
         const TimerPreset &preset = presets.at(row);
-        const QString autoLink = preset.autoStartBreak && preset.autoStartFocus
-                                     ? QStringLiteral("双向自动")
-            : preset.autoStartBreak ? QStringLiteral("自动休息")
-            : preset.autoStartFocus ? QStringLiteral("自动专注")
-                                    : QStringLiteral("手动");
+        const QString breakMode = preset.breaksEnabled
+                                      ? QStringLiteral("正常休息")
+                                      : QStringLiteral("不安排休息");
+        const QString autoLink = !preset.breaksEnabled
+            ? (preset.autoStartNextFocus ? QStringLiteral("自动下一轮")
+                                         : QStringLiteral("手动下一轮"))
+            : preset.autoStartBreak && preset.autoStartFocus
+                ? QStringLiteral("双向自动")
+                : preset.autoStartBreak ? QStringLiteral("自动休息")
+                : preset.autoStartFocus ? QStringLiteral("自动专注")
+                                        : QStringLiteral("手动");
         const QString status = presetStatusText(preset);
         const QStringList texts{
             preset.name,
             QStringLiteral("%1 分钟").arg(preset.focusMinutes),
-            QStringLiteral("%1 分钟").arg(preset.shortBreakMinutes),
-            QStringLiteral("%1 分钟").arg(preset.longBreakMinutes),
-            QStringLiteral("%1 次").arg(preset.cyclesBeforeLongBreak),
+            preset.breaksEnabled
+                ? QStringLiteral("%1 分钟").arg(preset.shortBreakMinutes)
+                : QStringLiteral("—"),
+            preset.breaksEnabled
+                ? QStringLiteral("%1 分钟").arg(preset.longBreakMinutes)
+                : QStringLiteral("—"),
+            preset.breaksEnabled
+                ? QStringLiteral("%1 次").arg(preset.cyclesBeforeLongBreak)
+                : QStringLiteral("—"),
+            breakMode,
             autoLink,
             status};
         const QVariantList sortKeys{
@@ -462,6 +525,7 @@ void SettingsPage::reloadPresets()
             preset.shortBreakMinutes,
             preset.longBreakMinutes,
             preset.cyclesBeforeLongBreak,
+            preset.breaksEnabled ? 0 : 1,
             autoLink.toCaseFolded(),
             presetStatusPriority(preset)};
         for (int column = 0; column < PresetColumnCount; ++column) {
@@ -665,9 +729,12 @@ TimerSettings SettingsPage::settingsFromForm() const
 {
     TimerSettings settings = savedSettings_;
     settings.soundEnabled = soundEnabled_->isChecked();
-    settings.focusSoundPath = focusSoundPath_->text();
-    settings.breakSoundPath = breakSoundPath_->text();
+    settings.focusSoundPath = selectedSoundPath(focusSoundChoice_,
+                                                focusSoundPath_);
+    settings.breakSoundPath = selectedSoundPath(breakSoundChoice_,
+                                                breakSoundPath_);
     settings.volumePercent = volume_->value();
+    settings.playFullSound = soundPlaybackMode_->currentData().toBool();
     settings.maxSoundSeconds = maxSoundSeconds_->value();
     settings.soundRepeatCount = soundRepeatCount_->value();
     settings.suppressCloseToTrayReminder =
@@ -678,13 +745,25 @@ TimerSettings SettingsPage::settingsFromForm() const
 bool SettingsPage::saveSettings(bool showConfirmation)
 {
     TimerSettings settings = settingsFromForm();
+    if ((focusSoundChoice_->currentData().toString()
+             == QStringLiteral("custom")
+         && settings.focusSoundPath.isEmpty())
+        || (breakSoundChoice_->currentData().toString()
+                == QStringLiteral("custom")
+            && settings.breakSoundPath.isEmpty())) {
+        QMessageBox::information(
+            this, QStringLiteral("请选择音频"),
+            QStringLiteral("已选择“自定义音频”，请先选择对应的声音文件。"));
+        return false;
+    }
     SoundStorageService storage;
     QStringList newlyInstalled;
     QHash<QString, QString> installedSources;
     QString error;
 
     auto prepareSound = [&](QString &path, const QString &prefix) {
-        if (path.isEmpty() || storage.isManagedPath(path)) {
+        if (path.isEmpty() || path.startsWith(QStringLiteral("builtin://"))
+            || storage.isManagedPath(path)) {
             return true;
         }
 
@@ -725,8 +804,10 @@ bool SettingsPage::saveSettings(bool showConfirmation)
         return false;
     }
 
-    focusSoundPath_->setText(settings.focusSoundPath);
-    breakSoundPath_->setText(settings.breakSoundPath);
+    loadSoundSelection(focusSoundChoice_, focusSoundPath_,
+                       settings.focusSoundPath);
+    loadSoundSelection(breakSoundChoice_, breakSoundPath_,
+                       settings.breakSoundPath);
     savedSettings_ = settings;
     soundPlayer_->stop();
     const QStringList cleanupFailures = storage.removeUnused(
@@ -763,21 +844,25 @@ void SettingsPage::browseBreakSound()
 void SettingsPage::resetFocusSound()
 {
     focusSoundPath_->clear();
+    focusSoundChoice_->setCurrentIndex(
+        focusSoundChoice_->findData(QStringLiteral("builtin://system")));
 }
 
 void SettingsPage::resetBreakSound()
 {
     breakSoundPath_->clear();
+    breakSoundChoice_->setCurrentIndex(
+        breakSoundChoice_->findData(QStringLiteral("builtin://system")));
 }
 
 void SettingsPage::previewFocusSound()
 {
-    previewSound(focusSoundPath_->text());
+    previewSound(selectedSoundPath(focusSoundChoice_, focusSoundPath_));
 }
 
 void SettingsPage::previewBreakSound()
 {
-    previewSound(breakSoundPath_->text());
+    previewSound(selectedSoundPath(breakSoundChoice_, breakSoundPath_));
 }
 
 void SettingsPage::backupDatabase()
@@ -940,6 +1025,10 @@ void SettingsPage::browseSound(QLineEdit *destination)
         return;
     }
     destination->setText(sourcePath);
+    QComboBox *choice = destination == focusSoundPath_
+                            ? focusSoundChoice_ : breakSoundChoice_;
+    choice->setCurrentIndex(choice->findData(QStringLiteral("custom")));
+    updateSoundControls();
 }
 
 void SettingsPage::previewSound(const QString &path)
@@ -950,8 +1039,57 @@ void SettingsPage::previewSound(const QString &path)
                                  QStringLiteral("请先启用声音提醒。"));
         return;
     }
+    if (path.trimmed().isEmpty()) {
+        QMessageBox::information(this,
+                                 QStringLiteral("请选择音频"),
+                                 QStringLiteral("请先选择自定义声音文件。"));
+        return;
+    }
     soundPlayer_->play(path,
                        volume_->value(),
-                       maxSoundSeconds_->value(),
+                       soundPlaybackMode_->currentData().toBool()
+                           ? 0 : maxSoundSeconds_->value(),
                        soundRepeatCount_->value());
+}
+
+QString SettingsPage::selectedSoundPath(
+    const QComboBox *choice, const QLineEdit *customPath) const
+{
+    const QString selection = choice->currentData().toString();
+    return selection == QStringLiteral("custom")
+               ? customPath->text().trimmed()
+               : selection;
+}
+
+void SettingsPage::loadSoundSelection(QComboBox *choice,
+                                      QLineEdit *customPath,
+                                      const QString &path)
+{
+    const QString normalized = path.isEmpty()
+                                   ? QStringLiteral("builtin://system")
+                                   : path;
+    int index = choice->findData(normalized);
+    if (index >= 0) {
+        choice->setCurrentIndex(index);
+        customPath->clear();
+    } else {
+        index = choice->findData(QStringLiteral("custom"));
+        choice->setCurrentIndex(index);
+        customPath->setText(path);
+    }
+}
+
+void SettingsPage::updateSoundControls()
+{
+    const bool focusCustom = focusSoundChoice_->currentData().toString()
+                             == QStringLiteral("custom");
+    const bool breakCustom = breakSoundChoice_->currentData().toString()
+                             == QStringLiteral("custom");
+    focusSoundPath_->setVisible(focusCustom);
+    breakSoundPath_->setVisible(breakCustom);
+    maxSoundSeconds_->setEnabled(
+        !soundPlaybackMode_->currentData().toBool());
+    maxSoundSeconds_->setToolTip(maxSoundSeconds_->isEnabled()
+        ? QStringLiteral("到达时长上限前会逐渐降低音量至静音")
+        : QStringLiteral("当前会播放完整音频；下一条提醒到来时先淡出"));
 }

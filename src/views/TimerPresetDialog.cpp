@@ -3,6 +3,7 @@
 #include "widgets/FocusAwareSpinBox.h"
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QLabel>
@@ -44,18 +45,28 @@ TimerPresetDialog::TimerPresetDialog(QWidget *parent)
     cycles_->setObjectName(QStringLiteral("presetCycles"));
     cycles_->setRange(2, 8);
     cycles_->setSuffix(QStringLiteral(" 次专注"));
+    breakMode_ = new QComboBox(this);
+    breakMode_->setObjectName(QStringLiteral("presetBreakMode"));
+    breakMode_->addItem(QStringLiteral("正常休息"), true);
+    breakMode_->addItem(QStringLiteral("不安排休息"), false);
     autoStartBreak_ = new QCheckBox(
         QStringLiteral("专注完成后自动开始休息"), this);
     autoStartFocus_ = new QCheckBox(
         QStringLiteral("休息完成后自动开始专注"), this);
+    autoStartNextFocus_ = new QCheckBox(
+        QStringLiteral("专注结束后自动开始下一轮"), this);
+    autoStartNextFocus_->setObjectName(
+        QStringLiteral("presetAutoStartNextFocus"));
 
     form->addRow(QStringLiteral("方案名称："), nameEdit_);
     form->addRow(QStringLiteral("专注时长："), focusMinutes_);
+    form->addRow(QStringLiteral("休息方式："), breakMode_);
     form->addRow(QStringLiteral("短休息："), shortBreakMinutes_);
     form->addRow(QStringLiteral("长休息："), longBreakMinutes_);
     form->addRow(QStringLiteral("长休息间隔："), cycles_);
     form->addRow(QString(), autoStartBreak_);
     form->addRow(QString(), autoStartFocus_);
+    form->addRow(QString(), autoStartNextFocus_);
 
     auto *hint = new QLabel(
         QStringLiteral("任务可以绑定该方案；计时开始前也可临时换用其他方案。"),
@@ -71,6 +82,8 @@ TimerPresetDialog::TimerPresetDialog(QWidget *parent)
             this, &TimerPresetDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected,
             this, &TimerPresetDialog::reject);
+    connect(breakMode_, &QComboBox::currentIndexChanged,
+            this, &TimerPresetDialog::updateBreakControls);
 
     root->addLayout(form);
     root->addWidget(hint);
@@ -90,8 +103,11 @@ void TimerPresetDialog::setPreset(const TimerPreset &preset)
     shortBreakMinutes_->setValue(preset.shortBreakMinutes);
     longBreakMinutes_->setValue(preset.longBreakMinutes);
     cycles_->setValue(preset.cyclesBeforeLongBreak);
+    breakMode_->setCurrentIndex(preset.breaksEnabled ? 0 : 1);
     autoStartBreak_->setChecked(preset.autoStartBreak);
     autoStartFocus_->setChecked(preset.autoStartFocus);
+    autoStartNextFocus_->setChecked(preset.autoStartNextFocus);
+    updateBreakControls();
 }
 
 TimerPreset TimerPresetDialog::preset() const
@@ -102,9 +118,25 @@ TimerPreset TimerPresetDialog::preset() const
     result.shortBreakMinutes = shortBreakMinutes_->value();
     result.longBreakMinutes = longBreakMinutes_->value();
     result.cyclesBeforeLongBreak = cycles_->value();
-    result.autoStartBreak = autoStartBreak_->isChecked();
-    result.autoStartFocus = autoStartFocus_->isChecked();
+    result.breaksEnabled = breakMode_->currentData().toBool();
+    result.autoStartBreak = result.breaksEnabled
+                                && autoStartBreak_->isChecked();
+    result.autoStartFocus = result.breaksEnabled
+                                && autoStartFocus_->isChecked();
+    result.autoStartNextFocus = !result.breaksEnabled
+                                && autoStartNextFocus_->isChecked();
     return result;
+}
+
+void TimerPresetDialog::updateBreakControls()
+{
+    const bool breaksEnabled = breakMode_->currentData().toBool();
+    shortBreakMinutes_->setEnabled(breaksEnabled);
+    longBreakMinutes_->setEnabled(breaksEnabled);
+    cycles_->setEnabled(breaksEnabled);
+    autoStartBreak_->setVisible(breaksEnabled);
+    autoStartFocus_->setVisible(breaksEnabled);
+    autoStartNextFocus_->setVisible(!breaksEnabled);
 }
 
 void TimerPresetDialog::accept()

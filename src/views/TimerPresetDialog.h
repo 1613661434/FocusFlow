@@ -5,6 +5,7 @@
 #include <QDialog>
 
 class QCheckBox;
+class QComboBox;
 class QLineEdit;
 class QSpinBox;
 
@@ -22,12 +23,16 @@ protected:
     void accept() override;
 
 private:
+    void updateBreakControls();
+
     TimerPreset originalPreset_;
     QLineEdit *nameEdit_ = nullptr;
     QSpinBox *focusMinutes_ = nullptr;
     QSpinBox *shortBreakMinutes_ = nullptr;
     QSpinBox *longBreakMinutes_ = nullptr;
     QSpinBox *cycles_ = nullptr;
+    QComboBox *breakMode_ = nullptr;
     QCheckBox *autoStartBreak_ = nullptr;
     QCheckBox *autoStartFocus_ = nullptr;
+    QCheckBox *autoStartNextFocus_ = nullptr;
 };

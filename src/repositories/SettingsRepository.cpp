@@ -28,6 +28,8 @@ TimerSettings SettingsRepository::loadTimerSettings() const
     settings.breakSoundPath = value(QStringLiteral("sound.break_path"), {});
     settings.volumePercent = value(QStringLiteral("sound.volume_percent"),
                                    QString::number(settings.volumePercent)).toInt();
+    settings.playFullSound = value(QStringLiteral("sound.play_full"),
+                                   QStringLiteral("0")) == QStringLiteral("1");
     settings.maxSoundSeconds = value(QStringLiteral("sound.max_seconds"),
                                      QString::number(settings.maxSoundSeconds)).toInt();
     settings.soundRepeatCount = value(QStringLiteral("sound.repeat_count"),
@@ -55,6 +57,9 @@ bool SettingsRepository::saveTimerSettings(const TimerSettings &settings,
         {QStringLiteral("sound.break_path"),
          settings.breakSoundPath.isNull() ? QStringLiteral("") : settings.breakSoundPath},
         {QStringLiteral("sound.volume_percent"), QString::number(settings.volumePercent)},
+        {QStringLiteral("sound.play_full"), settings.playFullSound
+                                                ? QStringLiteral("1")
+                                                : QStringLiteral("0")},
         {QStringLiteral("sound.max_seconds"), QString::number(settings.maxSoundSeconds)},
         {QStringLiteral("sound.repeat_count"), QString::number(settings.soundRepeatCount)},
         {QStringLiteral("window.suppress_close_to_tray_reminder"),

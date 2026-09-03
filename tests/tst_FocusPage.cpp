@@ -13,6 +13,8 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QSignalSpy>
 #include <QSpinBox>
 #include <QStandardPaths>
@@ -33,6 +35,7 @@ private slots:
     void taskFiltersShowScoresAndSortRecommendations();
     void taskSchemeAndTrayStatusFollowTheRunningTimer();
     void customSchemeRequiresConfirmationAndCanBeSaved();
+    void noBreakSchemeWorksInCompactHeight();
     void cleanupTestCase();
 
 private:
@@ -292,6 +295,8 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
         QStringLiteral("focusPresetCombo"));
     auto *customMinutes = page.findChild<QSpinBox *>(
         QStringLiteral("focusCustomMinutes"));
+    auto *breakMode = page.findChild<QComboBox *>(
+        QStringLiteral("focusCustomBreakMode"));
     auto *shortBreakMinutes = page.findChild<QSpinBox *>(
         QStringLiteral("focusCustomShortBreakMinutes"));
     auto *longBreakMinutes = page.findChild<QSpinBox *>(
@@ -302,6 +307,8 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
         QStringLiteral("focusCustomAutoStartBreak"));
     auto *autoStartFocus = page.findChild<QCheckBox *>(
         QStringLiteral("focusCustomAutoStartFocus"));
+    auto *autoStartNext = page.findChild<QCheckBox *>(
+        QStringLiteral("focusCustomAutoStartNextFocus"));
     auto *setTaskPreset = page.findChild<QPushButton *>(
         QStringLiteral("taskPresetButton"));
     auto *confirmCustom = page.findChild<QPushButton *>(
@@ -316,11 +323,13 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     QVERIFY(taskCombo != nullptr);
     QVERIFY(presetCombo != nullptr);
     QVERIFY(customMinutes != nullptr);
+    QVERIFY(breakMode != nullptr);
     QVERIFY(shortBreakMinutes != nullptr);
     QVERIFY(longBreakMinutes != nullptr);
     QVERIFY(cycles != nullptr);
     QVERIFY(autoStartBreak != nullptr);
     QVERIFY(autoStartFocus != nullptr);
+    QVERIFY(autoStartNext != nullptr);
     QVERIFY(setTaskPreset != nullptr);
     QVERIFY(confirmCustom != nullptr);
     QVERIFY(saveCustom != nullptr);
@@ -347,6 +356,10 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     presetCombo->setCurrentIndex(customIndex);
     QCoreApplication::processEvents();
     QVERIFY(customEditor->isVisible());
+    QCOMPARE(breakMode->currentData().toBool(), true);
+    QVERIFY(autoStartBreak->isVisible());
+    QVERIFY(autoStartFocus->isVisible());
+    QVERIFY(!autoStartNext->isVisible());
     presetCombo->setFocus(Qt::MouseFocusReason);
     QTRY_VERIFY(presetCombo->hasFocus());
     const int selectedPresetId = presetCombo->currentData().toInt();
@@ -425,11 +438,100 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     QCOMPARE(saved->cyclesBeforeLongBreak, 3);
     QVERIFY(saved->autoStartBreak);
     QVERIFY(saved->autoStartFocus);
+    QVERIFY(saved->breaksEnabled);
+    QVERIFY(!saved->autoStartNextFocus);
     QVERIFY(!saved->isBuiltIn);
 
     taskCombo->setCurrentIndex(taskCombo->findData(-1));
     QVERIFY(!setTaskPreset->isEnabled());
     QVERIFY(setTaskPreset->toolTip().contains(QStringLiteral("关联任务")));
+}
+
+void FocusPageTests::noBreakSchemeWorksInCompactHeight()
+{
+    FocusPage page;
+    page.resize(1000, 520);
+    page.show();
+    QCoreApplication::processEvents();
+
+    auto *presetCombo = page.findChild<QComboBox *>(
+        QStringLiteral("focusPresetCombo"));
+    auto *breakMode = page.findChild<QComboBox *>(
+        QStringLiteral("focusCustomBreakMode"));
+    auto *shortBreak = page.findChild<QSpinBox *>(
+        QStringLiteral("focusCustomShortBreakMinutes"));
+    auto *longBreak = page.findChild<QSpinBox *>(
+        QStringLiteral("focusCustomLongBreakMinutes"));
+    auto *cycles = page.findChild<QSpinBox *>(
+        QStringLiteral("focusCustomCycles"));
+    auto *autoStartBreak = page.findChild<QCheckBox *>(
+        QStringLiteral("focusCustomAutoStartBreak"));
+    auto *autoStartFocus = page.findChild<QCheckBox *>(
+        QStringLiteral("focusCustomAutoStartFocus"));
+    auto *autoStartNext = page.findChild<QCheckBox *>(
+        QStringLiteral("focusCustomAutoStartNextFocus"));
+    auto *confirm = page.findChild<QPushButton *>(
+        QStringLiteral("confirmCustomMinutesButton"));
+    auto *phaseCombo = page.findChild<QComboBox *>(
+        QStringLiteral("focusPhaseCombo"));
+    auto *cycleLabel = page.findChild<QLabel *>(QStringLiteral("mutedLabel"));
+    auto *optionsScroll = page.findChild<QScrollArea *>(
+        QStringLiteral("focusOptionsScrollArea"));
+
+    QVERIFY(presetCombo != nullptr);
+    QVERIFY(breakMode != nullptr);
+    QVERIFY(shortBreak != nullptr);
+    QVERIFY(longBreak != nullptr);
+    QVERIFY(cycles != nullptr);
+    QVERIFY(autoStartBreak != nullptr);
+    QVERIFY(autoStartFocus != nullptr);
+    QVERIFY(autoStartNext != nullptr);
+    QVERIFY(confirm != nullptr);
+    QVERIFY(phaseCombo != nullptr);
+    QVERIFY(cycleLabel != nullptr);
+    QVERIFY(optionsScroll != nullptr);
+
+    presetCombo->setCurrentIndex(presetCombo->findData(-2));
+    breakMode->setCurrentIndex(breakMode->findData(false));
+    autoStartNext->setChecked(true);
+    QCoreApplication::processEvents();
+
+    QVERIFY(!shortBreak->isVisible());
+    QVERIFY(!longBreak->isVisible());
+    QVERIFY(!cycles->isVisible());
+    QVERIFY(!autoStartBreak->isVisible());
+    QVERIFY(!autoStartFocus->isVisible());
+    QVERIFY(autoStartNext->isVisible());
+    QVERIFY(confirm->isEnabled());
+    confirm->click();
+    QVERIFY(!phaseCombo->isEnabled());
+    QVERIFY(phaseCombo->toolTip().contains(QStringLiteral("不安排休息")));
+    QVERIFY(cycleLabel->text().contains(QStringLiteral("已完成专注")));
+
+    QVERIFY(optionsScroll->verticalScrollBar()->maximum() > 0);
+    optionsScroll->ensureWidgetVisible(confirm, 8, 8);
+    QCoreApplication::processEvents();
+    const QRect confirmRect(
+        confirm->mapTo(optionsScroll->viewport(), QPoint(0, 0)),
+        confirm->size());
+    QVERIFY(optionsScroll->viewport()->rect().intersects(confirmRect));
+
+    QSignalSpy notificationSpy(&page, &FocusPage::notificationRequested);
+    const QDateTime endedAt = QDateTime::currentDateTime();
+    const QDateTime startedAt = endedAt.addSecs(-60);
+    QVERIFY(QMetaObject::invokeMethod(
+        &page, "handleSessionEnded", Qt::DirectConnection,
+        Q_ARG(FocusTimer::Phase, FocusTimer::Phase::Focus),
+        Q_ARG(bool, true), Q_ARG(int, -1),
+        Q_ARG(QDateTime, startedAt), Q_ARG(QDateTime, endedAt),
+        Q_ARG(int, 60), Q_ARG(int, 60)));
+    QCOMPARE(notificationSpy.count(), 1);
+    QVERIFY(notificationSpy.constFirst().at(1).toString().contains(
+        QStringLiteral("即将开始下一轮")));
+    QTRY_COMPARE_WITH_TIMEOUT(
+        buttonForRole(page, QStringLiteral("primary"))->text(),
+        QStringLiteral("暂停"), 1500);
+    QVERIFY(cycleLabel->text().contains(QStringLiteral("1 轮")));
 }
 
 void FocusPageTests::cleanupTestCase()

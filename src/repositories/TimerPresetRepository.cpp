@@ -8,8 +8,8 @@
 namespace {
 const QString kPresetColumns = QStringLiteral(R"(
     id, name, focus_minutes, short_break_minutes, long_break_minutes,
-    cycles_before_long_break, auto_start_break, auto_start_focus, is_default,
-    is_builtin
+    cycles_before_long_break, breaks_enabled, auto_start_break,
+    auto_start_focus, auto_start_next_focus, is_default, is_builtin
 )");
 }
 
@@ -105,8 +105,10 @@ bool TimerPresetRepository::save(TimerPreset &preset,
                 short_break_minutes = :short_break_minutes,
                 long_break_minutes = :long_break_minutes,
                 cycles_before_long_break = :cycles,
+                breaks_enabled = :breaks_enabled,
                 auto_start_break = :auto_break,
                 auto_start_focus = :auto_focus,
+                auto_start_next_focus = :auto_next_focus,
                 is_default = :is_default
             WHERE id = :id
         )"));
@@ -125,11 +127,12 @@ bool TimerPresetRepository::save(TimerPreset &preset,
         query.prepare(QStringLiteral(R"(
             INSERT INTO timer_presets(
                 name, focus_minutes, short_break_minutes, long_break_minutes,
-                cycles_before_long_break, auto_start_break,
-                auto_start_focus, is_default
+                cycles_before_long_break, breaks_enabled, auto_start_break,
+                auto_start_focus, auto_start_next_focus, is_default
             ) VALUES(
                 :name, :focus_minutes, :short_break_minutes, :long_break_minutes,
-                :cycles, :auto_break, :auto_focus, :is_default
+                :cycles, :breaks_enabled, :auto_break, :auto_focus,
+                :auto_next_focus, :is_default
             )
         )"));
     }
@@ -141,10 +144,14 @@ bool TimerPresetRepository::save(TimerPreset &preset,
     query.bindValue(QStringLiteral(":long_break_minutes"),
                     preset.longBreakMinutes);
     query.bindValue(QStringLiteral(":cycles"), preset.cyclesBeforeLongBreak);
+    query.bindValue(QStringLiteral(":breaks_enabled"),
+                    preset.breaksEnabled ? 1 : 0);
     query.bindValue(QStringLiteral(":auto_break"),
-                    preset.autoStartBreak ? 1 : 0);
+                    preset.breaksEnabled && preset.autoStartBreak ? 1 : 0);
     query.bindValue(QStringLiteral(":auto_focus"),
-                    preset.autoStartFocus ? 1 : 0);
+                    preset.breaksEnabled && preset.autoStartFocus ? 1 : 0);
+    query.bindValue(QStringLiteral(":auto_next_focus"),
+                    !preset.breaksEnabled && preset.autoStartNextFocus ? 1 : 0);
     query.bindValue(QStringLiteral(":is_default"),
                     preset.isDefault ? 1 : 0);
 
@@ -164,6 +171,12 @@ bool TimerPresetRepository::save(TimerPreset &preset,
         preset.isBuiltIn = false;
     }
     preset.name = preset.name.trimmed();
+    if (preset.breaksEnabled) {
+        preset.autoStartNextFocus = false;
+    } else {
+        preset.autoStartBreak = false;
+        preset.autoStartFocus = false;
+    }
 
     if (!database.commit()) {
         assignError(database.lastError().text(), errorMessage);
@@ -266,10 +279,14 @@ TimerPreset TimerPresetRepository::fromQuery(const QSqlQuery &query)
         query.value(QStringLiteral("long_break_minutes")).toInt();
     preset.cyclesBeforeLongBreak =
         query.value(QStringLiteral("cycles_before_long_break")).toInt();
+    preset.breaksEnabled =
+        query.value(QStringLiteral("breaks_enabled")).toInt() != 0;
     preset.autoStartBreak =
         query.value(QStringLiteral("auto_start_break")).toInt() != 0;
     preset.autoStartFocus =
         query.value(QStringLiteral("auto_start_focus")).toInt() != 0;
+    preset.autoStartNextFocus =
+        query.value(QStringLiteral("auto_start_next_focus")).toInt() != 0;
     preset.isDefault =
         query.value(QStringLiteral("is_default")).toInt() != 0;
     preset.isBuiltIn =
