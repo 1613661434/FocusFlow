@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.33 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.34 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -76,6 +76,8 @@ qt_add_executable(FocusFlow WIN32
     src/views/StatisticsPage.h
     src/widgets/ChineseCalendarWidget.cpp
     src/widgets/ChineseCalendarWidget.h
+    src/widgets/FocusAwareComboBox.cpp
+    src/widgets/FocusAwareComboBox.h
     src/widgets/FocusAwareSpinBox.cpp
     src/widgets/FocusAwareSpinBox.h
     src/widgets/FocusAwareSlider.cpp
@@ -137,6 +139,8 @@ if(BUILD_TESTING)
         tests/tst_FocusPage.cpp
         src/views/FocusPage.cpp
         src/views/FocusPage.h
+        src/views/TimerPresetDialog.cpp
+        src/views/TimerPresetDialog.h
         src/data/DatabaseManager.cpp
         src/data/DatabaseManager.h
         src/repositories/FocusRepository.cpp
@@ -240,6 +244,8 @@ if(BUILD_TESTING)
 
     qt_add_executable(FocusAwareSpinBoxTests
         tests/tst_FocusAwareSpinBox.cpp
+        src/widgets/FocusAwareComboBox.cpp
+        src/widgets/FocusAwareComboBox.h
         src/widgets/FocusAwareSpinBox.cpp
         src/widgets/FocusAwareSpinBox.h
         src/widgets/ColoredComboBox.h

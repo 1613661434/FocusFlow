@@ -1,6 +1,6 @@
 # FocusFlow
 
-[![Version](https://img.shields.io/badge/version-v0.1.33-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.33)
+[![Version](https://img.shields.io/badge/version-v0.1.34-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.34)
 [![GitHub Stars](https://img.shields.io/github/stars/1613661434/FocusFlow?style=flat-square&logo=github)](https://github.com/1613661434/FocusFlow/stargazers)
 [![Last Commit](https://img.shields.io/github/last-commit/1613661434/FocusFlow?style=flat-square&logo=git)](https://github.com/1613661434/FocusFlow/commits/main)
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?style=flat-square&logo=cplusplus)
@@ -8,7 +8,7 @@
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4?style=flat-square&logo=windows11&logoColor=white)
 
 FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
-个人任务规划与专注管理工具，当前版本为 **v0.1.33**。
+个人任务规划与专注管理工具，当前版本为 **v0.1.34**。
 
 中文定位：**个人任务规划与专注管理系统**
 
@@ -79,14 +79,16 @@ FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
 - 休息时间会保存为记录，但不会计入专注统计。
 - 支持专注结束后自动开始休息、休息结束后自动开始下一轮专注。
 - “不安排休息”不会把 0 分钟当成特殊值；计时完成后可停在“准备开始”，也可自动开始下一轮专注。
-- 右侧方案区会在可用高度不足时独立滚动，兼容 1920×1080 配合 125%/150% 显示缩放的环境。
+- 右侧方案区会在可用高度不足时独立滚动；外框和字段宽度保持固定，切换自定义方案不会因滚动条出现而跳动。
 
 ### 提醒与窗口行为
 
-- 计时自然结束时显示桌面通知，可选择系统默认、清脆、柔和、简洁四种内置提示音或自定义声音。
+- 计时自然结束时显示桌面通知；原版系统提示音继续作为默认，还可选择清脆、柔和、简洁三种内置提示音或自定义声音。
 - 专注结束声音和休息结束声音可分别设置。
 - 支持 WAV、MP3、AAC、M4A、OGG 和 FLAC。
 - 可选择完整播放或限制最长播放时间；限时播放会在结束前连续淡出，且不会修改原始音频。
+- 选择完整播放后，“最长播放”标签和输入框会明确变灰，表示该限制不生效。
+- 两个声音选择框和播放方式只有先点击获得焦点后才响应滚轮，避免误改并与页面滚动冲突。
 - 完整音乐遇到下一阶段提醒时，会先平滑淡出再播放新声音，避免两条音频叠加或突然截断。
 - 自定义声音会复制到应用数据目录；更换或恢复默认后会清理不再使用的托管副本。
 - 最小化窗口时仍保留在任务栏；关闭窗口时隐藏到系统托盘。
@@ -277,7 +279,7 @@ git tag --list
 git switch -c inspect-old-version <提交号或标签>
 ```
 
-当前稳定程序版本标签为 `v0.1.33`。
+当前稳定程序版本标签为 `v0.1.34`。
 
 ## 作者与版权
 

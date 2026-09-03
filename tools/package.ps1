@@ -12,7 +12,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $distributionRoot = Join-Path $projectRoot "dist"
-$packageDirectory = Join-Path $distributionRoot "FocusFlow-0.1.33-$timestamp"
+$packageDirectory = Join-Path $distributionRoot "FocusFlow-0.1.34-$timestamp"
 $executable = Join-Path $projectRoot "build\FocusFlow.exe"
 $deployTool = Join-Path $QtRoot "bin\windeployqt.exe"
 

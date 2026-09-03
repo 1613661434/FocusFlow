@@ -9,6 +9,7 @@
 #include "services/DataManagementService.h"
 #include "services/NotificationSoundPlayer.h"
 #include "services/SoundStorageService.h"
+#include "widgets/FocusAwareComboBox.h"
 #include "widgets/FocusAwareSlider.h"
 #include "widgets/FocusAwareSpinBox.h"
 #include "widgets/FocusAwareTableWidget.h"
@@ -228,7 +229,7 @@ void SettingsPage::buildInterface()
     breakSoundPath_->setPlaceholderText(QStringLiteral("尚未选择自定义音频"));
 
     auto createSoundChoice = [soundGroup](const QString &objectName) {
-        auto *choice = new QComboBox(soundGroup);
+        auto *choice = new FocusAwareComboBox(soundGroup);
         choice->setObjectName(objectName);
         choice->setMinimumWidth(170);
         choice->addItem(QStringLiteral("系统默认"),
@@ -289,13 +290,15 @@ void SettingsPage::buildInterface()
     });
 
     maxSoundSeconds_ = new FocusAwareSpinBox(soundGroup);
+    maxSoundSeconds_->setObjectName(QStringLiteral("maxSoundSeconds"));
     maxSoundSeconds_->setRange(1, 30);
     maxSoundSeconds_->setSuffix(QStringLiteral(" 秒"));
     soundRepeatCount_ = new FocusAwareSpinBox(soundGroup);
     soundRepeatCount_->setRange(1, 3);
     soundRepeatCount_->setSuffix(QStringLiteral(" 次"));
-    soundPlaybackMode_ = new QComboBox(soundGroup);
+    soundPlaybackMode_ = new FocusAwareComboBox(soundGroup);
     soundPlaybackMode_->setObjectName(QStringLiteral("soundPlaybackMode"));
+    soundPlaybackMode_->setMinimumHeight(40);
     soundPlaybackMode_->addItem(QStringLiteral("限制最长播放时间"), false);
     soundPlaybackMode_->addItem(QStringLiteral("播放完整音频"), true);
 
@@ -322,7 +325,9 @@ void SettingsPage::buildInterface()
                        this));
     soundForm->addRow(QStringLiteral("提醒音量："), volumeWidget);
     soundForm->addRow(QStringLiteral("播放方式："), soundPlaybackMode_);
-    soundForm->addRow(QStringLiteral("最长播放："), maxSoundSeconds_);
+    maxSoundLabel_ = new QLabel(QStringLiteral("最长播放："), soundGroup);
+    maxSoundLabel_->setObjectName(QStringLiteral("maxSoundLabel"));
+    soundForm->addRow(maxSoundLabel_, maxSoundSeconds_);
     soundForm->addRow(QStringLiteral("播放次数："), soundRepeatCount_);
 
     auto *hint = new QLabel(
@@ -1087,9 +1092,13 @@ void SettingsPage::updateSoundControls()
                              == QStringLiteral("custom");
     focusSoundPath_->setVisible(focusCustom);
     breakSoundPath_->setVisible(breakCustom);
-    maxSoundSeconds_->setEnabled(
-        !soundPlaybackMode_->currentData().toBool());
+    const bool limitedPlayback =
+        !soundPlaybackMode_->currentData().toBool();
+    maxSoundSeconds_->setEnabled(limitedPlayback);
+    maxSoundLabel_->setEnabled(limitedPlayback);
     maxSoundSeconds_->setToolTip(maxSoundSeconds_->isEnabled()
         ? QStringLiteral("到达时长上限前会逐渐降低音量至静音")
-        : QStringLiteral("当前会播放完整音频；下一条提醒到来时先淡出"));
+        : QStringLiteral("播放完整音频时不使用最长播放限制"));
+    maxSoundSeconds_->setAccessibleDescription(
+        maxSoundSeconds_->toolTip());
 }

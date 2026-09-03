@@ -1,3 +1,4 @@
+#include "widgets/FocusAwareComboBox.h"
 #include "widgets/FocusAwareSpinBox.h"
 #include "widgets/FocusAwareSlider.h"
 #include "widgets/FocusAwareTableWidget.h"
@@ -18,6 +19,7 @@ class FocusAwareSpinBoxTests final : public QObject
 private slots:
     void ignoresWheelUntilFocused();
     void sliderIgnoresWheelUntilFocused();
+    void comboBoxIgnoresWheelUntilFocused();
     void tableIgnoresWheelUntilClicked();
     void keepsCursorOutOfSuffix();
 };
@@ -129,6 +131,36 @@ void FocusAwareSpinBoxTests::sliderIgnoresWheelUntilFocused()
     auto acceptedWheel = upwardWheelEvent();
     QApplication::sendEvent(slider, &acceptedWheel);
     QVERIFY(slider->value() > 10);
+    QVERIFY(acceptedWheel.isAccepted());
+}
+
+void FocusAwareSpinBoxTests::comboBoxIgnoresWheelUntilFocused()
+{
+    QWidget window;
+    auto *layout = new QVBoxLayout(&window);
+    auto *otherInput = new QLineEdit(&window);
+    auto *comboBox = new FocusAwareComboBox(&window);
+    comboBox->addItems({QStringLiteral("第一项"),
+                        QStringLiteral("第二项"),
+                        QStringLiteral("第三项")});
+    layout->addWidget(otherInput);
+    layout->addWidget(comboBox);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    otherInput->setFocus();
+    QTRY_VERIFY(otherInput->hasFocus());
+    auto ignoredWheel = downwardWheelEvent();
+    QApplication::sendEvent(comboBox, &ignoredWheel);
+    QCOMPARE(comboBox->currentIndex(), 0);
+    QVERIFY(!ignoredWheel.isAccepted());
+
+    QTest::mouseClick(comboBox, Qt::LeftButton);
+    QTRY_VERIFY(comboBox->hasFocus());
+    comboBox->hidePopup();
+    auto acceptedWheel = downwardWheelEvent();
+    QApplication::sendEvent(comboBox, &acceptedWheel);
+    QCOMPARE(comboBox->currentIndex(), 1);
     QVERIFY(acceptedWheel.isAccepted());
 }
 

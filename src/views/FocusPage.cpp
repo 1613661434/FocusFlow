@@ -142,9 +142,9 @@ void FocusPage::buildInterface()
     timerLayout->addStretch();
     timerLayout->addLayout(controls);
 
-    auto *optionsCard = new QFrame;
-    optionsCard->setObjectName(QStringLiteral("card"));
-    optionsCard->setMinimumWidth(350);
+    auto *optionsCard = new QWidget;
+    optionsCard->setObjectName(QStringLiteral("focusOptionsContent"));
+    optionsCard->setFixedWidth(378);
     auto *optionsLayout = new QVBoxLayout(optionsCard);
     optionsLayout->setContentsMargins(26, 26, 26, 26);
     optionsLayout->setSpacing(12);
@@ -295,18 +295,37 @@ void FocusPage::buildInterface()
 
     optionsScrollArea_ = new QScrollArea(this);
     optionsScrollArea_->setObjectName(QStringLiteral("focusOptionsScrollArea"));
-    optionsScrollArea_->setWidgetResizable(true);
+    optionsScrollArea_->setWidgetResizable(false);
     optionsScrollArea_->setFrameShape(QFrame::NoFrame);
     optionsScrollArea_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     optionsScrollArea_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    optionsScrollArea_->setFixedWidth(390);
     optionsScrollArea_->setWidget(optionsCard);
+    optionsCard->adjustSize();
     optionsScrollArea_->setStyleSheet(QStringLiteral(
-        "QScrollArea#focusOptionsScrollArea { background: transparent; border: none; }"));
+        "QScrollArea#focusOptionsScrollArea { background: transparent; border: none; }"
+        "QScrollArea#focusOptionsScrollArea QScrollBar:vertical {"
+        "  width: 10px; margin: 0; background: transparent; }"
+        "QScrollArea#focusOptionsScrollArea QScrollBar::handle:vertical {"
+        "  min-height: 36px; border-radius: 5px; background: #c5ccd8; }"
+        "QScrollArea#focusOptionsScrollArea QScrollBar::handle:vertical:hover {"
+        "  background: #98a2b3; }"
+        "QScrollArea#focusOptionsScrollArea QScrollBar::add-line:vertical,"
+        "QScrollArea#focusOptionsScrollArea QScrollBar::sub-line:vertical {"
+        "  height: 0; background: transparent; }"
+        "QScrollArea#focusOptionsScrollArea QScrollBar::add-page:vertical,"
+        "QScrollArea#focusOptionsScrollArea QScrollBar::sub-page:vertical {"
+        "  background: transparent; }"));
     optionsScrollArea_->viewport()->setAutoFillBackground(false);
 
+    auto *optionsShell = new QFrame(this);
+    optionsShell->setObjectName(QStringLiteral("card"));
+    optionsShell->setFixedWidth(390);
+    auto *optionsShellLayout = new QVBoxLayout(optionsShell);
+    optionsShellLayout->setContentsMargins(1, 1, 1, 1);
+    optionsShellLayout->addWidget(optionsScrollArea_);
+
     root->addWidget(timerCard, 1);
-    root->addWidget(optionsScrollArea_);
+    root->addWidget(optionsShell);
 
     connect(primaryActionButton_, &QPushButton::clicked,
             this, &FocusPage::handlePrimaryAction);
@@ -920,6 +939,12 @@ void FocusPage::updatePresetControls()
     customAutoStartBreak_->setEnabled(idle && customBreaksEnabled);
     customAutoStartFocus_->setEnabled(idle && customBreaksEnabled);
     customAutoStartNextFocus_->setEnabled(idle && !customBreaksEnabled);
+    if (optionsScrollArea_ != nullptr
+        && optionsScrollArea_->widget() != nullptr) {
+        customMinutesRow_->layout()->activate();
+        optionsScrollArea_->widget()->layout()->activate();
+        optionsScrollArea_->widget()->adjustSize();
+    }
 
     const TimerPreset activePreset = selectedPreset();
     if (idle && !activePreset.breaksEnabled

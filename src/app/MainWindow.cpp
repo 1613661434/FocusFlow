@@ -97,7 +97,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.33"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.34"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -415,6 +415,19 @@ void MainWindow::applyTheme()
         QLineEdit:focus, QComboBox:focus, QDateTimeEdit:focus,
         QSpinBox:focus, QTextEdit:focus {
             border-color: #4f6ef7;
+        }
+        QLineEdit:disabled, QComboBox:disabled, QDateTimeEdit:disabled,
+        QSpinBox:disabled, QTextEdit:disabled {
+            color: #98a2b3;
+            background: #f2f4f7;
+            border-color: #d0d5dd;
+        }
+        QLabel:disabled {
+            color: #98a2b3;
+        }
+        QComboBox#soundPlaybackMode {
+            padding-top: 9px;
+            padding-bottom: 5px;
         }
         QPushButton {
             background: #ffffff;

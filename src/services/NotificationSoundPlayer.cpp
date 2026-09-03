@@ -142,6 +142,12 @@ void NotificationSoundPlayer::configurePlayback(const QString &filePath,
     remainingRounds_ = qBound(1, repeatCount, 5);
     filePath_ = filePath;
 
+    if (filePath_ == QStringLiteral("builtin://system")) {
+        // Keep the original FocusFlow default: the familiar platform alert
+        // selected by QApplication instead of replacing it with a new tone.
+        playFallbackBeep();
+        return;
+    }
     if (filePath_.startsWith(QStringLiteral("builtin://"))) {
         builtInBuffer_->close();
         builtInBuffer_->setData(builtInWave(filePath_));
@@ -152,11 +158,8 @@ void NotificationSoundPlayer::configurePlayback(const QString &filePath,
         player_->setSource(QUrl::fromLocalFile(filePath_));
     } else {
         filePath_ = QStringLiteral("builtin://system");
-        builtInBuffer_->close();
-        builtInBuffer_->setData(builtInWave(filePath_));
-        builtInBuffer_->open(QIODevice::ReadOnly);
-        player_->setSourceDevice(builtInBuffer_,
-                                 QUrl(QStringLiteral("memory-sound.wav")));
+        playFallbackBeep();
+        return;
     }
     startRound();
 }

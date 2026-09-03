@@ -77,6 +77,7 @@ private:
     QComboBox *soundPlaybackMode_ = nullptr;
     QSlider *volume_ = nullptr;
     QLabel *volumeLabel_ = nullptr;
+    QLabel *maxSoundLabel_ = nullptr;
     QSpinBox *maxSoundSeconds_ = nullptr;
     QSpinBox *soundRepeatCount_ = nullptr;
     QCheckBox *suppressCloseToTrayReminder_ = nullptr;
