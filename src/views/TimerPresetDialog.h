@@ -6,6 +6,7 @@
 
 class QCheckBox;
 class QComboBox;
+class QFormLayout;
 class QLineEdit;
 class QSpinBox;
 
@@ -26,6 +27,7 @@ private:
     void updateBreakControls();
 
     TimerPreset originalPreset_;
+    QFormLayout *form_ = nullptr;
     QLineEdit *nameEdit_ = nullptr;
     QSpinBox *focusMinutes_ = nullptr;
     QSpinBox *shortBreakMinutes_ = nullptr;

@@ -2,6 +2,7 @@
 #include "repositories/TaskRepository.h"
 #include "repositories/TimerPresetRepository.h"
 #include "views/FocusPage.h"
+#include "views/TimerPresetDialog.h"
 #include "widgets/PriorityColors.h"
 
 #include <QApplication>
@@ -36,6 +37,7 @@ private slots:
     void taskSchemeAndTrayStatusFollowTheRunningTimer();
     void customSchemeRequiresConfirmationAndCanBeSaved();
     void noBreakSchemeWorksInCompactHeight();
+    void noBreakPresetDialogHidesRestFields();
     void cleanupTestCase();
 
 private:
@@ -490,11 +492,15 @@ void FocusPageTests::noBreakSchemeWorksInCompactHeight()
     QVERIFY(phaseCombo != nullptr);
     QVERIFY(cycleLabel != nullptr);
     QVERIFY(optionsScroll != nullptr);
+    QCOMPARE(optionsScroll->verticalScrollBarPolicy(),
+             Qt::ScrollBarAsNeeded);
+    const int stableContentWidth = optionsScroll->widget()->width();
 
     presetCombo->setCurrentIndex(presetCombo->findData(-2));
     breakMode->setCurrentIndex(breakMode->findData(false));
     autoStartNext->setChecked(true);
     QCoreApplication::processEvents();
+    QCOMPARE(optionsScroll->widget()->width(), stableContentWidth);
 
     QVERIFY(!shortBreak->isVisible());
     QVERIFY(!longBreak->isVisible());
@@ -532,6 +538,37 @@ void FocusPageTests::noBreakSchemeWorksInCompactHeight()
         buttonForRole(page, QStringLiteral("primary"))->text(),
         QStringLiteral("暂停"), 1500);
     QVERIFY(cycleLabel->text().contains(QStringLiteral("1 轮")));
+}
+
+void FocusPageTests::noBreakPresetDialogHidesRestFields()
+{
+    TimerPresetDialog dialog;
+    dialog.show();
+    QCoreApplication::processEvents();
+
+    auto *breakMode = dialog.findChild<QComboBox *>(
+        QStringLiteral("presetBreakMode"));
+    auto *shortBreak = dialog.findChild<QSpinBox *>(
+        QStringLiteral("presetShortBreakMinutes"));
+    auto *longBreak = dialog.findChild<QSpinBox *>(
+        QStringLiteral("presetLongBreakMinutes"));
+    auto *cycles = dialog.findChild<QSpinBox *>(
+        QStringLiteral("presetCycles"));
+
+    QVERIFY(breakMode != nullptr);
+    QVERIFY(shortBreak != nullptr);
+    QVERIFY(longBreak != nullptr);
+    QVERIFY(cycles != nullptr);
+    QVERIFY(shortBreak->isVisible());
+    QVERIFY(longBreak->isVisible());
+    QVERIFY(cycles->isVisible());
+
+    breakMode->setCurrentIndex(breakMode->findData(false));
+    QCoreApplication::processEvents();
+
+    QVERIFY(!shortBreak->isVisible());
+    QVERIFY(!longBreak->isVisible());
+    QVERIFY(!cycles->isVisible());
 }
 
 void FocusPageTests::cleanupTestCase()

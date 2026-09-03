@@ -21,10 +21,10 @@ TimerPresetDialog::TimerPresetDialog(QWidget *parent)
 
     auto *root = new QVBoxLayout(this);
     root->setSpacing(14);
-    auto *form = new QFormLayout;
-    form->setHorizontalSpacing(18);
-    form->setVerticalSpacing(12);
-    form->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    form_ = new QFormLayout;
+    form_->setHorizontalSpacing(18);
+    form_->setVerticalSpacing(12);
+    form_->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     nameEdit_ = new QLineEdit(this);
     nameEdit_->setObjectName(QStringLiteral("presetNameEdit"));
@@ -58,15 +58,15 @@ TimerPresetDialog::TimerPresetDialog(QWidget *parent)
     autoStartNextFocus_->setObjectName(
         QStringLiteral("presetAutoStartNextFocus"));
 
-    form->addRow(QStringLiteral("方案名称："), nameEdit_);
-    form->addRow(QStringLiteral("专注时长："), focusMinutes_);
-    form->addRow(QStringLiteral("休息方式："), breakMode_);
-    form->addRow(QStringLiteral("短休息："), shortBreakMinutes_);
-    form->addRow(QStringLiteral("长休息："), longBreakMinutes_);
-    form->addRow(QStringLiteral("长休息间隔："), cycles_);
-    form->addRow(QString(), autoStartBreak_);
-    form->addRow(QString(), autoStartFocus_);
-    form->addRow(QString(), autoStartNextFocus_);
+    form_->addRow(QStringLiteral("方案名称："), nameEdit_);
+    form_->addRow(QStringLiteral("专注时长："), focusMinutes_);
+    form_->addRow(QStringLiteral("休息方式："), breakMode_);
+    form_->addRow(QStringLiteral("短休息："), shortBreakMinutes_);
+    form_->addRow(QStringLiteral("长休息："), longBreakMinutes_);
+    form_->addRow(QStringLiteral("长休息间隔："), cycles_);
+    form_->addRow(QString(), autoStartBreak_);
+    form_->addRow(QString(), autoStartFocus_);
+    form_->addRow(QString(), autoStartNextFocus_);
 
     auto *hint = new QLabel(
         QStringLiteral("任务可以绑定该方案；计时开始前也可临时换用其他方案。"),
@@ -85,7 +85,7 @@ TimerPresetDialog::TimerPresetDialog(QWidget *parent)
     connect(breakMode_, &QComboBox::currentIndexChanged,
             this, &TimerPresetDialog::updateBreakControls);
 
-    root->addLayout(form);
+    root->addLayout(form_);
     root->addWidget(hint);
     root->addWidget(buttons);
 
@@ -131,12 +131,12 @@ TimerPreset TimerPresetDialog::preset() const
 void TimerPresetDialog::updateBreakControls()
 {
     const bool breaksEnabled = breakMode_->currentData().toBool();
-    shortBreakMinutes_->setEnabled(breaksEnabled);
-    longBreakMinutes_->setEnabled(breaksEnabled);
-    cycles_->setEnabled(breaksEnabled);
-    autoStartBreak_->setVisible(breaksEnabled);
-    autoStartFocus_->setVisible(breaksEnabled);
-    autoStartNextFocus_->setVisible(!breaksEnabled);
+    form_->setRowVisible(shortBreakMinutes_, breaksEnabled);
+    form_->setRowVisible(longBreakMinutes_, breaksEnabled);
+    form_->setRowVisible(cycles_, breaksEnabled);
+    form_->setRowVisible(autoStartBreak_, breaksEnabled);
+    form_->setRowVisible(autoStartFocus_, breaksEnabled);
+    form_->setRowVisible(autoStartNextFocus_, !breaksEnabled);
 }
 
 void TimerPresetDialog::accept()
