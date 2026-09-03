@@ -1,0 +1,43 @@
+FocusFlow Copyright License
+
+Copyright (c) 2026 ol木子李lo (OL). All rights reserved.
+
+1. Permitted use
+
+You may download, install, and use unmodified official release builds of
+FocusFlow for personal, non-commercial purposes. You may also view the source
+code in this repository for learning and reference.
+
+2. Restrictions
+
+Unless you have obtained prior written permission from the copyright holder,
+you may not:
+
+- copy, modify, adapt, translate, or create derivative works from the source
+  code or project assets;
+- redistribute, sublicense, sell, rent, host, or otherwise provide the source
+  code or release builds to third parties;
+- incorporate any part of FocusFlow into another project or product;
+- remove or alter copyright, attribution, or other proprietary notices; or
+- use the FocusFlow name, logo, or the author's identity to imply endorsement.
+
+3. Third-party components
+
+FocusFlow uses third-party libraries and components, including Qt. Those
+components remain subject to their respective licenses. This license applies
+only to the original FocusFlow source code and assets owned by the copyright
+holder.
+
+4. Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING
+FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+For permission requests, contact the author through:
+https://1613661434.github.io/
+
+Project repository:
+https://github.com/1613661434/FocusFlow
