@@ -938,6 +938,22 @@ void FocusPage::updatePresetControls()
     customAutoStartBreak_->setEnabled(idle && customBreaksEnabled);
     customAutoStartFocus_->setEnabled(idle && customBreaksEnabled);
     customAutoStartNextFocus_->setEnabled(idle && !customBreaksEnabled);
+    const QString inactiveRestHint = QStringLiteral(
+        "当前方案不安排休息，此项不会生效");
+    customShortBreakMinutes_->setToolTip(
+        customBreaksEnabled ? QString() : inactiveRestHint);
+    customLongBreakMinutes_->setToolTip(
+        customBreaksEnabled ? QString() : inactiveRestHint);
+    customCycles_->setToolTip(
+        customBreaksEnabled ? QString() : inactiveRestHint);
+    customAutoStartBreak_->setToolTip(
+        customBreaksEnabled ? QString() : inactiveRestHint);
+    customAutoStartFocus_->setToolTip(
+        customBreaksEnabled ? QString() : inactiveRestHint);
+    customAutoStartNextFocus_->setToolTip(
+        customBreaksEnabled
+            ? QStringLiteral("仅用于不安排休息的连续专注方案")
+            : QStringLiteral("专注完成后直接开始下一轮专注"));
 
     const TimerPreset activePreset = selectedPreset();
     if (idle && !activePreset.breaksEnabled

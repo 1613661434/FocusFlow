@@ -19,6 +19,10 @@ public:
               int volumePercent,
               int maximumSeconds,
               int repeatCount);
+    void preview(const QString &filePath,
+                 int volumePercent,
+                 int maximumSeconds,
+                 int repeatCount);
     void stop();
 
 private slots:

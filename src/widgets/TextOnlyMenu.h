@@ -14,6 +14,7 @@ inline void apply(QMenu *menu)
     for (QAction *action : menu->actions()) {
         action->setIconVisibleInMenu(false);
     }
+    menu->setWindowFlag(Qt::NoDropShadowWindowHint, true);
     menu->setToolTipsVisible(true);
     menu->setStyleSheet(QStringLiteral(R"(
         QMenu {

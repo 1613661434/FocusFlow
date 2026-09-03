@@ -1,11 +1,13 @@
 #include "data/DatabaseManager.h"
 #include "repositories/TaskRepository.h"
 #include "repositories/TimerPresetRepository.h"
+#include "services/NotificationSoundPlayer.h"
 #include "views/FocusPage.h"
 #include "views/TimerPresetDialog.h"
 #include "widgets/PriorityColors.h"
 
 #include <QApplication>
+#include <QBuffer>
 #include <QComboBox>
 #include <QCheckBox>
 #include <QDir>
@@ -13,6 +15,7 @@
 #include <QInputDialog>
 #include <QLabel>
 #include <QMessageBox>
+#include <QMediaPlayer>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QScrollBar>
@@ -38,6 +41,7 @@ private slots:
     void customSchemeRequiresConfirmationAndCanBeSaved();
     void noBreakSchemeWorksInCompactHeight();
     void noBreakPresetDialogKeepsStableDisabledFields();
+    void soundPreviewReloadsTheSelectedBuiltInSound();
     void cleanupTestCase();
 
 private:
@@ -516,6 +520,8 @@ void FocusPageTests::noBreakSchemeWorksInCompactHeight()
     QVERIFY(!autoStartBreak->isEnabled());
     QVERIFY(!autoStartFocus->isEnabled());
     QVERIFY(autoStartNext->isEnabled());
+    QVERIFY(autoStartBreak->toolTip().contains(QStringLiteral("不会生效")));
+    QVERIFY(autoStartFocus->toolTip().contains(QStringLiteral("不会生效")));
     QVERIFY(confirm->isEnabled());
     confirm->click();
     QVERIFY(!phaseCombo->isEnabled());
@@ -597,6 +603,30 @@ void FocusPageTests::noBreakPresetDialogKeepsStableDisabledFields()
     QVERIFY(!autoStartBreak->isEnabled());
     QVERIFY(!autoStartFocus->isEnabled());
     QVERIFY(autoStartNext->isEnabled());
+}
+
+void FocusPageTests::soundPreviewReloadsTheSelectedBuiltInSound()
+{
+    NotificationSoundPlayer player;
+    auto *buffer = player.findChild<QBuffer *>();
+    auto *mediaPlayer = player.findChild<QMediaPlayer *>();
+    QVERIFY(buffer != nullptr);
+    QVERIFY(mediaPlayer != nullptr);
+
+    player.preview(QStringLiteral("builtin://concise"), 50, 1, 1);
+    const QByteArray conciseSound = buffer->data();
+    const QUrl conciseSource = mediaPlayer->source();
+    QVERIFY(!conciseSound.isEmpty());
+    QVERIFY(conciseSource.toString().contains(QStringLiteral("concise")));
+
+    player.preview(QStringLiteral("builtin://gentle"), 50, 1, 1);
+    const QByteArray gentleSound = buffer->data();
+    const QUrl gentleSource = mediaPlayer->source();
+    QVERIFY(!gentleSound.isEmpty());
+    QVERIFY(gentleSound != conciseSound);
+    QVERIFY(gentleSource.toString().contains(QStringLiteral("gentle")));
+    QVERIFY(gentleSource != conciseSource);
+    player.stop();
 }
 
 void FocusPageTests::cleanupTestCase()
