@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.37 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.38 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -87,6 +87,7 @@ qt_add_executable(FocusFlow WIN32
     src/widgets/PriorityColors.h
     src/widgets/StatusColors.h
     src/widgets/ColoredComboBox.h
+    src/widgets/TextOnlyMenu.cpp
     src/widgets/TextOnlyMenu.h
     src/widgets/ClearSelectionOnBlankClick.cpp
     src/widgets/ClearSelectionOnBlankClick.h
@@ -102,6 +103,10 @@ target_link_libraries(FocusFlow PRIVATE
     Qt6::Charts
     Qt6::Network
 )
+
+if(WIN32)
+    target_link_libraries(FocusFlow PRIVATE dwmapi)
+endif()
 
 set_target_properties(FocusFlow PROPERTIES
     WIN32_EXECUTABLE TRUE
@@ -330,6 +335,8 @@ if(BUILD_TESTING)
         src/widgets/PriorityColors.h
         src/widgets/StatusColors.h
         src/widgets/ColoredComboBox.h
+        src/widgets/TextOnlyMenu.cpp
+        src/widgets/TextOnlyMenu.h
         src/widgets/SortKeyTableWidgetItem.h
         src/models/Task.h
         src/models/TimerPreset.h
@@ -341,5 +348,8 @@ if(BUILD_TESTING)
         Qt6::Charts
         Qt6::Test
     )
+    if(WIN32)
+        target_link_libraries(DashboardPageTests PRIVATE dwmapi)
+    endif()
     add_test(NAME DashboardPageTests COMMAND DashboardPageTests)
 endif()

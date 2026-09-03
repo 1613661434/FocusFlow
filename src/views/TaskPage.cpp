@@ -199,8 +199,7 @@ void TaskPage::showTaskContextMenu(const QPoint &position)
     connect(focusAction, &QAction::triggered, this,
             [this, taskId = task.id] { emit focusTaskRequested(taskId); });
     connect(menu, &QMenu::aboutToHide, menu, &QObject::deleteLater);
-    TextOnlyMenu::apply(menu);
-    menu->popup(table_->viewport()->mapToGlobal(position));
+    TextOnlyMenu::popup(menu, table_->viewport()->mapToGlobal(position));
 }
 
 void TaskPage::updateActionButtons()

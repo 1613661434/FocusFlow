@@ -1,6 +1,6 @@
 # FocusFlow
 
-[![Version](https://img.shields.io/badge/version-v0.1.37-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.37)
+[![Version](https://img.shields.io/badge/version-v0.1.38-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.38)
 [![GitHub Stars](https://img.shields.io/github/stars/1613661434/FocusFlow?style=flat-square&logo=github)](https://github.com/1613661434/FocusFlow/stargazers)
 [![Last Commit](https://img.shields.io/github/last-commit/1613661434/FocusFlow?style=flat-square&logo=git)](https://github.com/1613661434/FocusFlow/commits/main)
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?style=flat-square&logo=cplusplus)
@@ -8,7 +8,7 @@
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4?style=flat-square&logo=windows11&logoColor=white)
 
 FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
-个人任务规划与专注管理工具，当前版本为 **v0.1.37**。
+个人任务规划与专注管理工具，当前版本为 **v0.1.38**。
 
 中文定位：**个人任务规划与专注管理系统**
 
@@ -52,7 +52,7 @@ FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
 - 待处理任务的状态按钮显示“完成”，已完成任务显示“恢复”；两者字数相同，切换时不会引起界面跳动。操作后会刷新状态并取消当前选择，防止排序导致选中行跳动或连续误操作。
 - 正在进行专注计时的关联任务会在任务表显示紫色“进行中”，并禁用“编辑”“完成”和“删除”；任务数据刷新后，计时页仍会保留当前关联任务。
 - 点击任务表的空白区域会取消当前选择，“编辑”“完成/恢复”和“删除”随即变为禁用状态，避免误操作。
-- 右键点击待处理任务并选择“开始专注”，可直接进入专注计时页并自动关联该任务；纯文字菜单不预留图标空位，圆角弹层不使用系统边框或深色投影，已有计时时菜单项会注明原因并以灰色禁用。
+- 右键点击待处理任务并选择“开始专注”，可直接进入专注计时页并自动关联该任务；纯文字菜单不预留图标空位，圆角弹层使用真实窗口遮罩并关闭系统外框，不会残留右侧或底部阴影；已有计时时菜单项会注明原因并以灰色禁用。
 - 任务删除后，已经产生的专注历史仍会保留，并显示为“无关联任务”。
 
 ### 项目与分类
@@ -283,7 +283,7 @@ git tag --list
 git switch -c inspect-old-version <提交号或标签>
 ```
 
-当前稳定程序版本标签为 `v0.1.37`。
+当前稳定程序版本标签为 `v0.1.38`。
 
 ## 作者与版权
 
