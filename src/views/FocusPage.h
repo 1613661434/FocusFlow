@@ -106,9 +106,12 @@ private:
     QCheckBox *customAutoStartNextFocus_ = nullptr;
     QPushButton *confirmCustomMinutesButton_ = nullptr;
     QPushButton *saveCustomPresetButton_ = nullptr;
+    QLabel *timeCaptionLabel_ = nullptr;
     QLabel *timerLabel_ = nullptr;
+    QLabel *elapsedLabel_ = nullptr;
     QLabel *phaseLabel_ = nullptr;
     QLabel *cycleLabel_ = nullptr;
+    QLabel *totalDurationLabel_ = nullptr;
     QLabel *statusLabel_ = nullptr;
     QProgressBar *progress_ = nullptr;
     QPushButton *primaryActionButton_ = nullptr;

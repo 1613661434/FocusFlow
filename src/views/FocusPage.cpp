@@ -93,9 +93,22 @@ void FocusPage::buildInterface()
     phaseLabel_->setAlignment(Qt::AlignCenter);
     phaseLabel_->setObjectName(QStringLiteral("cardTitle"));
 
+    auto *timeReadout = new QWidget(timerCard);
+    auto *timeReadoutLayout = new QVBoxLayout(timeReadout);
+    timeReadoutLayout->setContentsMargins(0, 0, 0, 0);
+    timeReadoutLayout->setSpacing(4);
+
+    timeCaptionLabel_ = new QLabel(QStringLiteral("计划时长"), timeReadout);
+    timeCaptionLabel_->setAlignment(Qt::AlignCenter);
+    timeCaptionLabel_->setObjectName(QStringLiteral("focusTimeCaptionLabel"));
+    timeCaptionLabel_->setAccessibleName(QStringLiteral("主计时数字含义"));
+
     timerLabel_ = new QLabel(QStringLiteral("25:00"), timerCard);
     timerLabel_->setAlignment(Qt::AlignCenter);
     timerLabel_->setObjectName(QStringLiteral("timerLabel"));
+    timerLabel_->setAccessibleName(QStringLiteral("剩余或计划时间"));
+    timeReadoutLayout->addWidget(timeCaptionLabel_);
+    timeReadoutLayout->addWidget(timerLabel_);
 
     progress_ = new QProgressBar(timerCard);
     progress_->setTextVisible(false);
@@ -103,9 +116,30 @@ void FocusPage::buildInterface()
     progress_->setValue(0);
     progress_->setFixedHeight(10);
 
-    cycleLabel_ = new QLabel(QStringLiteral("当前周期：0 / 4"), timerCard);
+    auto *durationSummary = new QWidget(timerCard);
+    auto *durationSummaryLayout = new QHBoxLayout(durationSummary);
+    durationSummaryLayout->setContentsMargins(0, 0, 0, 0);
+    durationSummaryLayout->setSpacing(12);
+
+    elapsedLabel_ = new QLabel(QStringLiteral("已用 00:00"), durationSummary);
+    elapsedLabel_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    elapsedLabel_->setObjectName(QStringLiteral("focusElapsedLabel"));
+    elapsedLabel_->setAccessibleName(QStringLiteral("本阶段已经使用的时间"));
+
+    cycleLabel_ = new QLabel(QStringLiteral("当前周期：0 / 4"), durationSummary);
     cycleLabel_->setAlignment(Qt::AlignCenter);
     cycleLabel_->setObjectName(QStringLiteral("mutedLabel"));
+
+    totalDurationLabel_ = new QLabel(QStringLiteral("总时长 25:00"),
+                                     durationSummary);
+    totalDurationLabel_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    totalDurationLabel_->setObjectName(
+        QStringLiteral("focusTotalDurationLabel"));
+    totalDurationLabel_->setAccessibleName(QStringLiteral("本阶段计划总时长"));
+
+    durationSummaryLayout->addWidget(elapsedLabel_, 1);
+    durationSummaryLayout->addWidget(cycleLabel_, 1);
+    durationSummaryLayout->addWidget(totalDurationLabel_, 1);
 
     statusLabel_ = new QLabel(QStringLiteral("准备开始"), timerCard);
     statusLabel_->setAlignment(Qt::AlignCenter);
@@ -135,9 +169,9 @@ void FocusPage::buildInterface()
 
     timerLayout->addWidget(phaseLabel_);
     timerLayout->addStretch();
-    timerLayout->addWidget(timerLabel_);
+    timerLayout->addWidget(timeReadout);
     timerLayout->addWidget(progress_);
-    timerLayout->addWidget(cycleLabel_);
+    timerLayout->addWidget(durationSummary);
     timerLayout->addWidget(statusLabel_);
     timerLayout->addStretch();
     timerLayout->addLayout(controls);
@@ -360,8 +394,9 @@ void FocusPage::buildInterface()
             this, &FocusPage::setSelectedPresetAsTaskDefault);
 
     const QVector<QWidget *> blankClickSurfaces{
-        this, timerCard, phaseLabel_, timerLabel_, progress_, cycleLabel_,
-        statusLabel_, optionsCard, optionsTitle, projectFilterLabel,
+        this, timerCard, phaseLabel_, timeReadout, timeCaptionLabel_, timerLabel_,
+        progress_, durationSummary, elapsedLabel_, cycleLabel_,
+        totalDurationLabel_, statusLabel_, optionsCard, optionsTitle, projectFilterLabel,
         categoryFilterLabel, taskLabel, presetLabel, phaseSelectLabel, tip};
     for (QWidget *surface : blankClickSurfaces) {
         surface->installEventFilter(this);
@@ -648,6 +683,17 @@ void FocusPage::stopEarly()
 void FocusPage::updateTime(int remainingSeconds, int plannedSeconds)
 {
     timerLabel_->setText(formatSeconds(remainingSeconds));
+    timeCaptionLabel_->setText(timer_.state() == FocusTimer::State::Idle
+                                   ? QStringLiteral("计划时长")
+                                   : QStringLiteral("剩余时间"));
+    const int safePlannedSeconds = qMax(0, plannedSeconds);
+    const int elapsedSeconds = qBound(
+        0, safePlannedSeconds - qMax(0, remainingSeconds),
+        safePlannedSeconds);
+    elapsedLabel_->setText(
+        QStringLiteral("已用 %1").arg(formatSeconds(elapsedSeconds)));
+    totalDurationLabel_->setText(
+        QStringLiteral("总时长 %1").arg(formatSeconds(safePlannedSeconds)));
     progress_->setRange(0, qMax(1, plannedSeconds));
     progress_->setValue(qMax(0, plannedSeconds - remainingSeconds));
     currentRemainingSeconds_ = remainingSeconds;
@@ -671,15 +717,18 @@ void FocusPage::updateState(FocusTimer::State state)
     }
 
     if (state == FocusTimer::State::Running) {
+        timeCaptionLabel_->setText(QStringLiteral("剩余时间"));
         primaryActionButton_->setText(QStringLiteral("暂停"));
         primaryActionButton_->setToolTip(QStringLiteral("暂停当前计时"));
         phaseLabel_->setText(phaseText(timer_.phase()));
         statusLabel_->setText(QStringLiteral("正在%1……").arg(phaseText(timer_.phase())));
     } else if (state == FocusTimer::State::Paused) {
+        timeCaptionLabel_->setText(QStringLiteral("剩余时间"));
         primaryActionButton_->setText(QStringLiteral("继续"));
         primaryActionButton_->setToolTip(QStringLiteral("继续当前计时"));
         statusLabel_->setText(QStringLiteral("计时已暂停"));
     } else {
+        timeCaptionLabel_->setText(QStringLiteral("计划时长"));
         primaryActionButton_->setText(QStringLiteral("开始"));
         primaryActionButton_->setToolTip(QStringLiteral("开始当前计时"));
     }
@@ -818,6 +867,10 @@ void FocusPage::updateIdleDuration()
     phaseLabel_->setText(phaseText(phase));
     const int seconds = durationSeconds(phase);
     timerLabel_->setText(formatSeconds(seconds));
+    timeCaptionLabel_->setText(QStringLiteral("计划时长"));
+    elapsedLabel_->setText(QStringLiteral("已用 00:00"));
+    totalDurationLabel_->setText(
+        QStringLiteral("总时长 %1").arg(formatSeconds(seconds)));
     progress_->setRange(0, qMax(1, seconds));
     progress_->setValue(0);
     currentRemainingSeconds_ = seconds;
@@ -1219,9 +1272,15 @@ void FocusPage::updateTrayStatus()
             ? QStringLiteral("%1已暂停").arg(phaseText(phase))
             : QStringLiteral("%1中").arg(phaseText(phase));
     }
+    const int plannedSeconds = qMax(0, timer_.plannedSeconds());
+    const int elapsedSeconds = qBound(
+        0, plannedSeconds - qMax(0, currentRemainingSeconds_),
+        plannedSeconds);
     emit trayStatusChanged(
-        QStringLiteral("FocusFlow\n%1 · %2：%3\n剩余 %4")
+        QStringLiteral("FocusFlow\n%1 · %2：%3\n已用 %4 / 总计 %5\n剩余 %6")
             .arg(stateText, taskPrefix, taskTitle,
+                 formatSeconds(elapsedSeconds),
+                 formatSeconds(plannedSeconds),
                  formatSeconds(currentRemainingSeconds_)));
 }
 

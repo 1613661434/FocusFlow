@@ -12,7 +12,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $distributionRoot = Join-Path $projectRoot "dist"
-$packageDirectory = Join-Path $distributionRoot "FocusFlow-0.1.38-$timestamp"
+$packageDirectory = Join-Path $distributionRoot "FocusFlow-0.1.39-$timestamp"
 $executable = Join-Path $projectRoot "build\FocusFlow.exe"
 $deployTool = Join-Path $QtRoot "bin\windeployqt.exe"
 
@@ -25,6 +25,9 @@ if (-not (Test-Path $deployTool)) {
 
 New-Item -ItemType Directory -Path $packageDirectory -Force | Out-Null
 Copy-Item $executable (Join-Path $packageDirectory "FocusFlow.exe")
+foreach ($document in @("README.md", "LICENSE")) {
+    Copy-Item (Join-Path $projectRoot $document) $packageDirectory
+}
 
 & $deployTool `
     --release `
