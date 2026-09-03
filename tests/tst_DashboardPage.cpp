@@ -1008,6 +1008,10 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
         QVERIFY(menu->windowFlags().testFlag(Qt::FramelessWindowHint));
         QVERIFY(menu->windowFlags().testFlag(Qt::NoDropShadowWindowHint));
         QVERIFY(menu->testAttribute(Qt::WA_TranslucentBackground));
+        QTRY_VERIFY(!menu->mask().isEmpty());
+        QVERIFY(menu->mask().contains(menu->rect().center()));
+        QVERIFY(!menu->mask().contains(menu->rect().topLeft()));
+        QVERIFY(menu->property("focusFlowNativeFrameDisabled").toBool());
         menu->close();
     }
     taskPage.setActiveFocusTask(-1);
