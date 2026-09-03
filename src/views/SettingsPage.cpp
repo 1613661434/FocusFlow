@@ -216,7 +216,7 @@ void SettingsPage::buildInterface()
     soundGroup->setObjectName(QStringLiteral("settingsSection"));
     auto *soundForm = new QFormLayout(soundGroup);
     soundForm->setHorizontalSpacing(20);
-    soundForm->setVerticalSpacing(12);
+    soundForm->setVerticalSpacing(16);
 
     soundEnabled_ = new QCheckBox(QStringLiteral("启用声音提醒"), soundGroup);
     focusSoundPath_ = new QLineEdit(soundGroup);
@@ -281,8 +281,11 @@ void SettingsPage::buildInterface()
     volume_->setRange(0, 100);
     volumeLabel_ = new QLabel(soundGroup);
     auto *volumeWidget = new QWidget(soundGroup);
+    volumeWidget->setObjectName(QStringLiteral("soundVolumeRow"));
+    volumeWidget->setMinimumHeight(44);
     auto *volumeLayout = new QHBoxLayout(volumeWidget);
     volumeLayout->setContentsMargins(0, 0, 0, 0);
+    volumeLayout->setSpacing(12);
     volumeLayout->addWidget(volume_, 1);
     volumeLayout->addWidget(volumeLabel_);
     connect(volume_, &QSlider::valueChanged, this, [this](int value) {
@@ -1050,11 +1053,11 @@ void SettingsPage::previewSound(const QString &path)
                                  QStringLiteral("请先选择自定义声音文件。"));
         return;
     }
-    soundPlayer_->play(path,
-                       volume_->value(),
-                       soundPlaybackMode_->currentData().toBool()
-                           ? 0 : maxSoundSeconds_->value(),
-                       soundRepeatCount_->value());
+    soundPlayer_->preview(path,
+                          volume_->value(),
+                          soundPlaybackMode_->currentData().toBool()
+                              ? 0 : maxSoundSeconds_->value(),
+                          soundRepeatCount_->value());
 }
 
 QString SettingsPage::selectedSoundPath(

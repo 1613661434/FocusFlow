@@ -1005,6 +1005,7 @@ void DashboardPageTests::tablesExposeSafePredictableSorting()
     QVERIFY(focusTaskAction->text().contains(QStringLiteral("计时中")));
     if (QMenu *menu = qobject_cast<QMenu *>(focusTaskAction->parent())) {
         QVERIFY(menu->styleSheet().contains(QStringLiteral("item:disabled")));
+        QVERIFY(menu->windowFlags().testFlag(Qt::NoDropShadowWindowHint));
         menu->close();
     }
     taskPage.setActiveFocusTask(-1);

@@ -98,7 +98,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.35"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.36"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -424,6 +424,9 @@ void MainWindow::applyTheme()
             border-color: #d0d5dd;
         }
         QLabel:disabled {
+            color: #98a2b3;
+        }
+        QCheckBox:disabled {
             color: #98a2b3;
         }
         QComboBox#soundPlaybackMode {

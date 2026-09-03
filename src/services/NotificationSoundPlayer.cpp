@@ -129,6 +129,19 @@ void NotificationSoundPlayer::play(const QString &filePath,
                       maximumSeconds, repeatCount);
 }
 
+void NotificationSoundPlayer::preview(const QString &filePath,
+                                      int volumePercent,
+                                      int maximumSeconds,
+                                      int repeatCount)
+{
+    const QString requestedPath = filePath.isEmpty()
+        ? QStringLiteral("builtin://system") : filePath;
+    hasPendingPlayback_ = false;
+    stopImmediately();
+    configurePlayback(requestedPath, volumePercent,
+                      maximumSeconds, repeatCount);
+}
+
 void NotificationSoundPlayer::configurePlayback(const QString &filePath,
                                                 int volumePercent,
                                                 int maximumSeconds,
@@ -149,11 +162,18 @@ void NotificationSoundPlayer::configurePlayback(const QString &filePath,
         return;
     }
     if (filePath_.startsWith(QStringLiteral("builtin://"))) {
+        // Detach the previous source before rewriting the shared in-memory
+        // device. QMediaPlayer may otherwise keep QBuffer open and continue
+        // decoding the previously selected built-in sound.
+        player_->setSource(QUrl());
         builtInBuffer_->close();
         builtInBuffer_->setData(builtInWave(filePath_));
         builtInBuffer_->open(QIODevice::ReadOnly);
+        const QString soundName = filePath_.mid(
+            QStringLiteral("builtin://").size());
         player_->setSourceDevice(builtInBuffer_,
-                                 QUrl(QStringLiteral("memory-sound.wav")));
+                                 QUrl(QStringLiteral("memory-%1.wav")
+                                          .arg(soundName)));
     } else if (QFileInfo::exists(filePath_)) {
         player_->setSource(QUrl::fromLocalFile(filePath_));
     } else {
