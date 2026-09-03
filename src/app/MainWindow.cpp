@@ -98,7 +98,7 @@ void MainWindow::buildInterface()
     navigation_->setSpacing(4);
     sidebarLayout->addWidget(navigation_, 1);
 
-    auto *version = new QLabel(QStringLiteral("v0.1.36"), sidebar);
+    auto *version = new QLabel(QStringLiteral("v0.1.37"), sidebar);
     version->setObjectName(QStringLiteral("mutedLabel"));
     sidebarLayout->addWidget(version);
 
@@ -430,8 +430,8 @@ void MainWindow::applyTheme()
             color: #98a2b3;
         }
         QComboBox#soundPlaybackMode {
-            padding-top: 9px;
-            padding-bottom: 5px;
+            padding-top: 7px;
+            padding-bottom: 7px;
         }
         QPushButton {
             background: #ffffff;

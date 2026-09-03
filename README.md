@@ -1,6 +1,6 @@
 # FocusFlow
 
-[![Version](https://img.shields.io/badge/version-v0.1.36-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.36)
+[![Version](https://img.shields.io/badge/version-v0.1.37-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.37)
 [![GitHub Stars](https://img.shields.io/github/stars/1613661434/FocusFlow?style=flat-square&logo=github)](https://github.com/1613661434/FocusFlow/stargazers)
 [![Last Commit](https://img.shields.io/github/last-commit/1613661434/FocusFlow?style=flat-square&logo=git)](https://github.com/1613661434/FocusFlow/commits/main)
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?style=flat-square&logo=cplusplus)
@@ -8,7 +8,7 @@
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4?style=flat-square&logo=windows11&logoColor=white)
 
 FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
-个人任务规划与专注管理工具，当前版本为 **v0.1.36**。
+个人任务规划与专注管理工具，当前版本为 **v0.1.37**。
 
 中文定位：**个人任务规划与专注管理系统**
 
@@ -52,7 +52,7 @@ FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
 - 待处理任务的状态按钮显示“完成”，已完成任务显示“恢复”；两者字数相同，切换时不会引起界面跳动。操作后会刷新状态并取消当前选择，防止排序导致选中行跳动或连续误操作。
 - 正在进行专注计时的关联任务会在任务表显示紫色“进行中”，并禁用“编辑”“完成”和“删除”；任务数据刷新后，计时页仍会保留当前关联任务。
 - 点击任务表的空白区域会取消当前选择，“编辑”“完成/恢复”和“删除”随即变为禁用状态，避免误操作。
-- 右键点击待处理任务并选择“开始专注”，可直接进入专注计时页并自动关联该任务；纯文字菜单不预留图标空位或深色投影，已有计时时菜单项会注明原因并以灰色禁用。
+- 右键点击待处理任务并选择“开始专注”，可直接进入专注计时页并自动关联该任务；纯文字菜单不预留图标空位，圆角弹层不使用系统边框或深色投影，已有计时时菜单项会注明原因并以灰色禁用。
 - 任务删除后，已经产生的专注历史仍会保留，并显示为“无关联任务”。
 
 ### 项目与分类
@@ -89,6 +89,7 @@ FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
 - 可选择完整播放或限制最长播放时间；限时播放会在结束前连续淡出，且不会修改原始音频。
 - 选择完整播放后，“最长播放”标签和输入框会明确变灰，表示该限制不生效。
 - 两个声音选择框和播放方式只有先点击获得焦点后才响应滚轮，避免误改并与页面滚动冲突。
+- 播放方式下拉框使用上下对称内边距，选项文字在输入区域内垂直居中。
 - 每个内置预设使用独立媒体源；切换后试听会立即停止上一段预览，并准确播放当前下拉框选中的提示音。
 - 提醒音量行保持完整控件高度，并与播放方式留出清晰间距，避免滑轨和下拉框视觉拥挤。
 - 完整音乐遇到下一阶段提醒时，会先平滑淡出再播放新声音，避免两条音频叠加或突然截断。
@@ -282,7 +283,7 @@ git tag --list
 git switch -c inspect-old-version <提交号或标签>
 ```
 
-当前稳定程序版本标签为 `v0.1.36`。
+当前稳定程序版本标签为 `v0.1.37`。
 
 ## 作者与版权
 

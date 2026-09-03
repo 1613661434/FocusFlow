@@ -14,7 +14,12 @@ inline void apply(QMenu *menu)
     for (QAction *action : menu->actions()) {
         action->setIconVisibleInMenu(false);
     }
+    // Let Qt paint the complete rounded popup surface.  On Windows, keeping
+    // the native popup frame can leave a dark one-pixel edge at the bottom
+    // and right even when the drop shadow hint is disabled.
+    menu->setWindowFlag(Qt::FramelessWindowHint, true);
     menu->setWindowFlag(Qt::NoDropShadowWindowHint, true);
+    menu->setAttribute(Qt::WA_TranslucentBackground, true);
     menu->setToolTipsVisible(true);
     menu->setStyleSheet(QStringLiteral(R"(
         QMenu {
