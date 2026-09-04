@@ -344,11 +344,15 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
         QStringLiteral("focusStatusLabel"));
     auto *customEditor = page.findChild<QWidget *>(
         QStringLiteral("focusCustomPresetEditor"));
+    auto *optionsScroll = page.findChild<QScrollArea *>(
+        QStringLiteral("focusOptionsScrollArea"));
     auto *primary = buttonForRole(page, QStringLiteral("primary"));
     QVERIFY(taskCombo != nullptr);
     QVERIFY(presetCombo != nullptr);
     QVERIFY(customMinutes != nullptr);
     QVERIFY(breakMode != nullptr);
+    QCOMPARE(QString::fromLatin1(breakMode->metaObject()->className()),
+             QStringLiteral("FocusAwareComboBox"));
     QVERIFY(shortBreakMinutes != nullptr);
     QVERIFY(longBreakMinutes != nullptr);
     QVERIFY(cycles != nullptr);
@@ -360,10 +364,11 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     QVERIFY(saveCustom != nullptr);
     QVERIFY(statusLabel != nullptr);
     QVERIFY(customEditor != nullptr);
+    QVERIFY(optionsScroll != nullptr);
     QVERIFY(primary != nullptr);
     QCOMPARE(saveCustom->text(), QStringLiteral("保存为方案"));
-    QVERIFY(confirmCustom->minimumHeight() >= 40);
-    QVERIFY(saveCustom->minimumWidth() >= 138);
+    QVERIFY(confirmCustom->minimumHeight() >= 34);
+    QVERIFY(saveCustom->minimumWidth() >= 116);
 
     QCOMPARE(taskCombo->currentData().toInt(), -1);
     QVERIFY(!setTaskPreset->isEnabled());
@@ -381,6 +386,9 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     presetCombo->setCurrentIndex(customIndex);
     QCoreApplication::processEvents();
     QVERIFY(customEditor->isVisible());
+    page.resize(1400, 1000);
+    QCoreApplication::processEvents();
+    QCOMPARE(optionsScroll->verticalScrollBar()->maximum(), 0);
     QCOMPARE(breakMode->currentData().toBool(), true);
     QVERIFY(autoStartBreak->isVisible());
     QVERIFY(autoStartFocus->isVisible());
@@ -506,6 +514,8 @@ void FocusPageTests::noBreakSchemeWorksInCompactHeight()
 
     QVERIFY(presetCombo != nullptr);
     QVERIFY(breakMode != nullptr);
+    QCOMPARE(QString::fromLatin1(breakMode->metaObject()->className()),
+             QStringLiteral("FocusAwareComboBox"));
     QVERIFY(shortBreak != nullptr);
     QVERIFY(longBreak != nullptr);
     QVERIFY(cycles != nullptr);
@@ -596,6 +606,8 @@ void FocusPageTests::noBreakPresetDialogKeepsStableDisabledFields()
         QStringLiteral("presetAutoStartNextFocus"));
 
     QVERIFY(breakMode != nullptr);
+    QCOMPARE(QString::fromLatin1(breakMode->metaObject()->className()),
+             QStringLiteral("FocusAwareComboBox"));
     QVERIFY(shortBreak != nullptr);
     QVERIFY(longBreak != nullptr);
     QVERIFY(cycles != nullptr);

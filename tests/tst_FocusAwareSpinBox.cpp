@@ -2,8 +2,12 @@
 #include "widgets/FocusAwareSpinBox.h"
 #include "widgets/FocusAwareSlider.h"
 #include "widgets/FocusAwareTableWidget.h"
+#include "widgets/ColoredComboBox.h"
 
 #include <QApplication>
+#include <QColor>
+#include <QComboBox>
+#include <QImage>
 #include <QLineEdit>
 #include <QScrollBar>
 #include <QTableWidgetItem>
@@ -22,6 +26,7 @@ private slots:
     void comboBoxIgnoresWheelUntilFocused();
     void tableIgnoresWheelUntilClicked();
     void keepsCursorOutOfSuffix();
+    void coloredComboBoxPaintsCurrentItemColor();
 };
 
 namespace {
@@ -207,6 +212,53 @@ void FocusAwareSpinBoxTests::tableIgnoresWheelUntilClicked()
     QApplication::sendEvent(table->viewport(), &boundaryWheel);
     QCOMPARE(table->verticalScrollBar()->value(), bottomValue);
     QVERIFY(boundaryWheel.isAccepted());
+}
+
+void FocusAwareSpinBoxTests::coloredComboBoxPaintsCurrentItemColor()
+{
+    QWidget window;
+    auto *layout = new QVBoxLayout(&window);
+    auto *comboBox = new QComboBox(&window);
+    comboBox->setObjectName(QStringLiteral("coloredComboBox"));
+    comboBox->addItem(QStringLiteral("全部项目"), -2);
+    ColoredComboBox::addColoredItem(comboBox,
+                                    QStringLiteral("彩色项目"),
+                                    1,
+                                    QColor(QStringLiteral("#e02020")));
+    ColoredComboBox::enableCurrentItemColor(comboBox);
+    layout->addWidget(comboBox);
+    // FocusFlow applies its parent theme after pages are constructed. The
+    // selected entity colour must retain precedence in that same order.
+    window.setStyleSheet(QStringLiteral(
+        "QWidget { color: #182230; font-size: 20px; }"
+        "QComboBox { background: #ffffff; padding: 7px 9px; }"));
+    window.resize(280, 80);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    comboBox->setCurrentIndex(1);
+    QCoreApplication::processEvents();
+    QImage image(comboBox->size(), QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    comboBox->render(&image);
+
+    int redPixels = 0;
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            const QColor pixel = image.pixelColor(x, y);
+            if (pixel.red() > 150 && pixel.green() < 110
+                && pixel.blue() < 110 && pixel.alpha() > 0) {
+                ++redPixels;
+            }
+        }
+    }
+    QVERIFY(redPixels > 5);
+    QCOMPARE(comboBox->itemData(0, Qt::ForegroundRole).value<QColor>(),
+             QColor(QStringLiteral("#182230")));
+
+    comboBox->setCurrentIndex(0);
+    QCOMPARE(comboBox->palette().color(QPalette::Text),
+             QColor(QStringLiteral("#182230")));
 }
 
 QTEST_MAIN(FocusAwareSpinBoxTests)

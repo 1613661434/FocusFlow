@@ -8,6 +8,7 @@
 #include "services/PriorityService.h"
 #include "widgets/PriorityColors.h"
 #include "widgets/ColoredComboBox.h"
+#include "widgets/FocusAwareComboBox.h"
 #include "widgets/FocusAwareSpinBox.h"
 
 #include <QComboBox>
@@ -180,8 +181,8 @@ void FocusPage::buildInterface()
     optionsCard->setObjectName(QStringLiteral("card"));
     optionsCard->setMinimumWidth(350);
     auto *optionsLayout = new QVBoxLayout(optionsCard);
-    optionsLayout->setContentsMargins(26, 26, 26, 26);
-    optionsLayout->setSpacing(12);
+    optionsLayout->setContentsMargins(22, 20, 22, 20);
+    optionsLayout->setSpacing(8);
 
     auto *optionsTitle = new QLabel(QStringLiteral("本次专注"), optionsCard);
     optionsTitle->setObjectName(QStringLiteral("cardTitle"));
@@ -209,9 +210,9 @@ void FocusPage::buildInterface()
     customMinutesRow_->setSizePolicy(QSizePolicy::Preferred,
                                      QSizePolicy::Minimum);
     auto *customForm = new QFormLayout(customMinutesRow_);
-    customForm->setContentsMargins(0, 0, 0, 4);
+    customForm->setContentsMargins(0, 0, 0, 2);
     customForm->setHorizontalSpacing(10);
-    customForm->setVerticalSpacing(8);
+    customForm->setVerticalSpacing(5);
     customForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
 
     customMinutes_ = new FocusAwareSpinBox(customMinutesRow_);
@@ -219,7 +220,7 @@ void FocusPage::buildInterface()
     customMinutes_->setRange(1, 180);
     customMinutes_->setSuffix(QStringLiteral(" 分钟"));
     customMinutes_->setAccessibleName(QStringLiteral("自定义本次专注时长"));
-    customBreakMode_ = new QComboBox(customMinutesRow_);
+    customBreakMode_ = new FocusAwareComboBox(customMinutesRow_);
     customBreakMode_->setObjectName(QStringLiteral("focusCustomBreakMode"));
     customBreakMode_->addItem(QStringLiteral("正常休息"), true);
     customBreakMode_->addItem(QStringLiteral("不安排休息"), false);
@@ -264,9 +265,9 @@ void FocusPage::buildInterface()
     customForm->addRow(customAutoStartNextFocus_);
 
     auto *customButtons = new QWidget(customMinutesRow_);
-    customButtons->setMinimumHeight(44);
+    customButtons->setMinimumHeight(36);
     auto *customButtonsLayout = new QHBoxLayout(customButtons);
-    customButtonsLayout->setContentsMargins(0, 0, 0, 3);
+    customButtonsLayout->setContentsMargins(0, 0, 0, 0);
     customButtonsLayout->setSpacing(8);
     confirmCustomMinutesButton_ = new QPushButton(
         QStringLiteral("确定"), customButtons);
@@ -274,14 +275,14 @@ void FocusPage::buildInterface()
         QStringLiteral("confirmCustomMinutesButton"));
     confirmCustomMinutesButton_->setAccessibleName(
         QStringLiteral("确认并应用自定义本次方案"));
-    confirmCustomMinutesButton_->setMinimumSize(96, 40);
+    confirmCustomMinutesButton_->setMinimumSize(82, 34);
     saveCustomPresetButton_ = new QPushButton(
         QStringLiteral("保存为方案"), customButtons);
     saveCustomPresetButton_->setObjectName(
         QStringLiteral("saveCustomPresetButton"));
     saveCustomPresetButton_->setAccessibleName(
         QStringLiteral("为当前自定义方案设置名称并保存"));
-    saveCustomPresetButton_->setMinimumSize(138, 40);
+    saveCustomPresetButton_->setMinimumSize(116, 34);
     customButtonsLayout->addWidget(confirmCustomMinutesButton_, 2);
     customButtonsLayout->addWidget(saveCustomPresetButton_, 3);
     customForm->addRow(customButtons);
@@ -304,7 +305,7 @@ void FocusPage::buildInterface()
 
     auto *tip = new QLabel(
         QStringLiteral("方案切换只影响本次计时；需要长期使用时，可设为关联任务的"
-                       "默认方案。计时使用系统时间校正。"),
+                       "默认方案。"),
         optionsCard);
     tip->setObjectName(QStringLiteral("mutedLabel"));
     tip->setWordWrap(true);

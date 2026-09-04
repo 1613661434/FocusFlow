@@ -1,5 +1,6 @@
 #include "views/TimerPresetDialog.h"
 
+#include "widgets/FocusAwareComboBox.h"
 #include "widgets/FocusAwareSpinBox.h"
 
 #include <QCheckBox>
@@ -45,7 +46,7 @@ TimerPresetDialog::TimerPresetDialog(QWidget *parent)
     cycles_->setObjectName(QStringLiteral("presetCycles"));
     cycles_->setRange(2, 8);
     cycles_->setSuffix(QStringLiteral(" 次专注"));
-    breakMode_ = new QComboBox(this);
+    breakMode_ = new FocusAwareComboBox(this);
     breakMode_->setObjectName(QStringLiteral("presetBreakMode"));
     breakMode_->addItem(QStringLiteral("正常休息"), true);
     breakMode_->addItem(QStringLiteral("不安排休息"), false);
