@@ -1,5 +1,7 @@
 <RCC>
     <qresource prefix="/">
+        <file alias="icons/combo-down-arrow-disabled.svg">icons/combo-down-arrow-disabled.svg</file>
+        <file alias="icons/combo-down-arrow.svg">icons/combo-down-arrow.svg</file>
         <file alias="icons/focusflow.svg">icons/focusflow.svg</file>
     </qresource>
 </RCC>

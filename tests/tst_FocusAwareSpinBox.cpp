@@ -242,17 +242,23 @@ void FocusAwareSpinBoxTests::coloredComboBoxPaintsCurrentItemColor()
     image.fill(Qt::transparent);
     comboBox->render(&image);
 
-    int redPixels = 0;
+    int redTextPixels = 0;
+    int redArrowPixels = 0;
     for (int y = 0; y < image.height(); ++y) {
         for (int x = 0; x < image.width(); ++x) {
             const QColor pixel = image.pixelColor(x, y);
             if (pixel.red() > 150 && pixel.green() < 110
                 && pixel.blue() < 110 && pixel.alpha() > 0) {
-                ++redPixels;
+                if (x < image.width() - 40) {
+                    ++redTextPixels;
+                } else {
+                    ++redArrowPixels;
+                }
             }
         }
     }
-    QVERIFY(redPixels > 5);
+    QVERIFY(redTextPixels > 5);
+    QCOMPARE(redArrowPixels, 0);
     QCOMPARE(comboBox->itemData(0, Qt::ForegroundRole).value<QColor>(),
              QColor(QStringLiteral("#182230")));
 
