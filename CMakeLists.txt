@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FocusFlow VERSION 0.1.39 LANGUAGES CXX)
+project(FocusFlow VERSION 0.1.40 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -190,6 +190,8 @@ if(BUILD_TESTING)
         src/widgets/PriorityColors.h
         src/widgets/StatusColors.h
         src/widgets/ColoredComboBox.h
+        src/widgets/FocusAwareComboBox.cpp
+        src/widgets/FocusAwareComboBox.h
         src/widgets/FocusAwareSpinBox.cpp
         src/widgets/FocusAwareSpinBox.h
         src/models/Task.h

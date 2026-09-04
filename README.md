@@ -1,6 +1,6 @@
 # FocusFlow
 
-[![Version](https://img.shields.io/badge/version-v0.1.39-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.39)
+[![Version](https://img.shields.io/badge/version-v0.1.40-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.40)
 [![GitHub Stars](https://img.shields.io/github/stars/1613661434/FocusFlow?style=flat-square&logo=github)](https://github.com/1613661434/FocusFlow/stargazers)
 [![Last Commit](https://img.shields.io/github/last-commit/1613661434/FocusFlow?style=flat-square&logo=git)](https://github.com/1613661434/FocusFlow/commits/main)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-6B7280?style=flat-square)](LICENSE)
@@ -9,7 +9,7 @@
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4?style=flat-square&logo=windows11&logoColor=white)
 
 FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
-个人任务规划与专注管理工具，当前版本为 **v0.1.39**。
+个人任务规划与专注管理工具，当前版本为 **v0.1.40**。
 
 中文定位：**个人任务规划与专注管理系统**
 
@@ -60,7 +60,7 @@ FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
 
 - 项目支持新增、编辑、归档、恢复和永久删除。
 - 分类支持新增、编辑和删除。
-- 项目与分类均可选择颜色；颜色会同步显示在任务、概览、专注和统计页面。
+- 项目与分类均可选择颜色；颜色会同步显示在任务、概览、专注和统计页面，下拉框收起后当前选项也保留对应颜色。
 - 删除项目后，其任务保留并变为“无项目”；删除分类后，相关任务变为“未分类”。
 - 表格所有列居中显示，支持按列排序；项目状态可控制归档项在前或在后。
 
@@ -72,11 +72,13 @@ FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
 - 可选择“自定义本次方案”；正常模式可设置两种休息和周期，连续专注模式可选择是否自动开始下一轮。
 - 自定义修改点击“确定”后才应用；确认后可输入名称“保存为方案”，方便下次直接复用。
 - 保存自定义方案时自动建议可用名称；已有“我的专注方案”后依次使用“我的专注方案2、3……”避免重名。
-- 选择“自定义本次方案”后直接展开编辑项，不再重复显示同名标题；操作按钮、长休息间隔和自动衔接选项不会被裁切。
+- 选择“自定义本次方案”后直接展开编辑项，不再重复显示同名标题；紧凑的操作按钮和表单间距让常见 2560×1600 全屏环境无需滚动即可完整显示，高缩放或低可用高度时仍可独立滚动。
 - 主按钮根据状态在“开始 / 暂停 / 继续”之间切换，另设“终止”按钮。
 - 中央大数字明确标注为“剩余时间”；进度条下方同时显示精确的已用时长、当前周期和计划总时长，专注及两种休息阶段保持一致。
 - 计时空闲时中央状态统一显示“准备开始”，不随专注、短休息或长休息类型变化。
 - 可按项目、分类筛选关联任务；任务按推荐分从高到低排列并显示推荐分。
+- 项目、分类筛选的当前选项在下拉框收起后仍使用实体颜色；“全部”“无项目”“未分类”等占位项保持普通文字色。
+- 自定义方案的休息方式只有先点击获得焦点后才响应滚轮，避免与右侧区域滚动冲突。
 - 专注正常结束或被终止后都会保存实际用时；终止关联任务的专注时可选择是否同时完成任务。
 - 休息时间会保存为记录，但不会计入专注统计。
 - 支持专注结束后自动开始休息、休息结束后自动开始下一轮专注。
@@ -289,7 +291,7 @@ git tag --list
 git switch -c inspect-old-version <提交号或标签>
 ```
 
-当前稳定程序版本标签为 `v0.1.39`。
+当前稳定程序版本标签为 `v0.1.40`。
 
 ## 作者与版权
 

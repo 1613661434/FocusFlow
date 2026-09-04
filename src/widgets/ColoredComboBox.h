@@ -7,6 +7,9 @@
 
 namespace ColoredComboBox {
 
+inline constexpr auto kBaseStyleProperty =
+    "_focusFlowColoredComboBoxBaseStyle";
+
 inline QColor itemColor(const QComboBox *comboBox, int index)
 {
     const QColor color = comboBox->itemData(index, Qt::ForegroundRole).value<QColor>();
@@ -15,11 +18,34 @@ inline QColor itemColor(const QComboBox *comboBox, int index)
 
 inline void applyCurrentItemColor(QComboBox *comboBox)
 {
+    // Keep popup placeholder items on the normal text colour. A local colour
+    // rule is needed for the collapsed label because the application-wide
+    // QWidget rule otherwise takes precedence over the widget palette.
+    const QColor defaultColor(QStringLiteral("#182230"));
+    for (int index = 0; index < comboBox->count(); ++index) {
+        const QColor foreground =
+            comboBox->itemData(index, Qt::ForegroundRole).value<QColor>();
+        if (!foreground.isValid()) {
+            comboBox->setItemData(index, defaultColor, Qt::ForegroundRole);
+        }
+    }
+
     QPalette palette = comboBox->palette();
     const QColor color = itemColor(comboBox, comboBox->currentIndex());
     palette.setColor(QPalette::Text, color);
     palette.setColor(QPalette::ButtonText, color);
     comboBox->setPalette(palette);
+
+    if (!comboBox->property(kBaseStyleProperty).isValid()) {
+        comboBox->setProperty(kBaseStyleProperty, comboBox->styleSheet());
+    }
+    const QString baseStyle =
+        comboBox->property(kBaseStyleProperty).toString();
+    comboBox->setStyleSheet(QStringLiteral(
+        "%1\nQComboBox { color: %2; }\n"
+        "QComboBox:disabled { color: #98a2b3; }")
+                                .arg(baseStyle,
+                                     color.name(QColor::HexRgb)));
 }
 
 inline void enableCurrentItemColor(QComboBox *comboBox)
