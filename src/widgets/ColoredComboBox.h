@@ -43,7 +43,14 @@ inline void applyCurrentItemColor(QComboBox *comboBox)
         comboBox->property(kBaseStyleProperty).toString();
     comboBox->setStyleSheet(QStringLiteral(
         "%1\nQComboBox { color: %2; }\n"
-        "QComboBox:disabled { color: #98a2b3; }")
+        "QComboBox:disabled { color: #98a2b3; }\n"
+        "QComboBox::down-arrow {"
+        " image: url(:/icons/combo-down-arrow.svg);"
+        " width: 10px; height: 6px;"
+        "}\n"
+        "QComboBox::down-arrow:disabled {"
+        " image: url(:/icons/combo-down-arrow-disabled.svg);"
+        "}")
                                 .arg(baseStyle,
                                      color.name(QColor::HexRgb)));
 }

@@ -1,6 +1,6 @@
 # FocusFlow
 
-[![Version](https://img.shields.io/badge/version-v0.1.40-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.40)
+[![Version](https://img.shields.io/badge/version-v0.1.41-4F6EF7?style=flat-square)](https://github.com/1613661434/FocusFlow/tree/v0.1.41)
 [![GitHub Stars](https://img.shields.io/github/stars/1613661434/FocusFlow?style=flat-square&logo=github)](https://github.com/1613661434/FocusFlow/stargazers)
 [![Last Commit](https://img.shields.io/github/last-commit/1613661434/FocusFlow?style=flat-square&logo=git)](https://github.com/1613661434/FocusFlow/commits/main)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-6B7280?style=flat-square)](LICENSE)
@@ -9,7 +9,7 @@
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4?style=flat-square&logo=windows11&logoColor=white)
 
 FocusFlow 是一款使用 C++17、Qt 6 Widgets 与 SQLite 开发的 Windows
-个人任务规划与专注管理工具，当前版本为 **v0.1.40**。
+个人任务规划与专注管理工具，当前版本为 **v0.1.41**。
 
 中文定位：**个人任务规划与专注管理系统**
 
@@ -291,7 +291,7 @@ git tag --list
 git switch -c inspect-old-version <提交号或标签>
 ```
 
-当前稳定程序版本标签为 `v0.1.40`。
+当前稳定程序版本标签为 `v0.1.41`。
 
 ## 作者与版权
 
