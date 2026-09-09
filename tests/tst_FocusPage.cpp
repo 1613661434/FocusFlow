@@ -111,6 +111,22 @@ void FocusPageTests::primaryButtonTracksTimerState()
     primary->click();
     QCOMPARE(primary->text(), QStringLiteral("暂停"));
 
+    bool pausedWhileConfirming = false;
+    QTimer::singleShot(0, [&pausedWhileConfirming, primary] {
+        if (auto *dialog = qobject_cast<QMessageBox *>(
+                QApplication::activeModalWidget())) {
+            pausedWhileConfirming = primary->text() == QStringLiteral("继续");
+            if (auto *cancelButton = dialog->findChild<QPushButton *>(
+                    QStringLiteral("cancelTerminationButton"))) {
+                cancelButton->click();
+            }
+        }
+    });
+    stop->click();
+    QVERIFY(pausedWhileConfirming);
+    QCOMPARE(primary->text(), QStringLiteral("暂停"));
+    QVERIFY(stop->isEnabled());
+
     QTimer::singleShot(0, [] {
         if (auto *dialog = qobject_cast<QMessageBox *>(
                 QApplication::activeModalWidget())) {
@@ -196,9 +212,14 @@ void FocusPageTests::discardingFocusDoesNotSaveARecord()
     primary->click();
 
     bool foundLinkedTaskActions = false;
-    QTimer::singleShot(0, [&foundLinkedTaskActions] {
+    bool linkedTimerPausedWhileConfirming = false;
+    QTimer::singleShot(0, [&foundLinkedTaskActions,
+                           &linkedTimerPausedWhileConfirming,
+                           primary] {
         if (auto *dialog = qobject_cast<QMessageBox *>(
                 QApplication::activeModalWidget())) {
+            linkedTimerPausedWhileConfirming =
+                primary->text() == QStringLiteral("继续");
             const auto buttons = dialog->buttons();
             const auto hasButton = [&buttons](const QString &text) {
                 return std::any_of(
@@ -219,6 +240,7 @@ void FocusPageTests::discardingFocusDoesNotSaveARecord()
     stop->click();
 
     QVERIFY(foundLinkedTaskActions);
+    QVERIFY(linkedTimerPausedWhileConfirming);
     QTRY_VERIFY_WITH_TIMEOUT(
         statusLabel->text().contains(QStringLiteral("任务保持原状态")), 500);
     QVERIFY(countQuery.exec(QStringLiteral("SELECT COUNT(*) FROM focus_sessions")));

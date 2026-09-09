@@ -627,8 +627,21 @@ void FocusPage::handlePrimaryAction()
 
 void FocusPage::stopEarly()
 {
+    if (timer_.state() == FocusTimer::State::Idle) {
+        return;
+    }
+
     completeTaskWhenSessionEnds_ = false;
     discardCurrentSession_ = false;
+    const bool resumeAfterCancel = timer_.state() == FocusTimer::State::Running;
+    if (resumeAfterCancel) {
+        timer_.pause();
+    }
+    const auto cancelTermination = [this, resumeAfterCancel] {
+        if (resumeAfterCancel && timer_.state() == FocusTimer::State::Paused) {
+            timer_.resume();
+        }
+    };
     const FocusTimer::Phase phase = timer_.phase();
     const bool hasLinkedTask = phase == FocusTimer::Phase::Focus
         && currentTaskId_ > 0;
@@ -662,6 +675,7 @@ void FocusPage::stopEarly()
 
         if (dialog.clickedButton() == cancelButton
             || dialog.clickedButton() == nullptr) {
+            cancelTermination();
             return;
         }
         completeTaskWhenSessionEnds_ =
@@ -691,6 +705,7 @@ void FocusPage::stopEarly()
 
         if (dialog.clickedButton() == cancelButton
             || dialog.clickedButton() == nullptr) {
+            cancelTermination();
             return;
         }
         discardCurrentSession_ = dialog.clickedButton() == discardButton;
@@ -705,6 +720,7 @@ void FocusPage::stopEarly()
             QMessageBox::Yes | QMessageBox::No,
             QMessageBox::No);
         if (choice != QMessageBox::Yes) {
+            cancelTermination();
             return;
         }
     }
