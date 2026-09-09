@@ -36,6 +36,7 @@ class FocusPageTests final : public QObject
 private slots:
     void initTestCase();
     void primaryButtonTracksTimerState();
+    void discardingFocusDoesNotSaveARecord();
     void taskFiltersShowScoresAndSortRecommendations();
     void taskSchemeAndTrayStatusFollowTheRunningTimer();
     void customSchemeRequiresConfirmationAndCanBeSaved();
@@ -113,7 +114,14 @@ void FocusPageTests::primaryButtonTracksTimerState()
     QTimer::singleShot(0, [] {
         if (auto *dialog = qobject_cast<QMessageBox *>(
                 QApplication::activeModalWidget())) {
-            dialog->button(QMessageBox::Yes)->click();
+            const auto buttons = dialog->buttons();
+            const auto recordButton = std::find_if(
+                buttons.cbegin(), buttons.cend(), [](QAbstractButton *button) {
+                    return button->text() == QStringLiteral("终止并记录");
+                });
+            if (recordButton != buttons.cend()) {
+                (*recordButton)->click();
+            }
         }
     });
     stop->click();
@@ -124,6 +132,101 @@ void FocusPageTests::primaryButtonTracksTimerState()
         statusLabel->text().contains(QStringLiteral("已终止")), 500);
     QTRY_COMPARE_WITH_TIMEOUT(statusLabel->text(),
                               QStringLiteral("准备开始"), 4700);
+}
+
+void FocusPageTests::discardingFocusDoesNotSaveARecord()
+{
+    QSqlQuery countQuery(DatabaseManager::instance().database());
+    QVERIFY(countQuery.exec(QStringLiteral("SELECT COUNT(*) FROM focus_sessions")));
+    QVERIFY(countQuery.next());
+    const int countBefore = countQuery.value(0).toInt();
+
+    FocusPage page;
+    auto *primary = buttonForRole(page, QStringLiteral("primary"));
+    auto *stop = buttonForRole(page, QStringLiteral("stop"));
+    auto *statusLabel = page.findChild<QLabel *>(
+        QStringLiteral("focusStatusLabel"));
+    QVERIFY(primary);
+    QVERIFY(stop);
+    QVERIFY(statusLabel);
+
+    primary->click();
+    QCOMPARE(primary->text(), QStringLiteral("暂停"));
+
+    bool foundExpectedActions = false;
+    QTimer::singleShot(0, [&foundExpectedActions] {
+        if (auto *dialog = qobject_cast<QMessageBox *>(
+                QApplication::activeModalWidget())) {
+            const auto buttons = dialog->buttons();
+            const auto hasButton = [&buttons](const QString &text) {
+                return std::any_of(
+                    buttons.cbegin(), buttons.cend(), [&text](QAbstractButton *button) {
+                        return button->text() == text;
+                    });
+            };
+            foundExpectedActions = hasButton(QStringLiteral("终止并记录"))
+                && hasButton(QStringLiteral("取消终止"))
+                && hasButton(QStringLiteral("终止但不记录"));
+            const auto discardButton = std::find_if(
+                buttons.cbegin(), buttons.cend(), [](QAbstractButton *button) {
+                    return button->text() == QStringLiteral("终止但不记录");
+                });
+            if (discardButton != buttons.cend()) {
+                (*discardButton)->click();
+            }
+        }
+    });
+    stop->click();
+
+    QVERIFY(foundExpectedActions);
+    QCOMPARE(primary->text(), QStringLiteral("开始"));
+    QTRY_VERIFY_WITH_TIMEOUT(
+        statusLabel->text().contains(QStringLiteral("未保存记录")), 500);
+
+    QVERIFY(countQuery.exec(QStringLiteral("SELECT COUNT(*) FROM focus_sessions")));
+    QVERIFY(countQuery.next());
+    QCOMPARE(countQuery.value(0).toInt(), countBefore);
+
+    Task task;
+    task.title = QStringLiteral("不记录测试任务-%1")
+                     .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    QString error;
+    QVERIFY2(TaskRepository().save(task, &error), qPrintable(error));
+    page.selectTask(task.id);
+    primary->click();
+
+    bool foundLinkedTaskActions = false;
+    QTimer::singleShot(0, [&foundLinkedTaskActions] {
+        if (auto *dialog = qobject_cast<QMessageBox *>(
+                QApplication::activeModalWidget())) {
+            const auto buttons = dialog->buttons();
+            const auto hasButton = [&buttons](const QString &text) {
+                return std::any_of(
+                    buttons.cbegin(), buttons.cend(), [&text](QAbstractButton *button) {
+                        return button->text() == text;
+                    });
+            };
+            foundLinkedTaskActions = hasButton(QStringLiteral("终止并记录"))
+                && hasButton(QStringLiteral("终止并完成任务"))
+                && hasButton(QStringLiteral("终止但不记录"))
+                && hasButton(QStringLiteral("取消终止"));
+            if (auto *discardButton = dialog->findChild<QPushButton *>(
+                    QStringLiteral("terminateWithoutRecordButton"))) {
+                discardButton->click();
+            }
+        }
+    });
+    stop->click();
+
+    QVERIFY(foundLinkedTaskActions);
+    QTRY_VERIFY_WITH_TIMEOUT(
+        statusLabel->text().contains(QStringLiteral("任务保持原状态")), 500);
+    QVERIFY(countQuery.exec(QStringLiteral("SELECT COUNT(*) FROM focus_sessions")));
+    QVERIFY(countQuery.next());
+    QCOMPARE(countQuery.value(0).toInt(), countBefore);
+    QCOMPARE(TaskRepository().findById(task.id).status,
+             QStringLiteral("pending"));
+    QVERIFY2(TaskRepository().deleteTask(task.id, &error), qPrintable(error));
 }
 
 void FocusPageTests::taskFiltersShowScoresAndSortRecommendations()
@@ -394,8 +497,9 @@ void FocusPageTests::customSchemeRequiresConfirmationAndCanBeSaved()
     QVERIFY(autoStartFocus->isVisible());
     QVERIFY(autoStartNext->isVisible());
     QVERIFY(!autoStartNext->isEnabled());
+    page.activateWindow();
     presetCombo->setFocus(Qt::MouseFocusReason);
-    QTRY_VERIFY(presetCombo->hasFocus());
+    QTRY_VERIFY_WITH_TIMEOUT(presetCombo->hasFocus(), 1000);
     const int selectedPresetId = presetCombo->currentData().toInt();
     QTest::mouseClick(&page, Qt::LeftButton, Qt::NoModifier,
                       QPoint(4, 4));

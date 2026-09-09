@@ -598,6 +598,8 @@ void FocusPage::startCurrentPhase()
     if (timer_.state() != FocusTimer::State::Idle) {
         return;
     }
+    discardCurrentSession_ = false;
+    completeTaskWhenSessionEnds_ = false;
     const auto phase = selectedPhase();
     currentTaskId_ = phase == FocusTimer::Phase::Focus
         ? taskCombo_->currentData().toInt()
@@ -626,6 +628,7 @@ void FocusPage::handlePrimaryAction()
 void FocusPage::stopEarly()
 {
     completeTaskWhenSessionEnds_ = false;
+    discardCurrentSession_ = false;
     const FocusTimer::Phase phase = timer_.phase();
     const bool hasLinkedTask = phase == FocusTimer::Phase::Focus
         && currentTaskId_ > 0;
@@ -633,16 +636,27 @@ void FocusPage::stopEarly()
     if (hasLinkedTask) {
         QMessageBox dialog(QMessageBox::Question,
                            QStringLiteral("终止专注"),
-                           QStringLiteral("实际用时会保存并计入专注统计。\n"
-                                          "是否同时将关联任务标记为完成？"),
+                           QStringLiteral("本次已专注 %1，关联任务：“%2”。\n"
+                                          "保存记录后可选择是否同时完成任务；"
+                                          "不记录将丢弃本次数据，任务保持原状态。")
+                               .arg(formatSeconds(timer_.actualSeconds()),
+                                    currentTaskTitle_),
                            QMessageBox::NoButton,
                            this);
-        auto *finishOnlyButton = dialog.addButton(
-            QStringLiteral("仅终止计时"), QMessageBox::AcceptRole);
+        auto *recordButton = dialog.addButton(
+            QStringLiteral("终止并记录"), QMessageBox::AcceptRole);
+        recordButton->setObjectName(QStringLiteral("terminateAndRecordButton"));
         auto *completeTaskButton = dialog.addButton(
             QStringLiteral("终止并完成任务"), QMessageBox::ActionRole);
+        completeTaskButton->setObjectName(
+            QStringLiteral("terminateCompleteTaskButton"));
+        auto *discardButton = dialog.addButton(
+            QStringLiteral("终止但不记录"), QMessageBox::DestructiveRole);
+        discardButton->setObjectName(
+            QStringLiteral("terminateWithoutRecordButton"));
         auto *cancelButton = dialog.addButton(
-            QStringLiteral("取消"), QMessageBox::RejectRole);
+            QStringLiteral("取消终止"), QMessageBox::RejectRole);
+        cancelButton->setObjectName(QStringLiteral("cancelTerminationButton"));
         dialog.setDefaultButton(cancelButton);
         dialog.exec();
 
@@ -652,18 +666,35 @@ void FocusPage::stopEarly()
         }
         completeTaskWhenSessionEnds_ =
             dialog.clickedButton() == completeTaskButton;
-        Q_UNUSED(finishOnlyButton);
+        discardCurrentSession_ = dialog.clickedButton() == discardButton;
+        Q_UNUSED(recordButton);
     } else if (phase == FocusTimer::Phase::Focus) {
-        const auto choice = QMessageBox::question(
-            this,
-            QStringLiteral("终止专注"),
-            QStringLiteral("要终止当前专注并保存实际用时吗？\n"
-                           "已产生的专注时间会计入统计。"),
-            QMessageBox::Yes | QMessageBox::No,
-            QMessageBox::No);
-        if (choice != QMessageBox::Yes) {
+        QMessageBox dialog(QMessageBox::Question,
+                           QStringLiteral("终止专注"),
+                           QStringLiteral("本次已专注 %1。\n"
+                                          "记录后会计入专注统计；不记录将丢弃本次数据。")
+                               .arg(formatSeconds(timer_.actualSeconds())),
+                           QMessageBox::NoButton,
+                           this);
+        auto *recordButton = dialog.addButton(
+            QStringLiteral("终止并记录"), QMessageBox::AcceptRole);
+        recordButton->setObjectName(QStringLiteral("terminateAndRecordButton"));
+        auto *discardButton = dialog.addButton(
+            QStringLiteral("终止但不记录"), QMessageBox::DestructiveRole);
+        discardButton->setObjectName(
+            QStringLiteral("terminateWithoutRecordButton"));
+        auto *cancelButton = dialog.addButton(
+            QStringLiteral("取消终止"), QMessageBox::RejectRole);
+        cancelButton->setObjectName(QStringLiteral("cancelTerminationButton"));
+        dialog.setDefaultButton(cancelButton);
+        dialog.exec();
+
+        if (dialog.clickedButton() == cancelButton
+            || dialog.clickedButton() == nullptr) {
             return;
         }
+        discardCurrentSession_ = dialog.clickedButton() == discardButton;
+        Q_UNUSED(recordButton);
     } else {
         const auto choice = QMessageBox::question(
             this,
@@ -747,6 +778,20 @@ void FocusPage::handleSessionEnded(FocusTimer::Phase phase,
 {
     if (phase == FocusTimer::Phase::Focus) {
         emit activeFocusTaskChanged(-1);
+    }
+    if (discardCurrentSession_) {
+        discardCurrentSession_ = false;
+        completeTaskWhenSessionEnds_ = false;
+        updateIdleDuration();
+        const QString status = taskId > 0
+            ? QStringLiteral("本次专注已终止，未保存记录；关联任务保持原状态。")
+            : QStringLiteral("本次专注已终止，未保存记录。");
+        QTimer::singleShot(0, this, [this, status] {
+            if (timer_.state() == FocusTimer::State::Idle) {
+                showTemporaryStatus(status, 4000);
+            }
+        });
+        return;
     }
     QString error;
     const bool saved = FocusRepository().recordSession(

@@ -125,4 +125,5 @@ private:
     int currentRemainingSeconds_ = 0;
     QString currentTaskTitle_;
     bool completeTaskWhenSessionEnds_ = false;
+    bool discardCurrentSession_ = false;
 };
