@@ -649,13 +649,20 @@ void FocusPage::stopEarly()
     if (hasLinkedTask) {
         QMessageBox dialog(QMessageBox::Question,
                            QStringLiteral("终止专注"),
-                           QStringLiteral("本次已专注 %1，关联任务：“%2”。\n"
-                                          "保存记录后可选择是否同时完成任务；"
-                                          "不记录将丢弃本次数据，任务保持原状态。")
+                           QStringLiteral(
+                               "<div>本次已专注&nbsp;"
+                               "<span style=\"font-size: 15pt; font-weight: 700; "
+                               "color: #4F6EF7;\">%1</span></div>"
+                               "<div>关联任务：<span style=\"font-weight: 600; "
+                               "color: #4F6EF7;\">“%2”</span></div>"
+                               "<div>记录：计入专注统计</div>"
+                               "<div>不记录：不保存本次数据</div>"
+                               "<div>完成任务：记录并完成任务</div>")
                                .arg(formatSeconds(timer_.actualSeconds()),
-                                    currentTaskTitle_),
+                                    currentTaskTitle_.toHtmlEscaped()),
                            QMessageBox::NoButton,
                            this);
+        dialog.setTextFormat(Qt::RichText);
         auto *recordButton = dialog.addButton(
             QStringLiteral("记录"), QMessageBox::AcceptRole);
         recordButton->setObjectName(QStringLiteral("terminateAndRecordButton"));
@@ -685,11 +692,16 @@ void FocusPage::stopEarly()
     } else if (phase == FocusTimer::Phase::Focus) {
         QMessageBox dialog(QMessageBox::Question,
                            QStringLiteral("终止专注"),
-                           QStringLiteral("本次已专注 %1。\n"
-                                          "记录后会计入专注统计；不记录将丢弃本次数据。")
+                           QStringLiteral(
+                               "<div>本次已专注&nbsp;"
+                               "<span style=\"font-size: 15pt; font-weight: 700; "
+                               "color: #4F6EF7;\">%1</span></div>"
+                               "<div>记录：计入专注统计</div>"
+                               "<div>不记录：不保存本次数据</div>")
                                .arg(formatSeconds(timer_.actualSeconds())),
                            QMessageBox::NoButton,
                            this);
+        dialog.setTextFormat(Qt::RichText);
         auto *recordButton = dialog.addButton(
             QStringLiteral("记录"), QMessageBox::AcceptRole);
         recordButton->setObjectName(QStringLiteral("terminateAndRecordButton"));

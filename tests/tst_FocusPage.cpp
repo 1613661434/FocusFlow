@@ -170,9 +170,18 @@ void FocusPageTests::discardingFocusDoesNotSaveARecord()
     QCOMPARE(primary->text(), QStringLiteral("暂停"));
 
     bool foundExpectedActions = false;
-    QTimer::singleShot(0, [&foundExpectedActions] {
+    bool foundCompactUnlinkedPrompt = false;
+    QTimer::singleShot(0, [&foundExpectedActions, &foundCompactUnlinkedPrompt] {
         if (auto *dialog = qobject_cast<QMessageBox *>(
                 QApplication::activeModalWidget())) {
+            const QString prompt = dialog->text();
+            foundCompactUnlinkedPrompt =
+                dialog->textFormat() == Qt::RichText
+                && prompt.contains(QStringLiteral("font-size: 15pt"))
+                && prompt.contains(QStringLiteral("color: #4F6EF7"))
+                && prompt.contains(QStringLiteral("<div>记录：计入专注统计</div>"))
+                && prompt.contains(QStringLiteral("<div>不记录：不保存本次数据</div>"))
+                && !prompt.contains(QChar(0x3002));
             const auto buttons = dialog->buttons();
             const auto hasButton = [&buttons](const QString &text) {
                 return std::any_of(
@@ -195,6 +204,7 @@ void FocusPageTests::discardingFocusDoesNotSaveARecord()
     stop->click();
 
     QVERIFY(foundExpectedActions);
+    QVERIFY(foundCompactUnlinkedPrompt);
     QCOMPARE(primary->text(), QStringLiteral("开始"));
     QTRY_VERIFY_WITH_TIMEOUT(
         statusLabel->text().contains(QStringLiteral("未保存记录")), 500);
@@ -213,13 +223,23 @@ void FocusPageTests::discardingFocusDoesNotSaveARecord()
 
     bool foundLinkedTaskActions = false;
     bool linkedTimerPausedWhileConfirming = false;
+    bool foundCompactLinkedPrompt = false;
     QTimer::singleShot(0, [&foundLinkedTaskActions,
                            &linkedTimerPausedWhileConfirming,
+                           &foundCompactLinkedPrompt,
                            primary] {
         if (auto *dialog = qobject_cast<QMessageBox *>(
                 QApplication::activeModalWidget())) {
             linkedTimerPausedWhileConfirming =
                 primary->text() == QStringLiteral("继续");
+            const QString prompt = dialog->text();
+            foundCompactLinkedPrompt =
+                dialog->textFormat() == Qt::RichText
+                && prompt.contains(QStringLiteral("<div>关联任务："))
+                && prompt.contains(QStringLiteral("<div>记录：计入专注统计</div>"))
+                && prompt.contains(QStringLiteral("<div>不记录：不保存本次数据</div>"))
+                && prompt.contains(QStringLiteral("<div>完成任务：记录并完成任务</div>"))
+                && !prompt.contains(QChar(0x3002));
             const auto buttons = dialog->buttons();
             const auto hasButton = [&buttons](const QString &text) {
                 return std::any_of(
@@ -241,6 +261,7 @@ void FocusPageTests::discardingFocusDoesNotSaveARecord()
 
     QVERIFY(foundLinkedTaskActions);
     QVERIFY(linkedTimerPausedWhileConfirming);
+    QVERIFY(foundCompactLinkedPrompt);
     QTRY_VERIFY_WITH_TIMEOUT(
         statusLabel->text().contains(QStringLiteral("任务保持原状态")), 500);
     QVERIFY(countQuery.exec(QStringLiteral("SELECT COUNT(*) FROM focus_sessions")));
