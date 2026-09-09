@@ -657,18 +657,18 @@ void FocusPage::stopEarly()
                            QMessageBox::NoButton,
                            this);
         auto *recordButton = dialog.addButton(
-            QStringLiteral("终止并记录"), QMessageBox::AcceptRole);
+            QStringLiteral("记录"), QMessageBox::AcceptRole);
         recordButton->setObjectName(QStringLiteral("terminateAndRecordButton"));
         auto *completeTaskButton = dialog.addButton(
-            QStringLiteral("终止并完成任务"), QMessageBox::ActionRole);
+            QStringLiteral("完成任务"), QMessageBox::ActionRole);
         completeTaskButton->setObjectName(
             QStringLiteral("terminateCompleteTaskButton"));
         auto *discardButton = dialog.addButton(
-            QStringLiteral("终止但不记录"), QMessageBox::DestructiveRole);
+            QStringLiteral("不记录"), QMessageBox::DestructiveRole);
         discardButton->setObjectName(
             QStringLiteral("terminateWithoutRecordButton"));
         auto *cancelButton = dialog.addButton(
-            QStringLiteral("取消终止"), QMessageBox::RejectRole);
+            QStringLiteral("取消"), QMessageBox::RejectRole);
         cancelButton->setObjectName(QStringLiteral("cancelTerminationButton"));
         dialog.setDefaultButton(cancelButton);
         dialog.exec();
@@ -691,14 +691,14 @@ void FocusPage::stopEarly()
                            QMessageBox::NoButton,
                            this);
         auto *recordButton = dialog.addButton(
-            QStringLiteral("终止并记录"), QMessageBox::AcceptRole);
+            QStringLiteral("记录"), QMessageBox::AcceptRole);
         recordButton->setObjectName(QStringLiteral("terminateAndRecordButton"));
         auto *discardButton = dialog.addButton(
-            QStringLiteral("终止但不记录"), QMessageBox::DestructiveRole);
+            QStringLiteral("不记录"), QMessageBox::DestructiveRole);
         discardButton->setObjectName(
             QStringLiteral("terminateWithoutRecordButton"));
         auto *cancelButton = dialog.addButton(
-            QStringLiteral("取消终止"), QMessageBox::RejectRole);
+            QStringLiteral("取消"), QMessageBox::RejectRole);
         cancelButton->setObjectName(QStringLiteral("cancelTerminationButton"));
         dialog.setDefaultButton(cancelButton);
         dialog.exec();

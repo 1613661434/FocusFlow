@@ -133,7 +133,7 @@ void FocusPageTests::primaryButtonTracksTimerState()
             const auto buttons = dialog->buttons();
             const auto recordButton = std::find_if(
                 buttons.cbegin(), buttons.cend(), [](QAbstractButton *button) {
-                    return button->text() == QStringLiteral("终止并记录");
+                    return button->text() == QStringLiteral("记录");
                 });
             if (recordButton != buttons.cend()) {
                 (*recordButton)->click();
@@ -180,12 +180,12 @@ void FocusPageTests::discardingFocusDoesNotSaveARecord()
                         return button->text() == text;
                     });
             };
-            foundExpectedActions = hasButton(QStringLiteral("终止并记录"))
-                && hasButton(QStringLiteral("取消终止"))
-                && hasButton(QStringLiteral("终止但不记录"));
+            foundExpectedActions = hasButton(QStringLiteral("记录"))
+                && hasButton(QStringLiteral("取消"))
+                && hasButton(QStringLiteral("不记录"));
             const auto discardButton = std::find_if(
                 buttons.cbegin(), buttons.cend(), [](QAbstractButton *button) {
-                    return button->text() == QStringLiteral("终止但不记录");
+                    return button->text() == QStringLiteral("不记录");
                 });
             if (discardButton != buttons.cend()) {
                 (*discardButton)->click();
@@ -227,10 +227,10 @@ void FocusPageTests::discardingFocusDoesNotSaveARecord()
                         return button->text() == text;
                     });
             };
-            foundLinkedTaskActions = hasButton(QStringLiteral("终止并记录"))
-                && hasButton(QStringLiteral("终止并完成任务"))
-                && hasButton(QStringLiteral("终止但不记录"))
-                && hasButton(QStringLiteral("取消终止"));
+            foundLinkedTaskActions = hasButton(QStringLiteral("记录"))
+                && hasButton(QStringLiteral("完成任务"))
+                && hasButton(QStringLiteral("不记录"))
+                && hasButton(QStringLiteral("取消"));
             if (auto *discardButton = dialog->findChild<QPushButton *>(
                     QStringLiteral("terminateWithoutRecordButton"))) {
                 discardButton->click();
