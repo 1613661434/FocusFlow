@@ -129,7 +129,6 @@ bool DataManagementService::exportTasksCsv(const QString &destinationPath,
         LEFT JOIN projects p ON p.id = t.project_id
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN timer_presets tp ON tp.id = t.timer_preset_id
-        WHERE t.is_deleted = 0
         ORDER BY t.id
     )"))) {
         assignError(query.lastError().text(), errorMessage);

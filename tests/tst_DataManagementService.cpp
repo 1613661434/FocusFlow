@@ -18,6 +18,7 @@ class DataManagementServiceTests final : public QObject
 
 private slots:
     void initTestCase();
+    void taskSchemaOmitsSoftDeleteColumn();
     void taskStatusConstraintRejectsRemovedStates();
     void backupAndCsvExports();
     void prepareValidatedRestore();
@@ -56,6 +57,16 @@ void DataManagementServiceTests::initTestCase()
         ) VALUES(1, 'focus', 'completed', '2026-09-01T09:00:00',
                  '2026-09-01T09:25:00', 1500, 1500)
     )")));
+}
+
+void DataManagementServiceTests::taskSchemaOmitsSoftDeleteColumn()
+{
+    QSqlQuery columns(DatabaseManager::instance().database());
+    QVERIFY(columns.exec(QStringLiteral("PRAGMA table_info(tasks)")));
+
+    while (columns.next()) {
+        QVERIFY(columns.value(1).toString() != QStringLiteral("is_deleted"));
+    }
 }
 
 void DataManagementServiceTests::taskStatusConstraintRejectsRemovedStates()

@@ -132,7 +132,6 @@ bool DatabaseManager::createSchema()
                 estimated_minutes INTEGER NOT NULL DEFAULT 25 CHECK (estimated_minutes >= 0),
                 status TEXT NOT NULL DEFAULT 'pending'
                     CHECK (status IN ('pending', 'completed')),
-                is_deleted INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 completed_at TEXT,

@@ -25,7 +25,7 @@ QDateTime dateTimeFromStorage(const QVariant &value)
 
 QVector<Task> TaskRepository::findAll(Filter filter, const QString &searchText) const
 {
-    QStringList conditions{QStringLiteral("t.is_deleted = 0")};
+    QStringList conditions;
     switch (filter) {
     case Filter::Recommended:
         conditions << QStringLiteral("t.status <> 'completed'");
@@ -58,6 +58,10 @@ QVector<Task> TaskRepository::findAll(Filter filter, const QString &searchText) 
             "OR p.name LIKE :search OR c.name LIKE :search)");
     }
 
+    const QString whereClause = conditions.isEmpty()
+        ? QString()
+        : QStringLiteral("WHERE %1").arg(
+              conditions.join(QStringLiteral(" AND ")));
     const QString sql = QStringLiteral(R"(
         SELECT t.id, t.title, t.description, t.project_id, p.name AS project_name,
                t.category_id, c.name AS category_name, t.importance, t.due_at,
@@ -68,14 +72,14 @@ QVector<Task> TaskRepository::findAll(Filter filter, const QString &searchText) 
         LEFT JOIN projects p ON p.id = t.project_id
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN timer_presets tp ON tp.id = t.timer_preset_id
-        WHERE %1
+        %1
         ORDER BY
             CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END,
             CASE WHEN t.due_at IS NULL OR t.due_at = '' THEN 1 ELSE 0 END,
             t.due_at ASC,
             t.importance DESC,
             t.id DESC
-    )").arg(conditions.join(QStringLiteral(" AND ")));
+    )").arg(whereClause);
 
     QSqlQuery query(DatabaseManager::instance().database());
     query.prepare(sql);
@@ -107,7 +111,7 @@ Task TaskRepository::findById(int id) const
         LEFT JOIN projects p ON p.id = t.project_id
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN timer_presets tp ON tp.id = t.timer_preset_id
-        WHERE t.id = :id AND t.is_deleted = 0
+        WHERE t.id = :id
     )"));
     query.bindValue(QStringLiteral(":id"), id);
     if (query.exec() && query.next()) {
@@ -173,7 +177,7 @@ bool TaskRepository::save(Task &task, QString *errorMessage) const
                 estimated_minutes = :estimated_minutes,
                 status = :status,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = :id AND is_deleted = 0
+            WHERE id = :id
         )"));
         query.bindValue(QStringLiteral(":id"), task.id);
     }
@@ -213,7 +217,7 @@ bool TaskRepository::setTimerPreset(int id, int timerPresetId,
         UPDATE tasks SET
             timer_preset_id = :timer_preset_id,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = :id AND is_deleted = 0
+        WHERE id = :id
     )"));
     query.bindValue(QStringLiteral(":timer_preset_id"),
                     timerPresetId > 0 ? QVariant(timerPresetId) : QVariant());
@@ -233,7 +237,7 @@ bool TaskRepository::setCompleted(int id, bool completed, QString *errorMessage)
             status = :status,
             completed_at = :completed_at,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = :id AND is_deleted = 0
+        WHERE id = :id
     )"));
     query.bindValue(QStringLiteral(":status"),
                     completed ? QStringLiteral("completed") : QStringLiteral("pending"));
