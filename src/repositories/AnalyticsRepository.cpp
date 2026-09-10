@@ -10,16 +10,16 @@ DashboardMetrics AnalyticsRepository::dashboardMetrics() const
     DashboardMetrics metrics;
     metrics.pendingTasks = scalar(QStringLiteral(R"(
         SELECT COUNT(*) FROM tasks
-        WHERE is_deleted = 0 AND status NOT IN ('completed', 'cancelled')
+        WHERE is_deleted = 0 AND status <> 'completed'
     )"));
     metrics.dueToday = scalar(QStringLiteral(R"(
         SELECT COUNT(*) FROM tasks
-        WHERE is_deleted = 0 AND status NOT IN ('completed', 'cancelled')
+        WHERE is_deleted = 0 AND status <> 'completed'
           AND date(due_at) = date('now', 'localtime')
     )"));
     metrics.overdueTasks = scalar(QStringLiteral(R"(
         SELECT COUNT(*) FROM tasks
-        WHERE is_deleted = 0 AND status NOT IN ('completed', 'cancelled')
+        WHERE is_deleted = 0 AND status <> 'completed'
           AND datetime(due_at) < datetime('now', 'localtime')
     )"));
     metrics.completedToday = scalar(QStringLiteral(R"(

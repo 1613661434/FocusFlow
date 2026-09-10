@@ -518,8 +518,7 @@ void FocusPage::refreshFilteredTasks()
         if (activeFocusTask) {
             return false;
         }
-        const bool unavailable = task.status == QStringLiteral("completed")
-                                 || task.status == QStringLiteral("cancelled");
+        const bool unavailable = task.status == QStringLiteral("completed");
         const bool projectMismatch = selectedProject != kAllLookups
                                      && task.projectId != selectedProject;
         const bool categoryMismatch = selectedCategory != kAllLookups
@@ -568,8 +567,7 @@ void FocusPage::selectTask(int taskId)
     }
     const Task task = TaskRepository().findById(taskId);
     reloadTaskFilters();
-    if (task.id <= 0 || task.status == QStringLiteral("completed")
-        || task.status == QStringLiteral("cancelled")) {
+    if (task.id <= 0 || task.status == QStringLiteral("completed")) {
         refreshFilteredTasks();
         return;
     }

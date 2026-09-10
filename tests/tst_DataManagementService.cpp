@@ -18,6 +18,7 @@ class DataManagementServiceTests final : public QObject
 
 private slots:
     void initTestCase();
+    void taskStatusConstraintRejectsRemovedStates();
     void backupAndCsvExports();
     void prepareValidatedRestore();
     void clearFocusStatisticsKeepsTasks();
@@ -55,6 +56,15 @@ void DataManagementServiceTests::initTestCase()
         ) VALUES(1, 'focus', 'completed', '2026-09-01T09:00:00',
                  '2026-09-01T09:25:00', 1500, 1500)
     )")));
+}
+
+void DataManagementServiceTests::taskStatusConstraintRejectsRemovedStates()
+{
+    QSqlQuery query(DatabaseManager::instance().database());
+    QVERIFY(!query.exec(QStringLiteral(
+        "INSERT INTO tasks(title, status) VALUES('已取消状态', 'cancelled')")));
+    QVERIFY(!query.exec(QStringLiteral(
+        "INSERT INTO tasks(title, status) VALUES('持久化进行中状态', 'in_progress')")));
 }
 
 void DataManagementServiceTests::backupAndCsvExports()

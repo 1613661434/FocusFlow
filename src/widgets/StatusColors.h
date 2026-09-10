@@ -30,11 +30,6 @@ inline QColor inProgress()
     return QColor(QStringLiteral("#6941C6"));
 }
 
-inline QColor danger()
-{
-    return QColor(QStringLiteral("#B42318"));
-}
-
 inline QColor taskStatus(const QString &status)
 {
     if (status == QStringLiteral("completed")) {
@@ -42,9 +37,6 @@ inline QColor taskStatus(const QString &status)
     }
     if (status == QStringLiteral("in_progress")) {
         return inProgress();
-    }
-    if (status == QStringLiteral("cancelled")) {
-        return danger();
     }
     return pending();
 }

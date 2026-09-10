@@ -303,9 +303,6 @@ QString DataManagementService::statusLabel(const QString &status)
     if (status == QStringLiteral("completed")) {
         return QStringLiteral("已完成");
     }
-    if (status == QStringLiteral("cancelled")) {
-        return QStringLiteral("已取消");
-    }
     if (status == QStringLiteral("interrupted")) {
         return QStringLiteral("已中断");
     }

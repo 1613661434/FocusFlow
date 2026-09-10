@@ -183,8 +183,7 @@ void TaskPage::showTaskContextMenu(const QPoint &position)
     auto *focusAction = menu->addAction(QStringLiteral("开始专注"));
     focusAction->setObjectName(QStringLiteral("focusSelectedTaskAction"));
     const bool canFocus = activeFocusTaskId_ < 0
-                          && task.status != QStringLiteral("completed")
-                          && task.status != QStringLiteral("cancelled");
+                          && task.status != QStringLiteral("completed");
     if (!canFocus) {
         focusAction->setText(activeFocusTaskId_ >= 0
             ? QStringLiteral("开始专注（计时中）")
@@ -369,8 +368,6 @@ void TaskPage::refresh()
             statusSortKey = 1;
         } else if (effectiveStatus == QStringLiteral("completed")) {
             statusSortKey = 2;
-        } else if (effectiveStatus == QStringLiteral("cancelled")) {
-            statusSortKey = 3;
         }
         const QString displayedStatus = statusText(effectiveStatus);
         auto *statusItem =
@@ -563,9 +560,6 @@ QString TaskPage::statusText(const QString &status)
     }
     if (status == QStringLiteral("in_progress")) {
         return QStringLiteral("进行中");
-    }
-    if (status == QStringLiteral("cancelled")) {
-        return QStringLiteral("已取消");
     }
     return QStringLiteral("待处理");
 }

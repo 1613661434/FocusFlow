@@ -28,7 +28,7 @@ QVector<Task> TaskRepository::findAll(Filter filter, const QString &searchText) 
     QStringList conditions{QStringLiteral("t.is_deleted = 0")};
     switch (filter) {
     case Filter::Recommended:
-        conditions << QStringLiteral("t.status NOT IN ('completed', 'cancelled')");
+        conditions << QStringLiteral("t.status <> 'completed'");
         break;
     case Filter::Today:
         conditions << QStringLiteral("t.status <> 'completed'")

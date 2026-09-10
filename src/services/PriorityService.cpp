@@ -4,8 +4,7 @@
 
 int PriorityService::score(const Task &task, const QDateTime &now)
 {
-    if (task.status == QStringLiteral("completed")
-        || task.status == QStringLiteral("cancelled")) {
+    if (task.status == QStringLiteral("completed")) {
         return 0;
     }
 
