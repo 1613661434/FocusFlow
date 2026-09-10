@@ -7,7 +7,10 @@ param(
 $ErrorActionPreference = "Stop"
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $buildDirectory = Join-Path $projectRoot "build"
-$cmakeExecutable = if (Test-Path "D:\CMake\bin\cmake.exe") {
+$qtCmakeExecutable = "D:\Qt\Tools\CMake_64\bin\cmake.exe"
+$cmakeExecutable = if (Test-Path $qtCmakeExecutable) {
+    $qtCmakeExecutable
+} elseif (Test-Path "D:\CMake\bin\cmake.exe") {
     "D:\CMake\bin\cmake.exe"
 } else {
     (Get-Command cmake).Source
@@ -34,6 +37,18 @@ if (-not (Test-Path $compilerExecutable)) {
     "-DCMAKE_MAKE_PROGRAM=$ninjaExecutable" `
     "-DCMAKE_CXX_COMPILER=$compilerExecutable"
 if ($LASTEXITCODE -ne 0) {
+    Write-Warning "现有 CMake 缓存配置失败，正在刷新生成缓存后重试。"
+    & $cmakeExecutable `
+        --fresh `
+        -S $projectRoot `
+        -B $buildDirectory `
+        -G Ninja `
+        "-DCMAKE_BUILD_TYPE=$BuildType" `
+        "-DCMAKE_PREFIX_PATH=$QtRoot" `
+        "-DCMAKE_MAKE_PROGRAM=$ninjaExecutable" `
+        "-DCMAKE_CXX_COMPILER=$compilerExecutable"
+}
+if ($LASTEXITCODE -ne 0) {
     throw "CMake 配置失败。"
 }
 
@@ -48,4 +63,3 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "FocusFlow 已构建并通过测试：$buildDirectory"
-
