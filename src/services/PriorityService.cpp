@@ -30,8 +30,5 @@ int PriorityService::score(const Task &task, const QDateTime &now)
     if (task.estimatedMinutes > 0 && task.estimatedMinutes <= 25) {
         result += 5;
     }
-    if (task.status == QStringLiteral("in_progress")) {
-        result += 10;
-    }
     return result;
 }

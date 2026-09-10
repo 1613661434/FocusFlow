@@ -11,6 +11,7 @@ private slots:
     void overdueTaskGetsUrgencyBonus();
     void completedTaskHasZeroScore();
     void shortTaskGetsQuickWinBonus();
+    void inProgressStatusDoesNotChangeScore();
 };
 
 void PriorityServiceTests::importanceRaisesScore()
@@ -55,6 +56,20 @@ void PriorityServiceTests::shortTaskGetsQuickWinBonus()
     QCOMPARE(PriorityService::score(shortTask, now)
                  - PriorityService::score(longTask, now),
              5);
+}
+
+void PriorityServiceTests::inProgressStatusDoesNotChangeScore()
+{
+    const QDateTime now(QDate(2026, 9, 1), QTime(9, 0));
+    Task pending;
+    pending.importance = 4;
+    pending.dueAt = now.addDays(2);
+    pending.estimatedMinutes = 20;
+    Task inProgress = pending;
+    inProgress.status = QStringLiteral("in_progress");
+
+    QCOMPARE(PriorityService::score(inProgress, now),
+             PriorityService::score(pending, now));
 }
 
 QTEST_MAIN(PriorityServiceTests)
