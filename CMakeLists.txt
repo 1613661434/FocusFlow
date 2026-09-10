@@ -141,8 +141,10 @@ if(WIN32)
     )
 endif()
 
-include(CTest)
+option(BUILD_TESTING "Build FocusFlow automated tests" ON)
 if(BUILD_TESTING)
+    enable_testing()
+
     qt_add_executable(SingleInstanceGuardTests
         tests/tst_SingleInstanceGuard.cpp
         src/app/SingleInstanceGuard.cpp
