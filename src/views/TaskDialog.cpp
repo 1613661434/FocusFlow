@@ -102,10 +102,14 @@ void TaskDialog::buildInterface(const QVector<LookupItem> &projects,
     timerPresetCombo_->addItem(
         QStringLiteral("跟随系统默认（%1）").arg(defaultName), -1);
     for (const TimerPreset &preset : presets) {
-        QString text = QStringLiteral("%1（专注 %2 分钟 / 休息 %3 分钟）")
-                           .arg(preset.name)
-                           .arg(preset.focusMinutes)
-                           .arg(preset.shortBreakMinutes);
+        QString text = preset.breaksEnabled
+            ? QStringLiteral("%1（专注 %2 分钟 / 休息 %3 分钟）")
+                  .arg(preset.name)
+                  .arg(preset.focusMinutes)
+                  .arg(preset.shortBreakMinutes)
+            : QStringLiteral("%1（专注 %2 分钟 / 不安排休息）")
+                  .arg(preset.name)
+                  .arg(preset.focusMinutes);
         if (preset.isDefault) {
             text += QStringLiteral(" · 默认");
         }

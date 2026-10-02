@@ -530,7 +530,7 @@ void MainWindow::setupTray()
     auto *menu = new QMenu(this);
     auto *showAction = menu->addAction(QStringLiteral("显示 FocusFlow"));
     auto *quitAction = menu->addAction(QStringLiteral("退出"));
-    TextOnlyMenu::apply(menu);
+    TextOnlyMenu::apply(menu, true);
     connect(showAction, &QAction::triggered,
             this, &MainWindow::restoreAndActivate);
     connect(quitAction, &QAction::triggered, this, [this] {

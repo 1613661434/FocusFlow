@@ -18,6 +18,7 @@ private slots:
     void canCreateTaskWithoutDueTime();
     void lookupAndImportanceChoicesKeepTheirColors();
     void savesTaskDefaultTimerPreset();
+    void noBreakPresetDoesNotShowStaleBreakDuration();
 };
 
 void TaskDialogTests::newTaskDefaultsToTodayAtEndOfDay()
@@ -142,6 +143,26 @@ void TaskDialogTests::savesTaskDefaultTimerPreset()
     QVERIFY(combo->itemText(0).contains(QStringLiteral("跟随系统默认")));
     combo->setCurrentIndex(combo->findData(deepWork.id));
     QCOMPARE(dialog.task().timerPresetId, deepWork.id);
+}
+
+void TaskDialogTests::noBreakPresetDoesNotShowStaleBreakDuration()
+{
+    TimerPreset continuous;
+    continuous.id = 9;
+    continuous.name = QStringLiteral("一直专注");
+    continuous.focusMinutes = 40;
+    continuous.shortBreakMinutes = 5;
+    continuous.breaksEnabled = false;
+
+    TaskDialog dialog({}, {}, {continuous});
+    auto *combo = dialog.findChild<QComboBox *>(
+        QStringLiteral("taskTimerPresetCombo"));
+    QVERIFY(combo != nullptr);
+
+    const QString text = combo->itemText(combo->findData(continuous.id));
+    QVERIFY(text.contains(QStringLiteral("专注 40 分钟")));
+    QVERIFY(text.contains(QStringLiteral("不安排休息")));
+    QVERIFY(!text.contains(QStringLiteral("休息 5 分钟")));
 }
 
 QTEST_MAIN(TaskDialogTests)

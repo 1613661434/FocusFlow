@@ -11,6 +11,7 @@
 #include "views/TaskPage.h"
 #include "widgets/PriorityColors.h"
 #include "widgets/StatusColors.h"
+#include "widgets/TextOnlyMenu.h"
 
 #include <QBarSet>
 #include <QBarSeries>
@@ -69,6 +70,7 @@ private slots:
     void taskDeletionIsPermanentAndPreservesFocusHistory();
     void completedFocusAllowsEmptyInterruptionReason();
     void closeToTrayReminderPreferenceRoundTrips();
+    void textOnlyMenuStaysAboveAndIgnoresRightClick();
     void projectDeletionKeepsTasksWithoutProject();
     void tablesExposeSafePredictableSorting();
     void cleanupTestCase();
@@ -694,6 +696,27 @@ void DashboardPageTests::closeToTrayReminderPreferenceRoundTrips()
     settings.playFullSound = false;
     QVERIFY2(repository.saveTimerSettings(settings, &error), qPrintable(error));
     QVERIFY(!repository.loadTimerSettings().suppressCloseToTrayReminder);
+}
+
+void DashboardPageTests::textOnlyMenuStaysAboveAndIgnoresRightClick()
+{
+    QMenu menu;
+    QAction *action = menu.addAction(QStringLiteral("显示 FocusFlow"));
+    QSignalSpy triggeredSpy(action, &QAction::triggered);
+
+    TextOnlyMenu::apply(&menu, true);
+    QVERIFY(menu.windowFlags().testFlag(Qt::WindowStaysOnTopHint));
+
+    menu.popup(QPoint(40, 40));
+    QTRY_VERIFY(menu.isVisible());
+    const QRect actionRect = menu.actionGeometry(action);
+    QVERIFY(actionRect.isValid());
+
+    QTest::mouseClick(&menu,
+                      Qt::RightButton,
+                      Qt::NoModifier,
+                      actionRect.center());
+    QCOMPARE(triggeredSpy.count(), 0);
 }
 
 void DashboardPageTests::projectDeletionKeepsTasksWithoutProject()
